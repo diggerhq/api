@@ -3,10 +3,11 @@ package main
 import (
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/platform/authenticator"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
-	"github.com/alextanhongpin/go-gin-starter/usersvc"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -29,13 +30,21 @@ func newRouter() *gin.Engine {
 
 func main() {
 	// Setup dependencies
+	models.ConnectDatabase()
+
 	cfg := config.New()
 	cfg.AutomaticEnv()
 	// db := database.New()
 	r := gin.Default()
 
+	auth, err := authenticator.New()
+	if err != nil {
+		log.Fatalf("Failed to initialize the authenticator: %v", err)
+	}
+
 	authorized := r.Group("/")
-	authorized.GET("/health", func(c *gin.Context) {
+	authorized.Use(auth.AuthRequired())
+	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
 			"version":     cfg.GetString("version"),
@@ -43,12 +52,10 @@ func main() {
 		})
 	})
 
-	// Setup services
-	usvc := usersvc.New()
+	authorized.GET("/tests", controllers.FindTest)
+	authorized.POST("/tests", controllers.CreateTest)
 
-	// Setup controllers
-	uctl := usersvc.NewController(usvc)
-	uctl.Setup(r, cfg.GetBool("usersvc_on"))
+	r.GET("/callback", controllers.AuthHandler())
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
