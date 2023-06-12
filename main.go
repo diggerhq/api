@@ -32,10 +32,10 @@ func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
 	// db := database.New()
+	r := gin.Default()
 
-	r := newRouter()
-
-	r.GET("/health", func(c *gin.Context) {
+	authorized := r.Group("/")
+	authorized.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
 			"version":     cfg.GetString("version"),

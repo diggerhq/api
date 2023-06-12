@@ -6,6 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/spf13/viper v1.0.2
+	gopkg.in/square/go-jose.v2 v2.6.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.1
 )
