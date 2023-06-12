@@ -1,6 +1,8 @@
 package main
 
 import (
+	"digger.dev/cloud/controllers"
+	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/alextanhongpin/go-gin-starter/usersvc"
@@ -10,6 +12,10 @@ import (
 
 func newRouter() *gin.Engine {
 	r := gin.Default()
+	models.ConnectDatabase()
+
+	r.GET("/tests", controllers.FindTest)    // new
+	r.POST("/tests", controllers.CreateTest) // new
 
 	//r.Use(middleware.Cors())
 	//r.Use(middleware.RequestID())

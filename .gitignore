@@ -6,3 +6,4 @@ __azurite*
 ./digger
 cloud
 cloud
+.env
