@@ -22,5 +22,10 @@ func ConnectDatabase() {
 		return
 	}
 
+	err = database.AutoMigrate(&Policy{})
+	if err != nil {
+		return
+	}
+
 	DB = database
 }

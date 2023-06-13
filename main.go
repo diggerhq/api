@@ -40,8 +40,11 @@ func main() {
 		})
 	})
 
-	r.GET("/tests", controllers.FindTest)    // new
-	r.POST("/tests", controllers.CreateTest) // new
+	r.GET("/tests", controllers.FindTest)
+	r.POST("/tests", controllers.CreateTest)
+
+	r.GET("/policies", controllers.FindPolicy)
+	r.POST("/policies", controllers.CreatePolicy)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }

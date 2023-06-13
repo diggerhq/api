@@ -17,6 +17,7 @@ func FindTest(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": books})
 }
+
 func CreateTest(c *gin.Context) {
 	// Validate input
 	var input CreateTestInput
