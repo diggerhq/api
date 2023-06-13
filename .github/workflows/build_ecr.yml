@@ -33,6 +33,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   restart:
+    needs: build
     name: Restart ECS service
     runs-on: ubuntu-latest
 
