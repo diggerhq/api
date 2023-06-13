@@ -16,7 +16,8 @@ func FindPolicy(c *gin.Context) {
 	projectName := c.Param("projectName")
 	var policy models.Policy
 	models.DB.Take(&policy, "namespace=? AND project_name=? AND organisation_id= ?", namespace, projectName, 1)
-	c.JSON(http.StatusOK, policy.Policy)
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.String(http.StatusOK, policy.Policy)
 }
 
 // TODO: Check for policy validation endpoint
