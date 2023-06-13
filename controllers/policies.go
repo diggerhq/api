@@ -7,21 +7,19 @@ import (
 )
 
 type CreatePolicyInput struct {
-	Namespace      string
-	ProjectName    string
-	Policy         string
-	Type           string
-	CreatedBy      int
-	OrganisationId int
+	Policy string
 }
 
 func FindPolicy(c *gin.Context) {
-	var policies []models.Policy
-	models.DB.Find(&policies, "organisation_id= ?", 1)
-	c.JSON(http.StatusOK, gin.H{"data": policies})
+	namespace := c.Param("namespace")
+	projectName := c.Param("projectName")
+	var policy models.Policy
+	models.DB.Take(&policy, "namespace=? AND project_name=? AND organisation_id= ?", namespace, projectName, 1)
+	c.JSON(http.StatusOK, policy.Policy)
 }
 
-func CreatePolicy(c *gin.Context) {
+// TODO: Check for policy validation endpoint
+func UpdatePolicy(c *gin.Context) {
 	// Validate input
 	var input CreatePolicyInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -29,16 +27,29 @@ func CreatePolicy(c *gin.Context) {
 		return
 	}
 
-	// Create policy
-	policy := models.Policy{
-		Namespace:      input.Namespace,
-		ProjectName:    input.ProjectName,
-		Policy:         input.Policy,
+	namespace := c.Param("namespace")
+	projectName := c.Param("projectName")
+
+	policy := models.Policy{}
+	result := models.DB.Take(&policy, models.Policy{
+		Namespace:      namespace,
+		ProjectName:    projectName,
 		Type:           "access",
 		CreatedBy:      1,
 		OrganisationId: 1,
+	})
+	if result.RowsAffected == 0 {
+		models.DB.Create(&models.Policy{
+			Namespace:      namespace,
+			ProjectName:    projectName,
+			Type:           "access",
+			CreatedBy:      1,
+			OrganisationId: 1,
+			Policy:         input.Policy,
+		})
+	} else {
+		result.Update("policy", input.Policy)
 	}
-	models.DB.Create(&policy)
 
-	c.JSON(http.StatusOK, gin.H{"data": policy})
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
