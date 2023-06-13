@@ -43,8 +43,8 @@ func main() {
 	r.GET("/tests", controllers.FindTest)
 	r.POST("/tests", controllers.CreateTest)
 
-	r.GET("/repos/:namespace/projects/:projectName/access_policy", controllers.FindPolicy)
-	r.PUT("/repos/:namespace/projects/:projectName/access_policy", controllers.UpdatePolicy)
+	r.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
+	r.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpdatePolicy)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
