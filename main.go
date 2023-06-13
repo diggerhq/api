@@ -5,7 +5,6 @@ import (
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
-	"github.com/alextanhongpin/go-gin-starter/usersvc"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -13,9 +12,6 @@ import (
 func newRouter() *gin.Engine {
 	r := gin.Default()
 	models.ConnectDatabase()
-
-	r.GET("/tests", controllers.FindTest)    // new
-	r.POST("/tests", controllers.CreateTest) // new
 
 	//r.Use(middleware.Cors())
 	//r.Use(middleware.RequestID())
@@ -28,12 +24,13 @@ func newRouter() *gin.Engine {
 }
 
 func main() {
-	// Setup dependencies
 	cfg := config.New()
 	cfg.AutomaticEnv()
-	// db := database.New()
-	r := gin.Default()
 
+	//database migrations
+	models.ConnectDatabase()
+
+	r := gin.Default()
 	authorized := r.Group("/")
 	authorized.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -43,12 +40,8 @@ func main() {
 		})
 	})
 
-	// Setup services
-	usvc := usersvc.New()
-
-	// Setup controllers
-	uctl := usersvc.NewController(usvc)
-	uctl.Setup(r, cfg.GetBool("usersvc_on"))
+	r.GET("/tests", controllers.FindTest)    // new
+	r.POST("/tests", controllers.CreateTest) // new
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
