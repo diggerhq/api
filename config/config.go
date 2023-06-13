@@ -15,7 +15,6 @@ func New() *Config {
 	v.SetDefault("port", 3000)
 	v.SetDefault("usersvc_on", true)
 	v.SetDefault("build_date", "null")
-	v.SetDefault("version", "0.0.1")
 	v.SetDefault("deployed_at", time.Now().UTC().Format(time.RFC3339))
 	return v
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 )
 
 func newRouter() *gin.Engine {
@@ -31,20 +32,22 @@ func main() {
 	models.ConnectDatabase()
 
 	r := gin.Default()
-	authorized := r.Group("/")
-	authorized.GET("/health", func(c *gin.Context) {
+
+	version, _ := os.ReadFile("version.txt")
+	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
-			"version":     cfg.GetString("version"),
 			"deployed_at": cfg.GetString("deployed_at"),
+			"version":     string(version),
 		})
 	})
 
-	r.GET("/tests", controllers.FindTest)
-	r.POST("/tests", controllers.CreateTest)
+	authorized := r.Group("/")
+	authorized.GET("/tests", controllers.FindTest)
+	authorized.POST("/tests", controllers.CreateTest)
 
-	r.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
-	r.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpdatePolicy)
+	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
+	authorized.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpdatePolicy)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
