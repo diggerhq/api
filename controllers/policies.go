@@ -3,6 +3,7 @@ package controllers
 import (
 	"digger.dev/cloud/models"
 	"github.com/gin-gonic/gin"
+	"io"
 	"net/http"
 )
 
@@ -21,12 +22,12 @@ func FindPolicy(c *gin.Context) {
 // TODO: Check for policy validation endpoint
 func UpdatePolicy(c *gin.Context) {
 	// Validate input
-	var input CreatePolicyInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	policyData, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		// Handle the error
+		c.String(http.StatusInternalServerError, "Error reading request body")
 		return
 	}
-
 	namespace := c.Param("namespace")
 	projectName := c.Param("projectName")
 
@@ -45,10 +46,10 @@ func UpdatePolicy(c *gin.Context) {
 			Type:           "access",
 			CreatedBy:      1,
 			OrganisationId: 1,
-			Policy:         input.Policy,
+			Policy:         string(policyData),
 		})
 	} else {
-		result.Update("policy", input.Policy)
+		result.Update("policy", string(policyData))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
