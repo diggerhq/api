@@ -49,5 +49,8 @@ func main() {
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
 	authorized.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpdatePolicy)
 
+	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicy)
+	authorized.PUT("/orgs/:organisation/access-policy", controllers.UpdatePolicy)
+
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }

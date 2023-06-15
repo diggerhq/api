@@ -22,12 +22,12 @@ func ConnectDatabase() {
 
 	err = database.AutoMigrate(&Test{})
 	if err != nil {
-		return
+		panic("Failed to perform migration for `Test`!")
 	}
 
 	err = database.AutoMigrate(&Policy{})
 	if err != nil {
-		return
+		panic("Failed to perform migration for `Policies`!")
 	}
 
 	DB = database
