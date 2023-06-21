@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -19,20 +20,25 @@ func FindPolicy(c *gin.Context) {
 	organisation := c.Param("organisation")
 	projectName := c.Param("projectName")
 	var policy models.Policy
+	query := JoinedOrganisationNamespaceProjectQuery()
 
-	if namespace != "" {
-		if err := models.DB.Take(&policy, "namespace=? AND project_name=? AND organisation_id= ?", namespace, projectName, 1).Error; err != nil {
-			fmt.Printf("Error during namespace query %v", err)
+	if namespace != "" && projectName != "" {
+		err := query.
+			Where("namespaces.name = ? AND projects.name = ?", namespace, projectName).
+			First(&policy).Error
+		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.String(http.StatusNotFound, "Could not find policy for namespace: "+namespace)
+				c.String(http.StatusNotFound, fmt.Sprintf("Could not find policy for namespace %v and project name %v", namespace, projectName))
 			} else {
 				c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 			}
 			return
 		}
 	} else if organisation != "" {
-		if err := models.DB.Take(&policy, "organisation=? AND project_name=? AND organisation_id= ?", organisation, projectName, 1).Error; err != nil {
-			fmt.Printf("Error during namespace query %v", err)
+		err := query.
+			Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL)", organisation).
+			First(&policy).Error
+		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.String(http.StatusNotFound, "Could not find policy for organisation: "+organisation)
 			} else {
@@ -41,7 +47,7 @@ func FindPolicy(c *gin.Context) {
 			return
 		}
 	} else {
-		c.String(http.StatusBadRequest, "Should pass either organisation or namespace")
+		c.String(http.StatusBadRequest, "Should pass either organisation or namespace + project name")
 		return
 	}
 
@@ -49,8 +55,68 @@ func FindPolicy(c *gin.Context) {
 	c.String(http.StatusOK, policy.Policy)
 }
 
-// TODO: Check for policy validation endpoint
-func UpdatePolicy(c *gin.Context) {
+func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
+	return models.DB.Preload("Organisation").Preload("Namespace").Preload("Project").
+		Joins("LEFT JOIN namespaces ON policies.namespace_id = namespaces.id").
+		Joins("LEFT JOIN projects ON policies.project_id = projects.id")
+}
+
+func UpsertPolicyForOrg(c *gin.Context) {
+	// Validate input
+	policyData, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		// Handle the error
+		c.String(http.StatusInternalServerError, "Error reading request body")
+		return
+	}
+	organisation := c.Param("organisation")
+
+	org := models.Organisation{}
+	orgResult := models.DB.Where("name = ?", organisation).Take(&org)
+	if orgResult.RowsAffected == 0 {
+		c.String(http.StatusNotFound, "Could not find organisation: "+organisation)
+		return
+	}
+
+	policy := models.Policy{}
+
+	policyResult := models.DB.Where("organisation_id = ? AND (namespace_id IS NULL AND project_id IS NULL)", org.ID).Take(&policy)
+
+	if policyResult.RowsAffected == 0 {
+		err := models.DB.Create(&models.Policy{
+			OrganisationID: org.ID,
+			Type:           "access",
+			Policy:         string(policyData),
+		}).Error
+
+		if err != nil {
+			log.Printf("Error creating policy: %v", err)
+			c.String(http.StatusInternalServerError, "Error creating policy")
+			return
+		}
+	} else {
+		err := policyResult.Update("policy", string(policyData)).Error
+		if err != nil {
+			log.Printf("Error updating policy: %v", err)
+			c.String(http.StatusInternalServerError, "Error updating policy")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func UpsertPolicyForNamespaceAndProject(c *gin.Context) {
+
+	orgID, exists := c.Get("organisationID")
+
+	if !exists {
+		c.String(http.StatusUnauthorized, "Not authorized")
+		return
+	}
+
+	orgID = orgID.(uint)
+
 	// Validate input
 	policyData, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -60,29 +126,44 @@ func UpdatePolicy(c *gin.Context) {
 	}
 	namespace := c.Param("namespace")
 	projectName := c.Param("projectName")
-	organisation := c.Param("organisation")
+	namespaceModel := models.Namespace{}
+	namespaceResult := models.DB.Where("name = ?", namespace).Take(&namespaceModel)
+	if namespaceResult.RowsAffected == 0 {
+		c.String(http.StatusNotFound, "Could not find namespace: "+namespace)
+		return
+	}
 
-	policy := models.Policy{}
-	result := models.DB.Take(&policy, models.Policy{
-		Namespace:      namespace,
-		Organisation:   organisation,
-		ProjectName:    projectName,
-		Type:           "access",
-		CreatedBy:      1,
-		OrganisationId: 1,
-	})
-	if result.RowsAffected == 0 {
-		models.DB.Create(&models.Policy{
-			Namespace:      namespace,
-			Organisation:   organisation,
-			ProjectName:    projectName,
+	projectModel := models.Project{}
+	projectResult := models.DB.Where("name = ?", projectName).Take(&projectModel)
+	if projectResult.RowsAffected == 0 {
+		c.String(http.StatusNotFound, "Could not find project: "+projectName)
+		return
+	}
+
+	var policy models.Policy
+
+	policyResult := models.DB.Where("organisation_id = ? AND namespace_id = ? AND project_id = ?", namespaceModel.ID, projectModel.ID).Take(&policy)
+
+	if policyResult.RowsAffected == 0 {
+		err := models.DB.Create(&models.Policy{
+			OrganisationID: orgID.(uint),
+			NamespaceID:    &namespaceModel.ID,
+			ProjectID:      &projectModel.ID,
 			Type:           "access",
-			CreatedBy:      1,
-			OrganisationId: 1,
 			Policy:         string(policyData),
-		})
+		}).Error
+		if err != nil {
+			log.Printf("Error creating policy: %v", err)
+			c.String(http.StatusInternalServerError, "Error creating policy")
+			return
+		}
 	} else {
-		result.Update("policy", string(policyData))
+		err := policyResult.Update("policy", string(policyData)).Error
+		if err != nil {
+			log.Printf("Error updating policy: %v", err)
+			c.String(http.StatusInternalServerError, "Error updating policy")
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
