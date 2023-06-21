@@ -1,4 +1,4 @@
-The respository for digger cloud
+The repository for digger cloud
 
 # How to run for development
 

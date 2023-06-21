@@ -20,14 +20,39 @@ func ConnectDatabase() {
 		panic("Failed to connect to database!")
 	}
 
-	err = database.AutoMigrate(&Test{})
-	if err != nil {
-		panic("Failed to perform migration for `Test`!")
-	}
-
 	err = database.AutoMigrate(&Policy{})
 	if err != nil {
 		panic("Failed to perform migration for `Policies`!")
+	}
+
+	err = database.AutoMigrate(&Organisation{})
+
+	if err != nil {
+		panic("Failed to perform migration for `Organisations`!")
+	}
+
+	err = database.AutoMigrate(&Namespace{})
+
+	if err != nil {
+		panic("Failed to perform migration for `Namespaces`!")
+	}
+
+	err = database.AutoMigrate(&Project{})
+
+	if err != nil {
+		panic("Failed to perform migration for `Projects`!")
+	}
+
+	err = database.AutoMigrate(&Token{})
+
+	if err != nil {
+		panic("Failed to perform migration for `Tokens`!")
+	}
+
+	err = database.AutoMigrate(&User{})
+
+	if err != nil {
+		panic("Failed to perform migration for `Users`!")
 	}
 
 	DB = database

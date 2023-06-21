@@ -43,14 +43,12 @@ func main() {
 	})
 
 	authorized := r.Group("/")
-	authorized.GET("/tests", controllers.FindTest)
-	authorized.POST("/tests", controllers.CreateTest)
 
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
-	authorized.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpdatePolicy)
+	authorized.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
 
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicy)
-	authorized.PUT("/orgs/:organisation/access-policy", controllers.UpdatePolicy)
+	authorized.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
