@@ -2,6 +2,7 @@ package main
 
 import (
 	"digger.dev/cloud/controllers"
+	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
@@ -9,20 +10,6 @@ import (
 	"net/http"
 	"os"
 )
-
-func newRouter() *gin.Engine {
-	r := gin.Default()
-	models.ConnectDatabase()
-
-	//r.Use(middleware.Cors())
-	//r.Use(middleware.RequestID())
-
-	// Setup middlewares, logger etc
-	// r.Use(logger)
-	// r.Use(secure)
-
-	return r
-}
 
 func main() {
 	cfg := config.New()
@@ -43,12 +30,17 @@ func main() {
 	})
 
 	authorized := r.Group("/")
+	authorized.Use(middleware.BasicBearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+
+	admin := r.Group("/")
+	admin.Use(middleware.BasicBearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
 
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
-	authorized.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
+	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
 
-	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicy)
-	authorized.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
+	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
+	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
