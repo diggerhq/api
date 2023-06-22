@@ -83,7 +83,8 @@ func FindPolicyForOrg(c *gin.Context) {
 func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
 	return models.DB.Preload("Organisation").Preload("Namespace").Preload("Project").
 		Joins("LEFT JOIN namespaces ON policies.namespace_id = namespaces.id").
-		Joins("LEFT JOIN projects ON policies.project_id = projects.id")
+		Joins("LEFT JOIN projects ON policies.project_id = projects.id").
+		Joins("LEFT JOIN organisations ON policies.organisation_id = organisations.id")
 }
 
 func UpsertPolicyForOrg(c *gin.Context) {
