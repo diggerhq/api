@@ -26,6 +26,7 @@ func main() {
 			"build_date":  cfg.GetString("build_date"),
 			"deployed_at": cfg.GetString("deployed_at"),
 			"version":     string(version),
+			"commit_sha":  os.Getenv("COMMIT_SHA"),
 		})
 	})
 

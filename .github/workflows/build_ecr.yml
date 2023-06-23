@@ -29,7 +29,7 @@ jobs:
           ECR_REPOSITORY: digger-api-2fd0cb14
           IMAGE_TAG: latest
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg COMMIT_SHA=${{ env.GITHUB_SHA }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   restart:
