@@ -1,7 +1,7 @@
 name: Build&Push to ECR
 on:
   push:
-    branches: [ fix-version ]
+    branches: [ main ]
 
 jobs:
   build:
