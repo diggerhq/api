@@ -1,6 +1,6 @@
 FROM golang:1.20.4 as builder
-
 ARG COMMIT_SHA
+RUN echo "commit sha: ${COMMIT_SHA}"
 
 # Set the working directory
 WORKDIR $GOPATH/src/github.com/diggerhq/cloud
@@ -15,15 +15,14 @@ RUN go version
 
 # https://github.com/ethereum/go-ethereum/issues/2738
 # Build static binary "-getmode=vendor" does not work with go-ethereum
-RUN go build
-# -ldflags "-linkmode external -extldflags -static"
+RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 
 # Multi-stage build will just copy the binary to an alpine image.
 FROM ubuntu:latest
-
 ARG COMMIT_SHA
-ENV COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
+
+RUN echo "commit sha: ${COMMIT_SHA}"
 
 # Set gin to production
 #ENV GIN_MODE=release
