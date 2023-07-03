@@ -21,7 +21,6 @@ RUN go build
 # Multi-stage build will just copy the binary to an alpine image.
 FROM ubuntu:latest
 
-ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 
