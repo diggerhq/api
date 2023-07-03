@@ -1,4 +1,4 @@
-name: Build&Push to ECR
+name: Build&Push to Prod ECR
 on:
   push:
     branches: [ main ]
