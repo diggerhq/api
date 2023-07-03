@@ -20,11 +20,9 @@ RUN go build
 
 # Multi-stage build will just copy the binary to an alpine image.
 FROM ubuntu:latest
-
-ENV COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 
-RUN echo "commit sha: $COMMIT_SHA"
+RUN echo "commit sha: ${COMMIT_SHA}"
 
 # Set gin to production
 #ENV GIN_MODE=release
