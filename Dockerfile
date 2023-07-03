@@ -15,7 +15,7 @@ RUN go version
 
 # https://github.com/ethereum/go-ethereum/issues/2738
 # Build static binary "-getmode=vendor" does not work with go-ethereum
-RUN go build
+RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 # -ldflags "-linkmode external -extldflags -static"
 
 # Multi-stage build will just copy the binary to an alpine image.
