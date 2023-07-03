@@ -1,6 +1,6 @@
 FROM golang:1.20.4 as builder
-
 ARG COMMIT_SHA
+RUN echo "commit sha: ${COMMIT_SHA}"
 
 # Set the working directory
 WORKDIR $GOPATH/src/github.com/diggerhq/cloud
@@ -19,6 +19,7 @@ RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 
 # Multi-stage build will just copy the binary to an alpine image.
 FROM ubuntu:latest
+ARG COMMIT_SHA
 WORKDIR /app
 
 RUN echo "commit sha: ${COMMIT_SHA}"
