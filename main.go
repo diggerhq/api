@@ -11,6 +11,8 @@ import (
 	"os"
 )
 
+var Version = "dev"
+
 func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
@@ -20,12 +22,11 @@ func main() {
 
 	r := gin.Default()
 
-	version, _ := os.ReadFile("version.txt")
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
 			"deployed_at": cfg.GetString("deployed_at"),
-			"version":     string(version),
+			"version":     Version,
 			"commit_sha":  os.Getenv("COMMIT_SHA"),
 		})
 	})
