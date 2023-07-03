@@ -25,6 +25,8 @@ ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 
+RUN echo "commit sha: $COMMIT_SHA"
+
 # Set gin to production
 #ENV GIN_MODE=release
 
