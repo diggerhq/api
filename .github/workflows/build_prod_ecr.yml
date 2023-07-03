@@ -1,7 +1,7 @@
 name: Build&Push to ECR
 on:
   push:
-    branches: [ add-prod-workflow ]
+    branches: [ main ]
 
 jobs:
   build:
