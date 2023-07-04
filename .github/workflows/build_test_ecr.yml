@@ -26,7 +26,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: digger-api-2fd0cb14
+          ECR_REPOSITORY: cloud-web
           IMAGE_TAG: latest
         run: |
           export COMMIT_SHA=$(git rev-parse --short HEAD)
