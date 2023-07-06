@@ -28,8 +28,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 		})
 
 		if err != nil {
-			println(fmt.Sprintf("Invalid x-webhook-secret header provided: %s", secret))
-			println(fmt.Sprintf("Expected: %s", os.Getenv("WEBHOOK_SECRET")))
+			log.Printf("Error parsing secret: %v", err.Error())
 			c.String(http.StatusForbidden, "Invalid x-webhook-secret header provided")
 			c.Abort()
 			return
