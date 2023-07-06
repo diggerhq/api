@@ -4,7 +4,9 @@ import "gorm.io/gorm"
 
 type Organisation struct {
 	gorm.Model
-	Name string `gorm:"uniqueIndex:idx_organisation"`
+	Name           string `gorm:"uniqueIndex:idx_organisation"`
+	ExternalSource string `gorm:"uniqueIndex:idx_external_source"`
+	ExternalId     string `gorm:"uniqueIndex:idx_external_source"`
 }
 
 type Namespace struct {

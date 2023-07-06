@@ -1,7 +1,7 @@
 name: Build&Push to Test ECR
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/* ]
 
 jobs:
   build:

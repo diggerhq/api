@@ -33,10 +33,13 @@ func main() {
 	})
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BasicBearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BasicBearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
+
+	fronteggWebhookProcessor := r.Group("/")
+	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
@@ -45,5 +48,7 @@ func main() {
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
-	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
+	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
+
+	r.Run(fmt.Sprintf(":%d", 3001))
 }

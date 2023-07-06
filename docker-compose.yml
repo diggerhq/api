@@ -8,12 +8,15 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=23q4RSDFSDFS
-#
-#  web:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    restart: always
-#    image: web
-#    ports:
-#      - "8000:3000"
+
+  web:
+    depends_on:
+      - postgres
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .docker-compose-env
+    restart: always
+    ports:
+      - "3000:3000"
