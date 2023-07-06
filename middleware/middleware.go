@@ -118,7 +118,23 @@ func BearerTokenAuth() gin.HandlerFunc {
 					return
 				}
 				var org models.Organisation
-				err := models.DB.Take(org, "external_source = ? AND external_id = ?", claims["iss"], claims["tenantId"]).Error
+				issuer := claims["iss"]
+				if issuer == nil {
+					log.Printf("Token is invalid")
+					c.String(http.StatusForbidden, "Authorization header is invalid")
+					c.Abort()
+					return
+				}
+				issuer = issuer.(string)
+				tenantId := claims["tenantId"]
+				if tenantId == nil {
+					log.Printf("Token is invalid")
+					c.String(http.StatusForbidden, "Authorization header is invalid")
+					c.Abort()
+					return
+				}
+				tenantId = tenantId.(string)
+				err := models.DB.Take(org, "external_source = ? AND external_id = ?", issuer, tenantId).Error
 				if err != nil {
 					log.Printf("Error while fetching organisation: %v", err.Error())
 					c.String(http.StatusForbidden, "Authorization header is invalid")
