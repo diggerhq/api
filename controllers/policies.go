@@ -72,6 +72,7 @@ func FindPolicyForOrg(c *gin.Context) {
 	loggedInOrganisation := c.GetUint(middleware.ORGANISATION_ID_KEY)
 
 	if policy.OrganisationID != loggedInOrganisation {
+		log.Printf("Organisation ID %v does not match logged in organisation ID %v", policy.OrganisationID, loggedInOrganisation)
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
 		return
 	}
@@ -107,6 +108,7 @@ func UpsertPolicyForOrg(c *gin.Context) {
 	loggedInOrganisation := c.GetUint(middleware.ORGANISATION_ID_KEY)
 
 	if org.ID != loggedInOrganisation {
+		log.Printf("Organisation ID %v does not match logged in organisation ID %v", org.ID, loggedInOrganisation)
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
 		return
 	}
