@@ -19,7 +19,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if secret != os.Getenv("SECRET_CODE") {
+		if secret != os.Getenv("WEBHOOK_SECRET") {
 			c.String(http.StatusForbidden, "Invalid x-webhook-secret-value header provided")
 			c.Abort()
 			return
