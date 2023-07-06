@@ -20,7 +20,14 @@ func SecretCodeAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if secret != os.Getenv("WEBHOOK_SECRET") {
+		_, err := jwt.Parse(secret, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return os.Getenv("WEBHOOK_SECRET"), nil
+		})
+
+		if err != nil {
 			println(fmt.Sprintf("Invalid x-webhook-secret header provided: %s", secret))
 			println(fmt.Sprintf("Expected: %s", os.Getenv("WEBHOOK_SECRET")))
 			c.String(http.StatusForbidden, "Invalid x-webhook-secret header provided")
