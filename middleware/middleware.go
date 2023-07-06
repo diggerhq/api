@@ -13,7 +13,7 @@ import (
 
 func SecretCodeAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		secret := c.Request.Header.Get("x-webhook-secret-value")
+		secret := c.Request.Header.Get("x-webhook-secret")
 		if secret == "" {
 			c.String(http.StatusForbidden, "No x-webhook-secret-value header provided")
 			c.Abort()
