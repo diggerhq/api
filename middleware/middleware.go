@@ -15,12 +15,15 @@ func SecretCodeAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		secret := c.Request.Header.Get("x-webhook-secret")
 		if secret == "" {
-			c.String(http.StatusForbidden, "No x-webhook-secret-value header provided")
+			println("No x-webhook-secret header provided")
+			c.String(http.StatusForbidden, "No x-webhook-secret header provided")
 			c.Abort()
 			return
 		}
 		if secret != os.Getenv("WEBHOOK_SECRET") {
-			c.String(http.StatusForbidden, "Invalid x-webhook-secret-value header provided")
+			println(fmt.Sprintf("Invalid x-webhook-secret header provided: %s", secret))
+			println(fmt.Sprintf("Expected: %s", os.Getenv("WEBHOOK_SECRET")))
+			c.String(http.StatusForbidden, "Invalid x-webhook-secret header provided")
 			c.Abort()
 			return
 		}
