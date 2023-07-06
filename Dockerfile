@@ -32,7 +32,6 @@ EXPOSE 3000
 
 # Copy the binary to the corresponding folder
 COPY --from=builder /go/src/github.com/diggerhq/cloud/cloud .
-COPY pk.pem .
 
 # Run the binary
 CMD ["/app/cloud"]
