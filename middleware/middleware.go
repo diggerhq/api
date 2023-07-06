@@ -24,7 +24,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return os.Getenv("WEBHOOK_SECRET"), nil
+			return []byte(os.Getenv("WEBHOOK_SECRET")), nil
 		})
 
 		if err != nil {
