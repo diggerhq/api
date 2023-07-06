@@ -50,5 +50,5 @@ func main() {
 
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
 
-	r.Run(fmt.Sprintf(":%d", 3001))
+	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
 }
