@@ -74,10 +74,17 @@ func BearerTokenAuth() gin.HandlerFunc {
 		} else {
 			publicKeyData, err := os.ReadFile("pk.pem")
 
+			if err != nil {
+				log.Printf("Error while reading public key: %v", err.Error())
+				c.String(http.StatusInternalServerError, "Error occurred while reading public key")
+				c.Abort()
+				return
+			}
+
 			publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
 			if err != nil {
 				log.Printf("Error while parsing public key: %v", err.Error())
-				c.String(http.StatusInternalServerError, "Error occurred")
+				c.String(http.StatusInternalServerError, "Error occurred while parsing public key")
 				c.Abort()
 				return
 			}
