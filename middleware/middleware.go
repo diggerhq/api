@@ -15,7 +15,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		secret := c.Request.Header.Get("x-webhook-secret")
 		if secret == "" {
-			println("No x-webhook-secret header provided")
+			log.Printf("No x-webhook-secret header provided")
 			c.String(http.StatusForbidden, "No x-webhook-secret header provided")
 			c.Abort()
 			return
@@ -76,6 +76,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 
 			publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
 			if err != nil {
+				log.Printf("Error while parsing public key: %v", err.Error())
 				c.String(http.StatusInternalServerError, "Error occurred")
 				c.Abort()
 				return
@@ -89,12 +90,14 @@ func BearerTokenAuth() gin.HandlerFunc {
 			})
 
 			if err != nil {
+				log.Printf("Error while parsing token: %v", err.Error())
 				c.String(http.StatusForbidden, "Authorization header is invalid")
 				c.Abort()
 				return
 			}
 
 			if !token.Valid {
+				log.Printf("Token is invalid")
 				c.String(http.StatusForbidden, "Authorization header is invalid")
 				c.Abort()
 				return
@@ -102,6 +105,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 
 			if claims, ok := token.Claims.(jwt.MapClaims); ok {
 				if claims.Valid() != nil {
+					log.Printf("Token is invalid")
 					c.String(http.StatusForbidden, "Authorization header is invalid")
 					c.Abort()
 					return
@@ -109,6 +113,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 				var org models.Organisation
 				err := models.DB.Take(org, "external_source = ? AND external_id = ?", claims["iss"], claims["tenantId"]).Error
 				if err != nil {
+					log.Printf("Error while fetching organisation: %v", err.Error())
 					c.String(http.StatusForbidden, "Authorization header is invalid")
 					c.Abort()
 					return
@@ -117,6 +122,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 
 				permissions := claims["permissions"]
 				if permissions == nil {
+					log.Printf("Token is invalid")
 					c.String(http.StatusForbidden, "Authorization header is invalid")
 					c.Abort()
 					return
@@ -136,6 +142,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 					}
 				}
 			} else {
+				log.Printf("Token is invalid")
 				c.String(http.StatusForbidden, "Authorization header is invalid")
 				c.Abort()
 				return
