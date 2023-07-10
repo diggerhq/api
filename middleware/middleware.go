@@ -72,14 +72,14 @@ func BearerTokenAuth() gin.HandlerFunc {
 			c.Set(ORGANISATION_ID_KEY, dbToken.OrganisationID)
 			c.Set(ACCESS_LEVEL_KEY, dbToken.Type)
 		} else {
-			publicKeyData, err := os.ReadFile("pk.pem")
-
-			if err != nil {
-				log.Printf("Error while reading public key: %v", err.Error())
+			jwtPublicKey := os.Getenv("JWT_PUBLIC_KEY")
+			if jwtPublicKey == "" {
+				log.Printf("No JWT_PUBLIC_KEY environment variable provided")
 				c.String(http.StatusInternalServerError, "Error occurred while reading public key")
 				c.Abort()
 				return
 			}
+			publicKeyData := []byte(jwtPublicKey)
 
 			publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
 			if err != nil {
