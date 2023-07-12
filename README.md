@@ -1,4 +1,4 @@
-The repository for digger cloud
+The repository for digger official API.
 
 # How to run for development
 
