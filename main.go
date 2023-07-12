@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/gin-gonic/gin"
+	"io"
 	"net/http"
 	"os"
 )
@@ -30,6 +31,28 @@ func main() {
 			"version":     Version,
 			"commit_sha":  os.Getenv("COMMIT_SHA"),
 		})
+	})
+
+	r.POST("/github-app-callback", func(c *gin.Context) {
+		requestBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Error reading request body")
+			return
+		}
+		c.Header("Content-Type", "application/json")
+		fmt.Printf(string(requestBody))
+		c.JSON(200, string(requestBody))
+	})
+
+	r.POST("/github-app-webhook", func(c *gin.Context) {
+		requestBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Error reading request body")
+			return
+		}
+		c.Header("Content-Type", "application/json")
+		fmt.Printf(string(requestBody))
+		c.JSON(200, string(requestBody))
 	})
 
 	authorized := r.Group("/")
