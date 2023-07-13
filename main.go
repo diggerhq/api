@@ -9,7 +9,6 @@ import (
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
-	"io"
 	"net/http"
 	"os"
 )
@@ -41,27 +40,9 @@ func main() {
 		})
 	})
 
-	r.POST("/github-app-callback", func(c *gin.Context) {
-		requestBody, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Error reading request body")
-			return
-		}
-		c.Header("Content-Type", "application/json")
-		fmt.Printf(string(requestBody))
-		c.JSON(200, string(requestBody))
-	})
+	r.POST("/github-app-callback", controllers.GitHubAppCallback())
 
-	r.POST("/github-app-webhook", func(c *gin.Context) {
-		requestBody, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Error reading request body")
-			return
-		}
-		c.Header("Content-Type", "application/json")
-		fmt.Printf(string(requestBody))
-		c.JSON(200, string(requestBody))
-	})
+	r.POST("/github-app-webhook", controllers.GitHubAppWebHook())
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(&envVars), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

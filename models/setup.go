@@ -55,5 +55,10 @@ func ConnectDatabase(envVars *config.EnvVariables) {
 		panic("Failed to perform migration for `Users`!")
 	}
 
+	err = database.AutoMigrate(&GitHubAppInstallation{})
+	if err != nil {
+		panic("Failed to perform migration for `GitHubAppInstallation`!")
+	}
+
 	DB = database
 }
