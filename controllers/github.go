@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"digger.dev/cloud/models"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -106,6 +107,7 @@ func GitHubAppWebHook() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		requestBody, err := io.ReadAll(c.Request.Body)
 		if err != nil {
+			fmt.Printf("Error reading request body. %v\n", err)
 			c.String(http.StatusInternalServerError, "Error reading request body")
 			return
 		}
@@ -113,8 +115,54 @@ func GitHubAppWebHook() func(c *gin.Context) {
 		notification := GitHubInstallationNotification{}
 		err = json.Unmarshal(requestBody, &notification)
 		if err != nil {
+			fmt.Printf("Failed to parse request's JSON. %v\n", err)
 			c.String(http.StatusInternalServerError, "Failed to parse request's JSON")
 			return
+		}
+
+		if notification.Action == "created" {
+			installationId := notification.Installation.Id
+			login := notification.Installation.Account.Login
+			accountId := notification.Installation.Account.Id
+
+			for _, repo := range notification.Repositories {
+				item := models.GitHubAppInstallation{
+					InstallationId: installationId,
+					Login:          login,
+					AccountId:      accountId,
+					Repo:           repo.FullName,
+					State:          models.Active,
+				}
+				err := models.DB.Create(&item).Error
+				if err != nil {
+					fmt.Printf("Failed to save record to database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to save record to database.")
+					return
+				}
+			}
+
+		}
+
+		if notification.Action == "deleted" {
+			installationId := notification.Installation.Id
+			login := notification.Installation.Account.Login
+			accountId := notification.Installation.Account.Id
+
+			for _, repo := range notification.Repositories {
+				item := models.GitHubAppInstallation{
+					InstallationId: installationId,
+					Login:          login,
+					AccountId:      accountId,
+					Repo:           repo.FullName,
+					State:          models.Deleted,
+				}
+				err := models.DB.Create(&item).Error
+				if err != nil {
+					fmt.Printf("Failed to save record to database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to save record to database.")
+					return
+				}
+			}
 		}
 
 		c.Header("Content-Type", "application/json")
