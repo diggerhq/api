@@ -10,11 +10,10 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
-var Version = "dev"
+var version = "dev"
 
 func main() {
 	cfg := config.New()
@@ -35,8 +34,8 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
 			"deployed_at": cfg.GetString("deployed_at"),
-			"version":     Version,
-			"commit_sha":  os.Getenv("COMMIT_SHA"),
+			"version":     version,
+			"commit_sha":  version,
 		})
 	})
 
