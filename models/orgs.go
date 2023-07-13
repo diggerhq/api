@@ -1,6 +1,8 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type Organisation struct {
 	gorm.Model
@@ -23,6 +25,24 @@ type Project struct {
 	Organisation   Organisation
 	NamespaceID    uint `gorm:"uniqueIndex:idx_project"`
 	Namespace      Namespace
+}
+
+func (p *Project) MapToJsonStruct() interface{} {
+	return struct {
+		Id             uint   `json:"id"`
+		Name           string `json:"name"`
+		OrganisationID uint   `json:"organisationId"`
+		Organisation   string `json:"organisation"`
+		NamespaceID    uint   `json:"namespaceId"`
+		Namespace      string `json:"namespace"`
+	}{
+		Id:             p.ID,
+		Name:           p.Name,
+		OrganisationID: p.OrganisationID,
+		NamespaceID:    p.NamespaceID,
+		Organisation:   p.Organisation.Name,
+		Namespace:      p.Namespace.Name,
+	}
 }
 
 type Token struct {
