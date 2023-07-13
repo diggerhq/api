@@ -2,91 +2,12 @@ package controllers
 
 import (
 	"digger.dev/cloud/models"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/webhooks/v6/github"
 	"io"
 	"net/http"
-	"time"
 )
-
-type GitHubInstallationNotification struct {
-	Action       string `json:"action"`
-	Installation struct {
-		Id      int `json:"id"`
-		Account struct {
-			Login             string `json:"login"`
-			Id                int    `json:"id"`
-			NodeId            string `json:"node_id"`
-			AvatarUrl         string `json:"avatar_url"`
-			GravatarId        string `json:"gravatar_id"`
-			Url               string `json:"url"`
-			HtmlUrl           string `json:"html_url"`
-			FollowersUrl      string `json:"followers_url"`
-			FollowingUrl      string `json:"following_url"`
-			GistsUrl          string `json:"gists_url"`
-			StarredUrl        string `json:"starred_url"`
-			SubscriptionsUrl  string `json:"subscriptions_url"`
-			OrganizationsUrl  string `json:"organizations_url"`
-			ReposUrl          string `json:"repos_url"`
-			EventsUrl         string `json:"events_url"`
-			ReceivedEventsUrl string `json:"received_events_url"`
-			Type              string `json:"type"`
-			SiteAdmin         bool   `json:"site_admin"`
-		} `json:"account"`
-		RepositorySelection string `json:"repository_selection"`
-		AccessTokensUrl     string `json:"access_tokens_url"`
-		RepositoriesUrl     string `json:"repositories_url"`
-		HtmlUrl             string `json:"html_url"`
-		AppId               int    `json:"app_id"`
-		AppSlug             string `json:"app_slug"`
-		TargetId            int    `json:"target_id"`
-		TargetType          string `json:"target_type"`
-		Permissions         struct {
-			Issues           string `json:"issues"`
-			Actions          string `json:"actions"`
-			Secrets          string `json:"secrets"`
-			Metadata         string `json:"metadata"`
-			Statuses         string `json:"statuses"`
-			Workflows        string `json:"workflows"`
-			PullRequests     string `json:"pull_requests"`
-			RepositoryHooks  string `json:"repository_hooks"`
-			ActionsVariables string `json:"actions_variables"`
-		} `json:"permissions"`
-		Events                 []string      `json:"events"`
-		CreatedAt              time.Time     `json:"created_at"`
-		UpdatedAt              time.Time     `json:"updated_at"`
-		HasMultipleSingleFiles bool          `json:"has_multiple_single_files"`
-		SingleFilePaths        []interface{} `json:"single_file_paths"`
-	} `json:"installation"`
-	Repositories []struct {
-		Id       int    `json:"id"`
-		NodeId   string `json:"node_id"`
-		Name     string `json:"name"`
-		FullName string `json:"full_name"`
-		Private  bool   `json:"private"`
-	} `json:"repositories"`
-	Sender struct {
-		Login             string `json:"login"`
-		Id                int    `json:"id"`
-		NodeId            string `json:"node_id"`
-		AvatarUrl         string `json:"avatar_url"`
-		GravatarId        string `json:"gravatar_id"`
-		Url               string `json:"url"`
-		HtmlUrl           string `json:"html_url"`
-		FollowersUrl      string `json:"followers_url"`
-		FollowingUrl      string `json:"following_url"`
-		GistsUrl          string `json:"gists_url"`
-		StarredUrl        string `json:"starred_url"`
-		SubscriptionsUrl  string `json:"subscriptions_url"`
-		OrganizationsUrl  string `json:"organizations_url"`
-		ReposUrl          string `json:"repos_url"`
-		EventsUrl         string `json:"events_url"`
-		ReceivedEventsUrl string `json:"received_events_url"`
-		Type              string `json:"type"`
-		SiteAdmin         bool   `json:"site_admin"`
-	} `json:"sender"`
-}
 
 func GitHubAppCallback() func(c *gin.Context) {
 	return func(c *gin.Context) {
@@ -114,62 +35,68 @@ func GitHubAppWebHook() func(c *gin.Context) {
 
 		fmt.Printf("webhook request: %s", string(requestBody))
 
-		notification := GitHubInstallationNotification{}
-		err = json.Unmarshal(requestBody, &notification)
+		hook, _ := github.New()
+
+		payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent)
 		if err != nil {
-			fmt.Printf("Failed to parse request's JSON. %v\n", err)
-			c.String(http.StatusInternalServerError, "Failed to parse request's JSON")
-			return
-		}
-
-		if notification.Action == "created" {
-			installationId := notification.Installation.Id
-			login := notification.Installation.Account.Login
-			accountId := notification.Installation.Account.Id
-
-			for _, repo := range notification.Repositories {
-				item := models.GitHubAppInstallation{
-					InstallationId: installationId,
-					Login:          login,
-					AccountId:      accountId,
-					Repo:           repo.FullName,
-					State:          models.Active,
-				}
-				err := models.DB.Create(&item).Error
-				if err != nil {
-					fmt.Printf("Failed to save record to database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to save record to database.")
-					return
-				}
-			}
-
-		}
-
-		if notification.Action == "deleted" {
-			installationId := notification.Installation.Id
-			login := notification.Installation.Account.Login
-			accountId := notification.Installation.Account.Id
-
-			for _, repo := range notification.Repositories {
-				item := models.GitHubAppInstallation{
-					InstallationId: installationId,
-					Login:          login,
-					AccountId:      accountId,
-					Repo:           repo.FullName,
-					State:          models.Deleted,
-				}
-				err := models.DB.Create(&item).Error
-				if err != nil {
-					fmt.Printf("Failed to save record to database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to save record to database.")
-					return
-				}
+			if err == github.ErrEventNotFound {
+				// ok event wasn't one of the ones asked to be parsed
 			}
 		}
+		switch payload.(type) {
 
+		case github.InstallationPayload:
+			installation := payload.(github.InstallationPayload)
+			if installation.Action == "created" {
+				installationId := installation.Installation.ID
+				login := installation.Installation.Account.Login
+				accountId := installation.Installation.Account.ID
+
+				for _, repo := range installation.Repositories {
+					item := models.GitHubAppInstallation{
+						InstallationId: int(installationId),
+						Login:          login,
+						AccountId:      int(accountId),
+						Repo:           repo.FullName,
+						State:          models.Active,
+					}
+					err := models.DB.Create(&item).Error
+					if err != nil {
+						fmt.Printf("Failed to save record to database. %v\n", err)
+						c.String(http.StatusInternalServerError, "Failed to save record to database.")
+						return
+					}
+				}
+
+			}
+
+			if installation.Action == "deleted" {
+				installationId := installation.Installation.ID
+				login := installation.Installation.Account.Login
+				accountId := installation.Installation.Account.ID
+
+				for _, repo := range installation.Repositories {
+					item := models.GitHubAppInstallation{
+						InstallationId: int(installationId),
+						Login:          login,
+						AccountId:      int(accountId),
+						Repo:           repo.FullName,
+						State:          models.Deleted,
+					}
+					err := models.DB.Create(&item).Error
+					if err != nil {
+						fmt.Printf("Failed to save record to database. %v\n", err)
+						c.String(http.StatusInternalServerError, "Failed to save record to database.")
+						return
+					}
+				}
+			}
+		case github.IssueCommentPayload:
+			issueComment := payload.(github.IssueCommentPayload)
+			// Do whatever you want from here...
+			fmt.Printf("new comment: %+v", issueComment)
+		}
 		c.Header("Content-Type", "application/json")
-		fmt.Print("---------- github app webhook ---------------- ")
-		fmt.Printf("notification: %v", notification)
 		c.JSON(200, "ok")
 	}
 }

@@ -6,6 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-playground/webhooks/v6 v6.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/spf13/viper v1.0.2
