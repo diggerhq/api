@@ -112,7 +112,7 @@ func GitHubAppWebHook() func(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("webhook request: %v", requestBody)
+		fmt.Printf("webhook request: %s", string(requestBody))
 
 		notification := GitHubInstallationNotification{}
 		err = json.Unmarshal(requestBody, &notification)
