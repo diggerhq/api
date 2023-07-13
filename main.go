@@ -1,11 +1,13 @@
 package main
 
 import (
+	cloud_config "digger.dev/cloud/config"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
+	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -19,8 +21,14 @@ func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
 
+	var envVars cloud_config.EnvVariables
+
+	if err := env.Parse(&envVars); err != nil {
+		fmt.Printf("%+v\n", err)
+	}
+
 	//database migrations
-	models.ConnectDatabase()
+	models.ConnectDatabase(&envVars)
 
 	r := gin.Default()
 
@@ -56,13 +64,13 @@ func main() {
 	})
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.BearerTokenAuth(&envVars), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.BearerTokenAuth(&envVars), middleware.AccessLevel(models.AdminPolicyType))
 
 	fronteggWebhookProcessor := r.Group("/")
-	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
+	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth(&envVars))
 
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)

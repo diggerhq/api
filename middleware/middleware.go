@@ -1,17 +1,17 @@
 package middleware
 
 import (
+	"digger.dev/cloud/config"
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
 
-func SecretCodeAuth() gin.HandlerFunc {
+func SecretCodeAuth(envVars *config.EnvVariables) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		secret := c.Request.Header.Get("x-webhook-secret")
 		if secret == "" {
@@ -24,7 +24,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("WEBHOOK_SECRET")), nil
+			return []byte(envVars.WebhookSecret), nil
 		})
 
 		if err != nil {
@@ -37,7 +37,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 	}
 }
 
-func BearerTokenAuth() gin.HandlerFunc {
+func BearerTokenAuth(envVars *config.EnvVariables) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.Request.Header.Get("Authorization")
 		if auth == "" {
@@ -72,7 +72,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 			c.Set(ORGANISATION_ID_KEY, dbToken.OrganisationID)
 			c.Set(ACCESS_LEVEL_KEY, dbToken.Type)
 		} else {
-			jwtPublicKey := os.Getenv("JWT_PUBLIC_KEY")
+			jwtPublicKey := envVars.JwtPublicKey
 			if jwtPublicKey == "" {
 				log.Printf("No JWT_PUBLIC_KEY environment variable provided")
 				c.String(http.StatusInternalServerError, "Error occurred while reading public key")
