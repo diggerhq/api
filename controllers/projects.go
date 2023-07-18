@@ -278,13 +278,13 @@ func CreateRunForProject(c *gin.Context) {
 	}
 
 	run := models.ProjectRun{
-		StartedAt:       request.StartedAt,
-		EndedAt:         request.EndedAt,
-		Status:          request.Status,
-		Command:         request.Command,
-		TerraformOutput: request.TerraformOutput,
-		ProjectID:       project.ID,
-		Project:         project,
+		StartedAt: request.StartedAt,
+		EndedAt:   request.EndedAt,
+		Status:    request.Status,
+		Command:   request.Command,
+		Output:    request.TerraformOutput,
+		ProjectID: project.ID,
+		Project:   project,
 	}
 
 	err = models.DB.Create(&run).Error

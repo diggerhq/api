@@ -20,34 +20,34 @@ type Namespace struct {
 
 type ProjectRun struct {
 	gorm.Model
-	ProjectID       uint
-	Project         Project
-	StartedAt       int64
-	EndedAt         int64
-	Status          string
-	Command         string
-	TerraformOutput string
+	ProjectID uint
+	Project   Project
+	StartedAt int64
+	EndedAt   int64
+	Status    string
+	Command   string
+	Output    string
 }
 
 func (p *ProjectRun) MapToJsonStruct() interface{} {
 	return struct {
-		Id              uint   `json:"id"`
-		ProjectID       uint   `json:"projectId"`
-		ProjectName     string `json:"projectName"`
-		StartedAt       int64  `json:"startedAt"`
-		EndedAt         int64  `json:"endedAt"`
-		Status          string `json:"status"`
-		Command         string `json:"command"`
-		TerraformOutput string `json:"terraformOutput"`
+		Id          uint   `json:"id"`
+		ProjectID   uint   `json:"projectId"`
+		ProjectName string `json:"projectName"`
+		StartedAt   int64  `json:"startedAt"`
+		EndedAt     int64  `json:"endedAt"`
+		Status      string `json:"status"`
+		Command     string `json:"command"`
+		Output      string `json:"output"`
 	}{
-		Id:              p.ID,
-		ProjectID:       p.ProjectID,
-		ProjectName:     p.Project.Name,
-		StartedAt:       p.StartedAt,
-		EndedAt:         p.EndedAt,
-		Status:          p.Status,
-		Command:         p.Command,
-		TerraformOutput: p.TerraformOutput,
+		Id:          p.ID,
+		ProjectID:   p.ProjectID,
+		ProjectName: p.Project.Name,
+		StartedAt:   p.StartedAt,
+		EndedAt:     p.EndedAt,
+		Status:      p.Status,
+		Command:     p.Command,
+		Output:      p.Output,
 	}
 }
 
