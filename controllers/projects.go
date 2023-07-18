@@ -220,11 +220,11 @@ func RunHistoryForProject(c *gin.Context) {
 }
 
 type CreateProjectRunRequest struct {
-	StartedAt       int64  `json:"startedAt"`
-	EndedAt         int64  `json:"endedAt"`
-	Status          string `json:"status"`
-	Command         string `json:"command"`
-	TerraformOutput string `json:"terraformOutput"`
+	StartedAt int64  `json:"startedAt"`
+	EndedAt   int64  `json:"endedAt"`
+	Status    string `json:"status"`
+	Command   string `json:"command"`
+	Output    string `json:"output"`
 }
 
 func CreateRunForProject(c *gin.Context) {
@@ -282,7 +282,7 @@ func CreateRunForProject(c *gin.Context) {
 		EndedAt:   request.EndedAt,
 		Status:    request.Status,
 		Command:   request.Command,
-		Output:    request.TerraformOutput,
+		Output:    request.Output,
 		ProjectID: project.ID,
 		Project:   project,
 	}
