@@ -44,8 +44,8 @@ func main() {
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
 
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
-	//authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
-	//authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
+	authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
+	authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
 
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
 
