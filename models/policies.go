@@ -2,6 +2,11 @@ package models
 
 import "gorm.io/gorm"
 
+const (
+	POLICY_TYPE_ACCESS = "access"
+	POLICY_TYPE_PLAN   = "plan"
+)
+
 type Policy struct {
 	gorm.Model
 	Project        *Project

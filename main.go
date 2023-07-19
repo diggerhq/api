@@ -41,11 +41,16 @@ func main() {
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
-	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
-	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
+	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindAccessPolicy)
+	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
-	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
+	authorized.GET("/repos/:namespace/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
+	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
+
+	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
+	admin.PUT("/repos/:namespace/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
