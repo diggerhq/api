@@ -49,6 +49,7 @@ func main() {
 
 	authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
+	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
 	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
