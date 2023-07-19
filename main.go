@@ -42,7 +42,15 @@ func main() {
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
 	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
+
+	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
+	authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
+	authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
+
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
+
+	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
+	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)

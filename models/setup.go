@@ -55,5 +55,11 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `Users`!")
 	}
 
+	err = database.AutoMigrate(&ProjectRun{})
+
+	if err != nil {
+		panic("Failed to perform migration for `ProjectRun`!")
+	}
+
 	DB = database
 }
