@@ -17,7 +17,15 @@ type CreatePolicyInput struct {
 	Policy string
 }
 
-func FindPolicy(c *gin.Context) {
+func FindAccessPolicy(c *gin.Context) {
+	findPolicy(c, models.POLICY_TYPE_ACCESS)
+}
+
+func FindPlanPolicy(c *gin.Context) {
+	findPolicy(c, models.POLICY_TYPE_PLAN)
+}
+
+func findPolicy(c *gin.Context, policyType string) {
 	namespace := c.Param("namespace")
 	projectName := c.Param("projectName")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
@@ -33,7 +41,7 @@ func FindPolicy(c *gin.Context) {
 
 	if namespace != "" && projectName != "" {
 		err := query.
-			Where("namespaces.name = ? AND projects.name = ? AND policies.organisation_id = ?", namespace, projectName, orgId).
+			Where("namespaces.name = ? AND projects.name = ? AND policies.organisation_id = ? AND policies.type = ?", namespace, projectName, orgId, policyType).
 			First(&policy).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -52,13 +60,20 @@ func FindPolicy(c *gin.Context) {
 	c.String(http.StatusOK, policy.Policy)
 }
 
-func FindPolicyForOrg(c *gin.Context) {
+func FindAccessPolicyForOrg(c *gin.Context) {
+	findPolicyForOrg(c, models.POLICY_TYPE_ACCESS)
+}
+func FindPlanPolicyForOrg(c *gin.Context) {
+	findPolicyForOrg(c, models.POLICY_TYPE_PLAN)
+}
+
+func findPolicyForOrg(c *gin.Context, policyType string) {
 	organisation := c.Param("organisation")
 	var policy models.Policy
 	query := JoinedOrganisationNamespaceProjectQuery()
 
 	err := query.
-		Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL)", organisation).
+		Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL) AND policies.type = ? ", organisation, policyType).
 		First(&policy).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -88,7 +103,15 @@ func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
 		Joins("LEFT JOIN organisations ON policies.organisation_id = organisations.id")
 }
 
-func UpsertPolicyForOrg(c *gin.Context) {
+func UpsertAccessPolicyForOrg(c *gin.Context) {
+	upsertPolicyForOrg(c, models.POLICY_TYPE_ACCESS)
+}
+
+func UpsertPlanPolicyForOrg(c *gin.Context) {
+	upsertPolicyForOrg(c, models.POLICY_TYPE_PLAN)
+}
+
+func upsertPolicyForOrg(c *gin.Context, policyType string) {
 	// Validate input
 	policyData, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -115,12 +138,12 @@ func UpsertPolicyForOrg(c *gin.Context) {
 
 	policy := models.Policy{}
 
-	policyResult := models.DB.Where("organisation_id = ? AND (namespace_id IS NULL AND project_id IS NULL)", org.ID).Take(&policy)
+	policyResult := models.DB.Where("organisation_id = ? AND (namespace_id IS NULL AND project_id IS NULL) AND type = ?", org.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
 		err := models.DB.Create(&models.Policy{
 			OrganisationID: org.ID,
-			Type:           "access",
+			Type:           policyType,
 			Policy:         string(policyData),
 		}).Error
 
@@ -141,8 +164,15 @@ func UpsertPolicyForOrg(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func UpsertPolicyForNamespaceAndProject(c *gin.Context) {
+func UpsertAccessPolicyForNamespaceAndProject(c *gin.Context) {
+	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_ACCESS)
+}
 
+func UpsertPlanPolicyForNamespaceAndProject(c *gin.Context) {
+	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_PLAN)
+}
+
+func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
 	orgID, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
@@ -194,14 +224,14 @@ func UpsertPolicyForNamespaceAndProject(c *gin.Context) {
 
 	var policy models.Policy
 
-	policyResult := models.DB.Where("organisation_id = ? AND namespace_id = ? AND project_id = ?", orgID, namespaceModel.ID, projectModel.ID).Take(&policy)
+	policyResult := models.DB.Where("organisation_id = ? AND namespace_id = ? AND project_id = ? AND type = ?", orgID, namespaceModel.ID, projectModel.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
 		err := models.DB.Create(&models.Policy{
 			OrganisationID: orgID.(uint),
 			NamespaceID:    &namespaceModel.ID,
 			ProjectID:      &projectModel.ID,
-			Type:           "access",
+			Type:           policyType,
 			Policy:         string(policyData),
 		}).Error
 		if err != nil {

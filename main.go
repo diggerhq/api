@@ -41,19 +41,23 @@ func main() {
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
-	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
+	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindAccessPolicy)
+	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
 
-	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
+	authorized.GET("/repos/:namespace/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
+	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
+
 	authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
-
-	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
+	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
 	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
-	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
+	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
+	admin.PUT("/repos/:namespace/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
