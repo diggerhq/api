@@ -61,7 +61,7 @@ func findPolicy(c *gin.Context, policyType string) {
 }
 
 func FindAccessPolicyForOrg(c *gin.Context) {
-	findPolicyForOrg(c, models.AccessPolicyType)
+	findPolicyForOrg(c, models.POLICY_TYPE_ACCESS)
 }
 func FindPlanPolicyForOrg(c *gin.Context) {
 	findPolicyForOrg(c, models.POLICY_TYPE_PLAN)
@@ -104,7 +104,7 @@ func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
 }
 
 func UpsertAccessPolicyForOrg(c *gin.Context) {
-	upsertPolicyForOrg(c, models.AccessPolicyType)
+	upsertPolicyForOrg(c, models.POLICY_TYPE_ACCESS)
 }
 
 func UpsertPlanPolicyForOrg(c *gin.Context) {
