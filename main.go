@@ -47,6 +47,12 @@ func main() {
 	authorized.GET("/repos/:namespace/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
 	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
 
+	authorized.GET("/repos/:namespace/projects/:project-name/runs", controllers.RunHistoryForProject)
+	authorized.POST("/repos/:namespace/projects/:project-name/runs", controllers.CreateRunForProject)
+
+	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
+	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
+
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
 	admin.PUT("/repos/:namespace/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForNamespaceAndProject)
