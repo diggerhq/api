@@ -41,7 +41,7 @@ func findPolicy(c *gin.Context, policyType string) {
 
 	if namespace != "" && projectName != "" {
 		err := query.
-			Where("namespaces.name = ? AND projects.name = ? AND policies.organisation_id = ? AND type = ?", namespace, projectName, orgId, policyType).
+			Where("namespaces.name = ? AND projects.name = ? AND policies.organisation_id = ? AND policies.type = ?", namespace, projectName, orgId, policyType).
 			First(&policy).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -73,7 +73,7 @@ func findPolicyForOrg(c *gin.Context, policyType string) {
 	query := JoinedOrganisationNamespaceProjectQuery()
 
 	err := query.
-		Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL) AND type = ? ", organisation, policyType).
+		Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL) AND policies.type = ? ", organisation, policyType).
 		First(&policy).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
