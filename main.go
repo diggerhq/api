@@ -32,7 +32,7 @@ func main() {
 		})
 	})
 
-	r.LoadHTMLFiles("templates/main.tmpl")
+	r.LoadHTMLFiles("templates/index.tmpl")
 	r.GET("/web/", controllers.MainPage)
 
 	authorized := r.Group("/")
