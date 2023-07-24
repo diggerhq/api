@@ -32,6 +32,9 @@ func main() {
 		})
 	})
 
+	r.LoadHTMLFiles("templates/main.tmpl")
+	r.GET("/web/", controllers.MainPage)
+
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
