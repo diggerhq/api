@@ -18,6 +18,8 @@ func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
 
+	web := controllers.WebController{Config: cfg}
+
 	//database migrations
 	models.ConnectDatabase()
 
@@ -35,8 +37,8 @@ func main() {
 	})
 
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
-	r.GET("/", controllers.MainPage)
-	r.GET("/projects", controllers.ProjectsPage)
+	r.GET("/", web.MainPage)
+	r.GET("/projects", web.ProjectsPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
