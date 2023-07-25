@@ -23,6 +23,8 @@ func main() {
 
 	r := gin.Default()
 
+	r.Static("/static", "./templates/static")
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"build_date":  cfg.GetString("build_date"),
@@ -32,8 +34,9 @@ func main() {
 		})
 	})
 
-	r.LoadHTMLFiles("templates/index.tmpl")
-	r.GET("/web/", controllers.MainPage)
+	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
+	r.GET("/", controllers.MainPage)
+	r.GET("/projects", controllers.ProjectsPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
