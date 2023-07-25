@@ -38,6 +38,7 @@ func main() {
 
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
 	r.GET("/", web.MainPage)
+	r.GET("/oauth", web.MainPage)
 	r.GET("/projects", web.ProjectsPage)
 
 	authorized := r.Group("/")
