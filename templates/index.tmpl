@@ -46,16 +46,6 @@
 
     app.ready(() => {
         console.log("App is ready");
-
-        let unsubscribe = app.store.subscribe(()=>{
-          const {auth} = app.store.getState();
-          if(!auth.isLoading) {
-            unsubscribe()
-            if (!auth.isAuthenticated) {
-              app.loginWithRedirect()
-            }
-          }
-        })
     })
 
     document.querySelector('[fe-action="open-admin-portal"]').addEventListener('click', () => {
