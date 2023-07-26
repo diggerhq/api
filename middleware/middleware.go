@@ -27,9 +27,29 @@ func WebAuth() gin.HandlerFunc {
 			return
 		}
 
+		jwtPublicKey := os.Getenv("JWT_PUBLIC_KEY")
+		if jwtPublicKey == "" {
+			log.Printf("No JWT_PUBLIC_KEY environment variable provided")
+			c.String(http.StatusInternalServerError, "Error occurred while reading public key")
+			c.Abort()
+			return
+		}
+		publicKeyData := []byte(jwtPublicKey)
+
+		publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
+		if err != nil {
+			log.Printf("Error while parsing public key: %v", err.Error())
+			c.String(http.StatusInternalServerError, "Error occurred while parsing public key")
+			c.Abort()
+			return
+		}
+
 		// validate token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte("AllYourBase"), nil
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return publicKey, nil
 		})
 		if err != nil {
 			fmt.Printf("can't parse a token, %v\n", err)
