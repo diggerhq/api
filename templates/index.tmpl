@@ -83,6 +83,7 @@
         if (state.auth.isAuthenticated) {
             styleHtml += '[fe-state="isAuthenticated"] { }';
             styleHtml += '[fe-state="!isAuthenticated"] { display: none; }';
+            document.cookie = "token=" + state.auth.user.accessToken + ";expires=" + new Date(state.auth.user.exp * 1000).toUTCString() + ";path=/"
         } else {
             styleHtml += '[fe-state="isAuthenticated"] { display: none; }';
             styleHtml += '[fe-state="!isAuthenticated"] { }';
