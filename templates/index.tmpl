@@ -1,112 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-bs-theme="auto">
 <head>
-    <meta charset="UTF-8">
-    <title>Digger</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="application/javascript"
-            src="https://cdn.jsdelivr.net/npm/@frontegg/js@6.51.0/umd/frontegg.production.min.js"></script>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+  <title></title>
 </head>
-<body class="font-sans m-0 p-0 bg-gray-200">
+<main>
+  <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark" aria-label="Main navigation">
+    <div class="container-fluid">
+      <div class="navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/projects">Projects</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</main>
 
-<div id="app-root" class="flex flex-col items-center justify-center min-h-screen bg-gray-200 p-8" style="display: none">
-    <div id="user-container" class="flex flex-col items-center bg-white p-5 rounded-xl shadow-md mb-5"></div>
-    <br/>
-    <br/>
-
-    <button fe-action="open-admin-portal" fe-state="isAuthenticated"
-            class="py-2 px-4 rounded bg-blue-700 text-white mt-3 cursor-pointer transition-colors duration-300">Open
-        AdminPortal
-    </button>
-    <a fe-state="isAuthenticated" fe-mode="embedded" href="/account/logout">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Logout</button>
-    </a>
-    <a fe-state="isAuthenticated" href="/projects">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Projects</button>
-    </a>
-    <a fe-state="isAuthenticated" fe-mode="hosted" id="hostedLoginLogout">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Logout</button>
-    </a>
-    <a fe-state="!isAuthenticated" fe-mode="embedded" fe-action="loginWithRedirect" href="/account/login">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Login</button>
-    </a>
-    <button id="loginWithRedirect" fe-mode="hosted" fe-state="!isAuthenticated"
-            class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">
-        Login With Redirect
-    </button>
-</div>
-
-<script type="text/javascript">
-
-    const app = Frontegg.initialize({
-        contextOptions: {
-            baseUrl: "{{ .FronteggUrl }}",
-            clientId: "{{ .FronteggClientId }}",
-        },
-        authOptions: {
-           	keepSessionAlive: true
-        },
-        hostedLoginBox: true
-    })
-
-
-    app.ready(() => {
-        console.log("App is ready");
-    })
-
-    document.querySelector('[fe-action="open-admin-portal"]').addEventListener('click', () => {
-        app.showAdminPortal()
-    })
-
-    document.getElementById("loginWithRedirect").addEventListener('click', () => {
-        app.loginWithRedirect()
-    })
-
-    document.getElementById("hostedLoginLogout").addEventListener('click', () => {
-        app.logout()
-    })
-
-
-    const style = document.createElement('style');
-    style.setAttribute('type', 'text/css');
-    style.innerHTML = '';
-    document.getElementsByTagName('head')[0].appendChild(style);
-
-
-    app.store.subscribe(() => {
-        const state = app.store.getState();
-        document.getElementById('app-root').style.display = state.auth.isLoading ? 'hidden' : 'block'
-
-
-        if (state.auth.user) {
-            document.getElementById('user-container').innerText = state.auth.user.email;
-        } else {
-            document.getElementById('user-container').innerText = 'Not Authenticated'
-        }
-
-
-        let styleHtml = ''
-        if (state.auth.isAuthenticated) {
-            styleHtml += '[fe-state="isAuthenticated"] { }';
-            styleHtml += '[fe-state="!isAuthenticated"] { display: none; }';
-            document.cookie = "token=" + state.auth.user.accessToken + ";expires=" + new Date(state.auth.user.exp * 1000).toUTCString() + ";path=/"
-        } else {
-            styleHtml += '[fe-state="isAuthenticated"] { display: none; }';
-            styleHtml += '[fe-state="!isAuthenticated"] { }';
-            document.cookie = "token=;Max-Age=0"
-        }
-
-        if (app.options.hostedLoginBox) {
-            styleHtml += '[fe-mode="hosted"] { }';
-            styleHtml += '[fe-mode="embedded"] { display: none; }';
-        } else {
-            styleHtml += '[fe-mode="hosted"] { display: none; }';
-            styleHtml += '[fe-mode="embedded"] { }';
-        }
-        style.innerHTML = styleHtml;
-    })
-
-
-</script>
-</body>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
 </html>
