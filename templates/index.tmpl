@@ -18,14 +18,11 @@
             class="py-2 px-4 rounded bg-blue-700 text-white mt-3 cursor-pointer transition-colors duration-300">Open
         AdminPortal
     </button>
-    <a fe-state="isAuthenticated" fe-mode="embedded" href="/account/logout">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Logout</button>
+    <a fe-state="isAuthenticated" href="/projects">
+        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Projects</button>
     </a>
     <a fe-state="isAuthenticated" fe-mode="hosted" id="hostedLoginLogout">
         <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Logout</button>
-    </a>
-    <a fe-state="!isAuthenticated" fe-mode="embedded" fe-action="loginWithRedirect" href="/account/login">
-        <button class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">Login</button>
     </a>
     <button id="loginWithRedirect" fe-mode="hosted" fe-state="!isAuthenticated"
             class="py-2 px-4 rounded bg-blue-600 text-white mt-3 cursor-pointer">
@@ -83,6 +80,7 @@
         if (state.auth.isAuthenticated) {
             styleHtml += '[fe-state="isAuthenticated"] { }';
             styleHtml += '[fe-state="!isAuthenticated"] { display: none; }';
+            document.cookie = "token=" + state.auth.user.accessToken + ";expires=" + new Date(state.auth.user.exp * 1000).toUTCString() + ";path=/"
         } else {
             styleHtml += '[fe-state="isAuthenticated"] { display: none; }';
             styleHtml += '[fe-state="!isAuthenticated"] { }';
@@ -90,10 +88,8 @@
 
         if (app.options.hostedLoginBox) {
             styleHtml += '[fe-mode="hosted"] { }';
-            styleHtml += '[fe-mode="embedded"] { display: none; }';
         } else {
             styleHtml += '[fe-mode="hosted"] { display: none; }';
-            styleHtml += '[fe-mode="embedded"] { }';
         }
         style.innerHTML = styleHtml;
     })
