@@ -39,7 +39,10 @@ func main() {
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
-	r.GET("/projects", web.ProjectsPage)
+
+	webGroup := r.Group("/projects")
+	webGroup.Use(middleware.WebAuth())
+	webGroup.GET("/", web.ProjectsPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

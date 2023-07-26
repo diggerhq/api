@@ -11,6 +11,50 @@ import (
 	"strings"
 )
 
+func WebAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var tokenString string
+		tokenString, err := c.Cookie("token")
+		if err != nil {
+			fmt.Printf("can't get a cookie token, %v\n", err)
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		if tokenString == "" {
+			fmt.Println("auth token is empty")
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		// validate token
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			return []byte("AllYourBase"), nil
+		})
+		if err != nil {
+			fmt.Printf("can't parse a token, %v\n", err)
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		if token.Valid {
+			c.Next()
+			return
+		} else if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+				fmt.Println("That's not even a token")
+			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+				fmt.Println("Token is either expired or not active yet")
+			} else {
+				fmt.Println("Couldn't handle this token:", err)
+			}
+		} else {
+			fmt.Println("Couldn't handle this token:", err)
+		}
+		c.AbortWithStatus(http.StatusForbidden)
+	}
+}
+
 func SecretCodeAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		secret := c.Request.Header.Get("x-webhook-secret")
