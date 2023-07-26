@@ -2,8 +2,12 @@ package controllers
 
 import (
 	"digger.dev/cloud/config"
+	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"errors"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"log"
 	"net/http"
 )
 
@@ -21,11 +25,43 @@ func (web *WebController) MainPage(c *gin.Context) {
 }
 
 func (web *WebController) ProjectsPage(c *gin.Context) {
-	p1 := models.Project{Name: "project1"}
-	p2 := models.Project{Name: "project2"}
-	projects := make([]models.Project, 0)
-	projects = append(projects, p1)
-	projects = append(projects, p2)
+	requestedOrganisation := c.Param("organisation")
+	loggedInOrganisation, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+
+	if !exists {
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return
+	}
+
+	var org models.Organisation
+	err := models.DB.Where("name = ?", requestedOrganisation).First(&org).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.String(http.StatusNotFound, "Could not find organisation: "+requestedOrganisation)
+		} else {
+			c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
+		}
+		return
+	}
+
+	if org.ID != loggedInOrganisation {
+		log.Printf("Organisation ID %v does not match logged in organisation ID %v", org.ID, loggedInOrganisation)
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return
+	}
+
+	var projects []models.Project
+
+	err = models.DB.Preload("Organisation").Preload("Namespace").
+		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
+		Where("projects.organisation_id = ?", org.ID).Find(&projects).Error
+
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
+		return
+	}
+
 	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
 		"Projects": projects,
 	})
