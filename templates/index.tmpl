@@ -43,6 +43,9 @@
             baseUrl: "{{ .FronteggUrl }}",
             clientId: "{{ .FronteggClientId }}",
         },
+        authOptions: {
+           	keepSessionAlive: true
+        },
         hostedLoginBox: true
     })
 
