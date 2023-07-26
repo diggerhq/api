@@ -18,19 +18,13 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 			return fmt.Errorf("token is invalid")
 		}
 		var org models.Organisation
-		issuer := claims["iss"]
-		if issuer == nil {
-			log.Printf("claim's issuer is nil")
-			return fmt.Errorf("token is invalid")
-		}
-		issuer = issuer.(string)
 		tenantId := claims["tenantId"]
 		if tenantId == nil {
 			log.Printf("claim's tenantId is nil")
 			return fmt.Errorf("token is invalid")
 		}
 		tenantId = tenantId.(string)
-		err := models.DB.Take(&org, "external_source = ? AND external_id = ?", issuer, tenantId).Error
+		err := models.DB.Take(&org, "external_id = ?", tenantId).Error
 		if err != nil {
 			log.Printf("Error while fetching organisation: %v", err.Error())
 			return fmt.Errorf("token is invalid")
