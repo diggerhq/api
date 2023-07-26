@@ -31,6 +31,8 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 		}
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
+		fmt.Printf("save org id %v\n", org.ID)
+
 		permissions := claims["permissions"]
 		if permissions == nil {
 			log.Printf("claim's permissions is nil")

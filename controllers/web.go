@@ -5,6 +5,7 @@ import (
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
@@ -27,6 +28,8 @@ func (web *WebController) MainPage(c *gin.Context) {
 func (web *WebController) ProjectsPage(c *gin.Context) {
 	requestedOrganisation := c.Param("organisation")
 	loggedInOrganisation, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+
+	fmt.Printf("read org id %v\n", loggedInOrganisation)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
