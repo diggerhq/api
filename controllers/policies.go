@@ -25,6 +25,10 @@ func FindPlanPolicy(c *gin.Context) {
 	findPolicy(c, models.POLICY_TYPE_PLAN)
 }
 
+func FindDriftPolicy(c *gin.Context) {
+	findPolicy(c, models.POLICY_TYPE_DRIFT)
+}
+
 func findPolicy(c *gin.Context, policyType string) {
 	namespace := c.Param("namespace")
 	projectName := c.Param("projectName")
@@ -63,8 +67,13 @@ func findPolicy(c *gin.Context, policyType string) {
 func FindAccessPolicyForOrg(c *gin.Context) {
 	findPolicyForOrg(c, models.POLICY_TYPE_ACCESS)
 }
+
 func FindPlanPolicyForOrg(c *gin.Context) {
 	findPolicyForOrg(c, models.POLICY_TYPE_PLAN)
+}
+
+func FindDriftPolicyForOrg(c *gin.Context) {
+	findPolicyForOrg(c, models.POLICY_TYPE_DRIFT)
 }
 
 func findPolicyForOrg(c *gin.Context, policyType string) {
@@ -109,6 +118,10 @@ func UpsertAccessPolicyForOrg(c *gin.Context) {
 
 func UpsertPlanPolicyForOrg(c *gin.Context) {
 	upsertPolicyForOrg(c, models.POLICY_TYPE_PLAN)
+}
+
+func UpsertDriftPolicyForOrg(c *gin.Context) {
+	upsertPolicyForOrg(c, models.POLICY_TYPE_DRIFT)
 }
 
 func upsertPolicyForOrg(c *gin.Context, policyType string) {
@@ -170,6 +183,10 @@ func UpsertAccessPolicyForNamespaceAndProject(c *gin.Context) {
 
 func UpsertPlanPolicyForNamespaceAndProject(c *gin.Context) {
 	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_PLAN)
+}
+
+func UpsertDriftPolicyForNamespaceAndProject(c *gin.Context) {
+	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_DRIFT)
 }
 
 func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
