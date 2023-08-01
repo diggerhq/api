@@ -5,6 +5,7 @@ import "gorm.io/gorm"
 const (
 	POLICY_TYPE_ACCESS = "access"
 	POLICY_TYPE_PLAN   = "plan"
+	POLICY_TYPE_DRIFT  = "drift"
 )
 
 type Policy struct {
