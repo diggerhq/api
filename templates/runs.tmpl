@@ -3,7 +3,7 @@
     <div class="container-fluid">
         <div class="card shadow">
             <div class="card-header py-3">
-                <p class="text-primary m-0 fw-bold">Projects</p>
+                <p class="text-primary m-0 fw-bold">Project Runs</p>
             </div>
             <div class="card-body">
                 <!--div class="row">
@@ -23,17 +23,19 @@
                     <table class="table my-0" id="dataTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Namespace</th>
-                                <th>Organisation</th>
+                                <th>Project Name</th>
+                                <th>Status</th>
+                                <th>Command</th>
+                                <th>Output</th>
                             </tr>
                         </thead>
                         <tbody>
-                        {{ range .Projects }}
+                        {{ range .Runs }}
                             <tr>
-                                <td>{{ .Name }}</td>
-                                <td>{{ .Namespace.Name }}</td>
-                                <td>{{ .Organisation.Name }}</td>
+                                <td>{{ .Project.Name }}</td>
+                                <td>{{ .Status }}</td>
+                                <td>{{ .Command }}</td>
+                                <td>{{ .Output }}</td>
                             </tr>
                         {{ end }}
                         </tbody>
@@ -59,7 +61,6 @@
         </div>
     </div>
 </div>
-
 {{template "bottom" . }}
 
 

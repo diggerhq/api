@@ -36,13 +36,21 @@ func main() {
 		})
 	})
 
-	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
+	r.LoadHTMLGlob("templates/*.tmpl")
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
 
-	webGroup := r.Group("/projects")
-	webGroup.Use(middleware.WebAuth())
-	webGroup.GET("/", web.ProjectsPage)
+	projectsGroup := r.Group("/projects")
+	//projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.GET("/", web.ProjectsPage)
+
+	runsGroup := r.Group("/runs")
+	//projectsGroup.Use(middleware.WebAuth())
+	runsGroup.GET("/", web.RunsPage)
+
+	policiesGroup := r.Group("/policies")
+	//projectsGroup.Use(middleware.WebAuth())
+	policiesGroup.GET("/", web.PoliciesPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

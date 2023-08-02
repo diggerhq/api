@@ -1,9 +1,10 @@
 {{template "top" . }}
+
 <div id="content">
     <div class="container-fluid">
         <div class="card shadow">
             <div class="card-header py-3">
-                <p class="text-primary m-0 fw-bold">Projects</p>
+                <p class="text-primary m-0 fw-bold">Policies</p>
             </div>
             <div class="card-body">
                 <!--div class="row">
@@ -23,15 +24,15 @@
                     <table class="table my-0" id="dataTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                <th>Project</th>
                                 <th>Namespace</th>
                                 <th>Organisation</th>
                             </tr>
                         </thead>
                         <tbody>
-                        {{ range .Projects }}
+                        {{ range .Policies }}
                             <tr>
-                                <td>{{ .Name }}</td>
+                                <td>{{ .Project.Name }}</td>
                                 <td>{{ .Namespace.Name }}</td>
                                 <td>{{ .Organisation.Name }}</td>
                             </tr>
@@ -59,8 +60,8 @@
         </div>
     </div>
 </div>
-
 {{template "bottom" . }}
+
 
 
 
