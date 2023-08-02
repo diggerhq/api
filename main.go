@@ -18,10 +18,14 @@ func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
 
+	web := controllers.WebController{Config: cfg}
+
 	//database migrations
 	models.ConnectDatabase()
 
 	r := gin.Default()
+
+	r.Static("/static", "./templates/static")
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -31,6 +35,14 @@ func main() {
 			"commit_sha":  os.Getenv("COMMIT_SHA"),
 		})
 	})
+
+	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
+	r.GET("/", web.MainPage)
+	r.GET("/oauth/callback", web.MainPage)
+
+	webGroup := r.Group("/projects")
+	webGroup.Use(middleware.WebAuth())
+	webGroup.GET("/", web.ProjectsPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
