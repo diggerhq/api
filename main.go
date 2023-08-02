@@ -43,6 +43,7 @@ func main() {
 	projectsGroup := r.Group("/projects")
 	//projectsGroup.Use(middleware.WebAuth())
 	projectsGroup.GET("/", web.ProjectsPage)
+	projectsGroup.GET("/details", web.ProjectDetailsPage)
 
 	runsGroup := r.Group("/runs")
 	//projectsGroup.Use(middleware.WebAuth())
