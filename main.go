@@ -51,6 +51,7 @@ func main() {
 	policiesGroup := r.Group("/policies")
 	//projectsGroup.Use(middleware.WebAuth())
 	policiesGroup.GET("/", web.PoliciesPage)
+	policiesGroup.GET("/details", web.PolicyDetailsPage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

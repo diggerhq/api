@@ -84,3 +84,16 @@ func (web *WebController) PoliciesPage(c *gin.Context) {
 		"Policies": policies,
 	})
 }
+
+func (web *WebController) PolicyDetailsPage(c *gin.Context) {
+	org := &models.Organisation{Name: "digger"}
+	namespace := &models.Namespace{Name: "main"}
+	project := &models.Project{Name: "Test Project", Organisation: org, Namespace: namespace}
+
+	policy := models.Policy{Project: project, Organisation: org, Namespace: namespace}
+
+	fmt.Println("policy_details.tmpl")
+	c.HTML(http.StatusOK, "policy_details.tmpl", gin.H{
+		"Policy": policy,
+	})
+}
