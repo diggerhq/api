@@ -13,10 +13,10 @@ import (
 
 func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if claims.Valid() != nil {
-			log.Printf("Token's claim is invalid")
-			return fmt.Errorf("token is invalid")
-		}
+		//if claims.Valid() != nil {
+		//	log.Printf("Token's claim is invalid")
+		//	return fmt.Errorf("token is invalid")
+		//}
 		var org models.Organisation
 		tenantId := claims["tenantId"]
 		if tenantId == nil {
