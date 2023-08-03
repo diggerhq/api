@@ -7,4 +7,5 @@ __azurite*
 cloud
 *.env
 *.env.*
+.docker-compose-env
 
