@@ -69,6 +69,9 @@ func main() {
 	authorized.GET("/repos/:namespace/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
 	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
 
+	authorized.GET("/repos/:namespace/projects/:projectName/drift-policy", controllers.FindDriftPolicy)
+	authorized.GET("/orgs/:organisation/drift-policy", controllers.FindDriftPolicyForOrg)
+
 	authorized.GET("/repos/:namespace/projects/:projectName/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:namespace/projects/:projectName/runs", controllers.CreateRunForProject)
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
@@ -78,8 +81,13 @@ func main() {
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
+
 	admin.PUT("/repos/:namespace/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
+
+	admin.PUT("/repos/:namespace/projects/:projectName/drift-policy", controllers.UpsertDriftPolicyForNamespaceAndProject)
+	admin.PUT("/orgs/:organisation/drift-policy", controllers.UpsertDriftPolicyForOrg)
+
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
