@@ -99,9 +99,19 @@ func WebAuth() gin.HandlerFunc {
 		})
 		if err != nil {
 			fmt.Printf("can't parse a token, %v, %v\n", token, err)
-			c.AbortWithStatus(http.StatusForbidden)
+			//c.AbortWithStatus(http.StatusForbidden)
+			//return
+		}
+
+		err = SetContextParameters(c, token)
+		if err != nil {
+			c.String(http.StatusForbidden, err.Error())
+			c.Abort()
 			return
 		}
+
+		c.Next()
+		return
 
 		if token.Valid {
 			err = SetContextParameters(c, token)
