@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"digger.dev/cloud/config"
+	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -22,13 +23,31 @@ func (web *WebController) MainPage(c *gin.Context) {
 }
 
 func (web *WebController) ProjectsPage(c *gin.Context) {
-	/*loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	projects, done := web.getProjects(c)
+	if done {
+		return
+	}
 
-	fmt.Printf("read org id %v\n", loggedInOrganisationId)
+	//org := &models.Organisation{Name: "digger"}
+	//namespace := &models.Namespace{Name: "main"}
+
+	//projects := make([]models.Project, 0)
+	//projects = append(projects, models.Project{Name: "aaaa", Organisation: org, Namespace: namespace})
+	//projects = append(projects, models.Project{Name: "bbbb", Organisation: org, Namespace: namespace})
+
+	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
+		"Projects": projects,
+	})
+}
+
+func (web *WebController) getProjects(c *gin.Context) ([]models.Project, bool) {
+	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+
+	fmt.Printf("getProjects, org id %v\n", loggedInOrganisationId)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return
+		return nil, true
 	}
 
 	var projects []models.Project
@@ -40,21 +59,9 @@ func (web *WebController) ProjectsPage(c *gin.Context) {
 
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return
+		return nil, true
 	}
-	*
-	*/
-
-	org := &models.Organisation{Name: "digger"}
-	namespace := &models.Namespace{Name: "main"}
-
-	projects := make([]models.Project, 0)
-	projects = append(projects, models.Project{Name: "aaaa", Organisation: org, Namespace: namespace})
-	projects = append(projects, models.Project{Name: "bbbb", Organisation: org, Namespace: namespace})
-
-	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
-		"Projects": projects,
-	})
+	return projects, false
 }
 
 func (web *WebController) RunsPage(c *gin.Context) {

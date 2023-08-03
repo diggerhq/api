@@ -41,16 +41,16 @@ func main() {
 	r.GET("/oauth/callback", web.MainPage)
 
 	projectsGroup := r.Group("/projects")
-	//projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.Use(middleware.WebAuth())
 	projectsGroup.GET("/", web.ProjectsPage)
 	projectsGroup.GET("/details", web.ProjectDetailsPage)
 
 	runsGroup := r.Group("/runs")
-	//projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.Use(middleware.WebAuth())
 	runsGroup.GET("/", web.RunsPage)
 
 	policiesGroup := r.Group("/policies")
-	//projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.Use(middleware.WebAuth())
 	policiesGroup.GET("/", web.PoliciesPage)
 	policiesGroup.GET("/details", web.PolicyDetailsPage)
 
