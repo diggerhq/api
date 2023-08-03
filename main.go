@@ -39,7 +39,7 @@ func main() {
 
 	r.LoadHTMLGlob("templates/*.tmpl")
 	r.GET("/", func(context *gin.Context) {
-		host := context.GetHeader("Host")
+		host := context.GetHeader("host")
 		// Split the host
 		hostParts := strings.Split(host, ".")
 
