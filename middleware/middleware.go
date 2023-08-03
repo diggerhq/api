@@ -35,6 +35,7 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 			} else {
 				c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 			}
+			c.Abort()
 		}
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
