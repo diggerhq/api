@@ -14,15 +14,6 @@ type WebController struct {
 	Config *config.Config
 }
 
-func (web *WebController) MainPage(c *gin.Context) {
-	url := web.Config.Get("FRONTEGG_URL")
-	clientId := web.Config.Get("FRONTEGG_CLIENT_ID")
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"FronteggUrl":      url,
-		"FronteggClientId": clientId,
-	})
-}
-
 func (web *WebController) validateRequestProjectId(c *gin.Context) (*models.Project, bool) {
 	projectId64, err := strconv.ParseUint(c.Param("projectid"), 10, 32)
 	if err != nil {
