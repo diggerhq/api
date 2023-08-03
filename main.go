@@ -66,7 +66,7 @@ func main() {
 	policiesGroup.Use(middleware.WebAuth())
 	policiesGroup.GET("/", web.PoliciesPage)
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
-	//policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
+	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

@@ -266,3 +266,30 @@ func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
 		"Message": message,
 	})
 }
+
+func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
+	policyId64, err := strconv.ParseUint(c.Param("policyid"), 10, 32)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to parse policy id")
+		return
+	}
+	policyId := uint(policyId64)
+	policy, ok := web.getPolicyByPolicyId(c, policyId)
+	if !ok {
+		return
+	}
+
+	message := ""
+	policyText := c.PostForm("policy")
+	if policyText != policy.Policy {
+		policy.Policy = policyText
+		models.DB.Save(policy)
+		fmt.Printf("Policy has been updated. policy id: %v", policy.ID)
+		message = "Policy has been updated successfully"
+	}
+
+	c.HTML(http.StatusOK, "policy_details.tmpl", gin.H{
+		"Policy":  policy,
+		"Message": message,
+	})
+}

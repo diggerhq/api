@@ -99,7 +99,7 @@ func WebAuth() gin.HandlerFunc {
 			return publicKey, nil
 		})
 		if err != nil {
-			fmt.Printf("can't parse a token, %v, %v\n", token, err)
+			fmt.Printf("can't parse a token, %v\n", err)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
