@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"strings"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -37,8 +38,18 @@ func main() {
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
-	r.GET("/", web.MainPage)
-	r.GET("/oauth/callback", web.MainPage)
+	r.GET("/", func(context *gin.Context) {
+		host := context.GetHeader("Host")
+		// Split the host
+		hostParts := strings.Split(host, ".")
+
+		// Replace the subdomain if exists
+		if len(hostParts) > 2 {
+			hostParts[0] = "login"
+			host = strings.Join(hostParts, ".")
+		}
+		context.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s", host))
+	})
 
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth())
