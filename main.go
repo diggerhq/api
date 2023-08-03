@@ -43,16 +43,19 @@ func main() {
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth())
 	projectsGroup.GET("/", web.ProjectsPage)
-	projectsGroup.GET("/details", web.ProjectDetailsPage)
+	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
+	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
 
 	runsGroup := r.Group("/runs")
-	projectsGroup.Use(middleware.WebAuth())
+	runsGroup.Use(middleware.WebAuth())
 	runsGroup.GET("/", web.RunsPage)
+	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
 	policiesGroup := r.Group("/policies")
-	projectsGroup.Use(middleware.WebAuth())
+	policiesGroup.Use(middleware.WebAuth())
 	policiesGroup.GET("/", web.PoliciesPage)
-	policiesGroup.GET("/details", web.PolicyDetailsPage)
+	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
+	//policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

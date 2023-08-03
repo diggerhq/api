@@ -1,0 +1,44 @@
+{{template "top" . }}
+
+<div id="content">
+    <div class="container-fluid">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <p class="text-primary m-0 fw-bold">Project Run Details</p>
+            </div>
+            <div class="card-body">
+
+            {{if .Message}}
+               <div class="alert alert-success" role="alert">
+                 {{.Message}}
+               </div>
+            {{end}}
+
+
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" for="first_name"><strong>Project Name</strong></label>
+                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Project.Name}}" name="project_name"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" for="first_name"><strong>Command</strong></label>
+                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Command}}" name="project_name"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" for="first_name"><strong>Output</strong></label>
+                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Output}}" name="project_name"></div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{template "bottom" . }}
+
+
+
+

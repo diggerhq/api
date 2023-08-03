@@ -24,6 +24,7 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 			return fmt.Errorf("token is invalid")
 		}
 		tenantId = tenantId.(string)
+		fmt.Printf("tenantId: %s", tenantId)
 		err := models.DB.Take(&org, "external_id = ?", tenantId).Error
 		if err != nil {
 			log.Printf("Error while fetching organisation: %v", err.Error())
@@ -31,7 +32,7 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 		}
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
-		fmt.Printf("save org id %v\n", org.ID)
+		fmt.Printf("set org id %v\n", org.ID)
 
 		permissions := claims["permissions"]
 		if permissions == nil {
@@ -99,19 +100,9 @@ func WebAuth() gin.HandlerFunc {
 		})
 		if err != nil {
 			fmt.Printf("can't parse a token, %v, %v\n", token, err)
-			//c.AbortWithStatus(http.StatusForbidden)
-			//return
-		}
-
-		err = SetContextParameters(c, token)
-		if err != nil {
-			c.String(http.StatusForbidden, err.Error())
-			c.Abort()
+			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
-
-		c.Next()
-		return
 
 		if token.Valid {
 			err = SetContextParameters(c, token)
