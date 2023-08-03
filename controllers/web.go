@@ -281,6 +281,7 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 
 	message := ""
 	policyText := c.PostForm("policy")
+	fmt.Printf("policyText: %v\n", policyText)
 	if policyText != policy.Policy {
 		policy.Policy = policyText
 		models.DB.Save(policy)

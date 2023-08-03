@@ -7,7 +7,11 @@
                 <p class="text-primary m-0 fw-bold">Policy Details</p>
             </div>
             <div class="card-body">
-
+            {{if .Message}}
+               <div class="alert alert-success" role="alert">
+                 {{.Message}}
+               </div>
+            {{end}}
                     <form method="POST">
                         <div class="row">
                             <div class="col">
