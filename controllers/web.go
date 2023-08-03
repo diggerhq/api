@@ -61,6 +61,8 @@ func (web *WebController) getProjects(c *gin.Context) ([]models.Project, bool) {
 		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 		return nil, true
 	}
+
+	fmt.Printf("getProjects, number of projects:%d\n", len(projects))
 	return projects, false
 }
 
