@@ -79,7 +79,7 @@ func main() {
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
+	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForOrg)
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
