@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type WebController struct {
@@ -293,4 +294,14 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 		"Policy":  policy,
 		"Message": message,
 	})
+}
+
+func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
+	host := context.Request.Host
+	hostParts := strings.Split(host, ".")
+	if len(hostParts) > 2 {
+		hostParts[0] = "login"
+		host = strings.Join(hostParts, ".")
+	}
+	context.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s", host))
 }
