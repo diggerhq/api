@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
-	"strings"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -38,18 +37,7 @@ func main() {
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
-	r.GET("/", func(context *gin.Context) {
-		host := context.Request.Host
-		// Split the host
-		hostParts := strings.Split(host, ".")
-
-		// Replace the subdomain if exists
-		if len(hostParts) > 2 {
-			hostParts[0] = "login"
-			host = strings.Join(hostParts, ".")
-		}
-		context.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s", host))
-	})
+	r.GET("/", web.RedirectToLoginSubdomain)
 
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth())
@@ -93,7 +81,7 @@ func main() {
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
+	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForOrg)
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
