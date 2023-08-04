@@ -166,6 +166,28 @@ func (web *WebController) getPolicyByPolicyId(c *gin.Context, policyId uint) (*m
 	return &policy, true
 }
 
+func (web *WebController) getDefaultNamespace(c *gin.Context) (*models.Namespace, bool) {
+	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	if !exists {
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return nil, false
+	}
+
+	fmt.Printf("getDefaultNamespace, org id %v\n", loggedInOrganisationId)
+	var namespace models.Namespace
+
+	err := models.DB.Preload("Organisation").
+		Joins("INNER JOIN organisations ON namespaces.organisation_id = organisations.id").
+		Where("organisations.id = ?", loggedInOrganisationId).First(&namespace).Error
+
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
+		return nil, false
+	}
+
+	return &namespace, true
+}
+
 func (web *WebController) ProjectsPage(c *gin.Context) {
 	projects, done := web.getProjectsFromContext(c)
 	if !done {
@@ -175,6 +197,46 @@ func (web *WebController) ProjectsPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
 		"Projects": projects,
 	})
+}
+
+func (web *WebController) AddProjectPage(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		message := ""
+
+		c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
+			"Message": message,
+		})
+	} else if c.Request.Method == "POST" {
+		message := ""
+		namespace, ok := web.getDefaultNamespace(c)
+		if !ok {
+			message = "failed to create a new project"
+			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+		projectName := c.PostForm("project_name")
+		if projectName == "" {
+			message := "Project's name can't be empty"
+			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+		//TODO: gorm is trying to insert new namespace and organisation on every insert of a new project,
+		// there should be a way to avoid it
+		project := models.Project{Name: projectName, Organisation: namespace.Organisation, Namespace: namespace}
+
+		err := models.DB.Create(&project).Error
+		if err != nil {
+			fmt.Printf("Failed to create a new project, %v\n", err)
+			message := "Failed to create a project"
+			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+
+		c.Redirect(http.StatusFound, "/projects")
+	}
 }
 
 func (web *WebController) RunsPage(c *gin.Context) {

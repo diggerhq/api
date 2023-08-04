@@ -18,19 +18,26 @@
                     <div class="row">
                         <div class="col">
                             <div class="mb-3"><label class="form-label" for="first_name"><strong>Project Name</strong></label>
-                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Project.Name}}" name="project_name"></div>
+                            <input class="form-control" type="text"  readonly value="{{.Run.Project.Name}}"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" for="first_name"><strong>Project Run Status</strong></label>
+                            <input class="form-control" type="text"  readonly value="{{.Run.Status}}"></div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
                             <div class="mb-3"><label class="form-label" for="first_name"><strong>Command</strong></label>
-                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Command}}" name="project_name"></div>
+                            <input class="form-control" type="text" readonly value="{{.Run.Command}}" ></div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
                             <div class="mb-3"><label class="form-label" for="first_name"><strong>Output</strong></label>
-                            <input class="form-control" type="text" id="project_name" placeholder="Name" value="{{.Run.Output}}" name="project_name"></div>
+                            <textarea class="form-control" type="text" readonly>{{.Run.Output}}</textarea>
+                            </div>
                         </div>
                     </div>
             </div>

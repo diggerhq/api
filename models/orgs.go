@@ -15,7 +15,7 @@ type Namespace struct {
 	gorm.Model
 	Name           string `gorm:"uniqueIndex:idx_org_namespace"`
 	OrganisationID uint   `gorm:"uniqueIndex:idx_org_namespace"`
-	Organisation   Organisation
+	Organisation   *Organisation
 }
 
 type ProjectRun struct {
