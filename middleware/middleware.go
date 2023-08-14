@@ -38,7 +38,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 
 		permissions := make([]string, 0)
 		if tokenType == "tenantAccessToken" {
-			permission, err := auth.FetchTokenPermissions(claims["id"].(string))
+			permission, err := auth.FetchTokenPermissions(claims["sub"].(string))
 			if err != nil {
 				log.Printf("Error while fetching permissions: %v", err.Error())
 				return fmt.Errorf("token is invalid")
