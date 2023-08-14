@@ -170,7 +170,7 @@ func (web *WebController) getPolicyByPolicyId(c *gin.Context, policyId uint) (*m
 func (web *WebController) getDefaultNamespace(c *gin.Context) (*models.Namespace, bool) {
 	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		fmt.Print("Not allowed to access this resource")
 		return nil, false
 	}
 
@@ -182,7 +182,7 @@ func (web *WebController) getDefaultNamespace(c *gin.Context) (*models.Namespace
 		Where("organisations.id = ?", loggedInOrganisationId).First(&namespace).Error
 
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
+		fmt.Print("Unknown error occurred while fetching database")
 		return nil, false
 	}
 
@@ -223,6 +223,8 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 				"Message": message,
 			})
 		}
+
+		fmt.Printf("namespace: %v", namespace)
 		//TODO: gorm is trying to insert new namespace and organisation on every insert of a new project,
 		// there should be a way to avoid it
 		project := models.Project{Name: projectName, Organisation: namespace.Organisation, Namespace: namespace}
