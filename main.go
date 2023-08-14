@@ -4,6 +4,7 @@ import (
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/gin-gonic/gin"
@@ -39,16 +40,21 @@ func main() {
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
-
+	auth := services.Auth{
+		HttpClient: http.Client{},
+		Host:       os.Getenv("AUTH_HOST"),
+		Secret:     os.Getenv("AUTH_SECRET"),
+		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
+	}
 	webGroup := r.Group("/projects")
-	webGroup.Use(middleware.WebAuth())
+	webGroup.Use(middleware.WebAuth(auth))
 	webGroup.GET("/", web.ProjectsPage)
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
 
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
