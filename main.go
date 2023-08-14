@@ -55,6 +55,8 @@ func main() {
 	policiesGroup := r.Group("/policies")
 	policiesGroup.Use(middleware.WebAuth())
 	policiesGroup.GET("/", web.PoliciesPage)
+	policiesGroup.GET("/add", web.AddPolicyPage)
+	policiesGroup.POST("/add", web.AddPolicyPage)
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 

@@ -27,6 +27,7 @@
                                 <th>Project</th>
                                 <th>Namespace</th>
                                 <th>Organisation</th>
+                                <th>Type</th>
                                 <th>Details</th>
                             </tr>
                         </thead>
@@ -36,11 +37,18 @@
                                 <td>{{ .Project.Name }}</td>
                                 <td>{{ .Namespace.Name }}</td>
                                 <td>{{ .Organisation.Name }}</td>
+                                <td>{{ .Type }}</td>
                                 <td><a href="/policies/{{.ID}}/details">Details<a></td>
                             </tr>
                         {{ end }}
                         </tbody>
                     </table>
+                </div>
+
+                <div class="row">
+                    <div class="d-sm-flex justify-content-between align-items-center mb-4">
+                        <a class="btn btn-primary" role="button" href="/policies/add">Add Policy</a>
+                    </div>
                 </div>
                 <!--div class="row">
                     <div class="col-md-6 align-self-center">

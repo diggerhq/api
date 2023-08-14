@@ -22,7 +22,7 @@ func (web *WebController) validateRequestProjectId(c *gin.Context) (*models.Proj
 		return nil, false
 	}
 	projectId := uint(projectId64)
-	projects, done := web.getProjectsFromContext(c)
+	projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return nil, false
 	}
@@ -37,160 +37,8 @@ func (web *WebController) validateRequestProjectId(c *gin.Context) (*models.Proj
 	return nil, false
 }
 
-func (web *WebController) getProjectsFromContext(c *gin.Context) ([]models.Project, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-
-	fmt.Printf("getProjectsFromContext, org id %v\n", loggedInOrganisationId)
-
-	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return nil, false
-	}
-
-	var projects []models.Project
-
-	err := models.DB.Preload("Organisation").Preload("Namespace").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&projects).Error
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	fmt.Printf("getProjectsFromContext, number of projects:%d\n", len(projects))
-	return projects, true
-}
-
-func (web *WebController) getPoliciesFromContext(c *gin.Context) ([]models.Policy, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-
-	fmt.Printf("getPoliciesFromContext, org id %v\n", loggedInOrganisationId)
-
-	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return nil, false
-	}
-
-	var policies []models.Policy
-
-	err := models.DB.Preload("Organisation").Preload("Namespace").Preload("Project").
-		Joins("LEFT JOIN projects ON projects.id = policies.project_id").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&policies).Error
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	fmt.Printf("getPoliciesFromContext, number of policies:%d\n", len(policies))
-	return policies, true
-}
-
-func (web *WebController) getProjectRunsFromContext(c *gin.Context) ([]models.ProjectRun, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-
-	fmt.Printf("getProjectRunsFromContext, org id %v\n", loggedInOrganisationId)
-
-	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return nil, false
-	}
-
-	var runs []models.ProjectRun
-
-	err := models.DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
-		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&runs).Error
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	fmt.Printf("getProjectRunsFromContext, number of runs:%d\n", len(runs))
-	return runs, true
-}
-
-func (web *WebController) getProjectByRunId(c *gin.Context, runId uint) (*models.ProjectRun, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return nil, false
-	}
-
-	fmt.Printf("getProjectsFromContext, org id %v\n", loggedInOrganisationId)
-	var projectRun models.ProjectRun
-
-	err := models.DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
-		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).
-		Where("project_runs.id = ?", runId).First(&projectRun).Error
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	return &projectRun, true
-}
-
-func (web *WebController) getPolicyByPolicyId(c *gin.Context, policyId uint) (*models.Policy, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-	if !exists {
-		c.String(http.StatusForbidden, "Not allowed to access this resource")
-		return nil, false
-	}
-
-	fmt.Printf("getPolicyByPolicyId, org id %v\n", loggedInOrganisationId)
-	var policy models.Policy
-
-	err := models.DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
-		Joins("INNER JOIN projects ON projects.id = policies.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).
-		Where("policies.id = ?", policyId).First(&policy).Error
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	return &policy, true
-}
-
-func (web *WebController) getDefaultNamespace(c *gin.Context) (*models.Namespace, bool) {
-	loggedInOrganisationId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
-	if !exists {
-		fmt.Print("Not allowed to access this resource")
-		return nil, false
-	}
-
-	fmt.Printf("getDefaultNamespace, org id %v\n", loggedInOrganisationId)
-	var namespace models.Namespace
-
-	err := models.DB.Preload("Organisation").
-		Joins("INNER JOIN organisations ON namespaces.organisation_id = organisations.id").
-		Where("organisations.id = ?", loggedInOrganisationId).First(&namespace).Error
-
-	if err != nil {
-		fmt.Print("Unknown error occurred while fetching database")
-		return nil, false
-	}
-
-	return &namespace, true
-}
-
 func (web *WebController) ProjectsPage(c *gin.Context) {
-	projects, done := web.getProjectsFromContext(c)
+	projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -209,7 +57,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 		})
 	} else if c.Request.Method == "POST" {
 		message := ""
-		namespace, ok := web.getDefaultNamespace(c)
+		namespace, ok := models.GetDefaultNamespace(c, middleware.ORGANISATION_ID_KEY)
 		if !ok {
 			message = "failed to create a new project"
 			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
@@ -243,7 +91,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 }
 
 func (web *WebController) RunsPage(c *gin.Context) {
-	runs, done := web.getProjectRunsFromContext(c)
+	runs, done := models.GetProjectRunsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -253,7 +101,7 @@ func (web *WebController) RunsPage(c *gin.Context) {
 }
 
 func (web *WebController) PoliciesPage(c *gin.Context) {
-	policies, done := web.getPoliciesFromContext(c)
+	policies, done := models.GetPoliciesFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -263,6 +111,75 @@ func (web *WebController) PoliciesPage(c *gin.Context) {
 	})
 }
 
+func (web *WebController) AddPolicyPage(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		message := ""
+		projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
+		if !done {
+			return
+		}
+
+		policyTypes := make([]string, 0)
+		policyTypes = append(policyTypes, "drift")
+		policyTypes = append(policyTypes, "terraform")
+		policyTypes = append(policyTypes, "access")
+
+		fmt.Printf("projects: %v", projects)
+
+		c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
+			"Message": message, "Projects": projects, "PolicyTypes": policyTypes,
+		})
+	} else if c.Request.Method == "POST" {
+		message := ""
+		namespace, ok := models.GetDefaultNamespace(c, middleware.ORGANISATION_ID_KEY)
+		if !ok {
+			message = "failed to create a new policy"
+			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+		policyText := c.PostForm("policytext")
+		if policyText == "" {
+			message := "Policy can't be empty"
+			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+
+		policyType := c.PostForm("policytype")
+		projectIdStr := c.PostForm("projectid")
+		projectId64, err := strconv.ParseUint(projectIdStr, 10, 32)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse policy id")
+			return
+		}
+		projectId := uint(projectId64)
+		project, ok := models.GetProjectByProjectId(c, projectId, middleware.ORGANISATION_ID_KEY)
+		if !ok {
+			fmt.Printf("Failed to fetch specified project by id: %v, %v\n", projectIdStr, err)
+			message := "Failed to create a policy"
+			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+
+		fmt.Printf("namespace: %v", namespace)
+
+		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: namespace.Organisation, Namespace: namespace}
+
+		err = models.DB.Create(&policy).Error
+		if err != nil {
+			fmt.Printf("Failed to create a new policy, %v\n", err)
+			message := "Failed to create a policy"
+			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
+				"Message": message,
+			})
+		}
+
+		c.Redirect(http.StatusFound, "/policies")
+	}
+}
+
 func (web *WebController) PolicyDetailsPage(c *gin.Context) {
 	policyId64, err := strconv.ParseUint(c.Param("policyid"), 10, 32)
 	if err != nil {
@@ -270,7 +187,7 @@ func (web *WebController) PolicyDetailsPage(c *gin.Context) {
 		return
 	}
 	policyId := uint(policyId64)
-	policy, ok := web.getPolicyByPolicyId(c, policyId)
+	policy, ok := models.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
@@ -300,7 +217,7 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 		return
 	}
 	runId := uint(runId64)
-	run, ok := web.getProjectByRunId(c, runId)
+	run, ok := models.GetProjectByRunId(c, runId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
@@ -339,7 +256,7 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 		return
 	}
 	policyId := uint(policyId64)
-	policy, ok := web.getPolicyByPolicyId(c, policyId)
+	policy, ok := models.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
