@@ -61,7 +61,7 @@ func (a *Auth) getAuthToken() (string, error) {
 
 	resp, err := a.HttpClient.Do(req)
 	if err != nil {
-		fmt.Printf("error while sending auth request: %v. log: %v", err, resp.Header.Get("frontegg-trace-id"))
+		fmt.Printf("error while sending auth request: %v. log: %v", err, resp.Header)
 		return "", err
 	}
 	defer resp.Body.Close()
