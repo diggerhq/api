@@ -104,7 +104,7 @@ type CreateProjectRequest struct {
 	ConfigurationYaml string `json:"configurationYaml"`
 }
 
-func ReportProjectsForOrg(c *gin.Context) {
+func ReportProjectsForNamespace(c *gin.Context) {
 	var request CreateProjectRequest
 	err := c.BindJSON(request)
 	if err != nil {
