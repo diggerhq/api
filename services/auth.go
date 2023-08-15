@@ -82,7 +82,7 @@ func (a Auth) FetchTokenPermissions(tokenId string) ([]string, error) {
 	parsedHost, err := url.Parse(a.Host)
 
 	if err != nil {
-		return nil, fmt.Errorf("")
+		return nil, fmt.Errorf("error while fetching token permissions: %v", err.Error())
 	}
 
 	accessTokenUrl := parsedHost.Host + "/identity/resources/vendor-only/tenants/access-tokens/v1/" + tokenId
