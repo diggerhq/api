@@ -29,6 +29,7 @@ func main() {
 		// We recommend adjusting this value in production,
 		TracesSampleRate: 1.0,
 		Release:          "api@" + Version,
+		Debug:            true,
 	}); err != nil {
 		fmt.Printf("Sentry initialization failed: %v", err)
 	}
