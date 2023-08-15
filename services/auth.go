@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 )
@@ -79,13 +78,8 @@ func (a *Auth) getAuthToken() (string, error) {
 }
 
 func (a Auth) FetchTokenPermissions(tokenId string) ([]string, error) {
-	parsedHost, err := url.Parse(a.Host)
 
-	if err != nil {
-		return nil, fmt.Errorf("error while fetching token permissions: %v", err.Error())
-	}
-
-	accessTokenUrl := parsedHost.Host + "/identity/resources/vendor-only/tenants/access-tokens/v1/" + tokenId
+	accessTokenUrl := a.Host + "/identity/resources/vendor-only/tenants/access-tokens/v1/" + tokenId
 
 	req, err := http.NewRequest("GET", accessTokenUrl, nil)
 
