@@ -1,16 +1,17 @@
 package main
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
+	"encoding/pem"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"os"
 )
@@ -43,13 +44,32 @@ func main() {
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM([]byte(os.Getenv("JWT_PUBLIC_KEY"))) {
-		log.Fatal("Failed to append CA cert")
+	knownPublicKeyPEM := []byte(os.Getenv("JWT_PUBLIC_KEY"))
+	block, _ := pem.Decode(knownPublicKeyPEM)
+	if block == nil || block.Type != "PUBLIC KEY" {
+		panic("failed to decode PEM block containing public key")
+	}
+	knownPublicKeyInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
 	}
 
+	// Set up HTTP client with custom TLS configuration
 	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
+		InsecureSkipVerify: true, // We'll handle the verification ourselves
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			for _, rawCert := range rawCerts {
+				cert, _ := x509.ParseCertificate(rawCert)
+				if serverKey, ok := cert.PublicKey.(*rsa.PublicKey); ok {
+					if knownKey, ok := knownPublicKeyInterface.(*rsa.PublicKey); ok {
+						if serverKey.N.Cmp(knownKey.N) == 0 && serverKey.E == knownKey.E {
+							return nil // trust this connection
+						}
+					}
+				}
+			}
+			return fmt.Errorf("no known public keys found")
+		},
 	}
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	auth := services.Auth{
