@@ -1,18 +1,12 @@
 {{template "top" . }}
+
 <div id="content">
     <div class="container-fluid">
         <div class="card shadow">
             <div class="card-header py-3">
-                <p class="text-primary m-0 fw-bold">Projects</p>
+                <p class="text-primary m-0 fw-bold">Policies</p>
             </div>
             <div class="card-body">
-
-               {{if .Message}}
-                  <div class="alert alert-success" role="alert">
-                    {{.Message}}
-                  </div>
-               {{end}}
-
                 <!--div class="row">
                     <div class="col-md-6 text-nowrap">
                         <div id="dataTable_length" class="dataTables_length" aria-controls="dataTable"><label class="form-label">Show&nbsp;<select class="d-inline-block form-select form-select-sm">
@@ -30,30 +24,32 @@
                     <table class="table my-0" id="dataTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                <th>Project</th>
                                 <th>Namespace</th>
                                 <th>Organisation</th>
+                                <th>Type</th>
                                 <th>Details</th>
                             </tr>
                         </thead>
                         <tbody>
-                        {{ range .Projects }}
+                        {{ range .Policies }}
                             <tr>
-                                <td>{{ .Name }}</td>
+                                <td>{{ .Project.Name }}</td>
                                 <td>{{ .Namespace.Name }}</td>
                                 <td>{{ .Organisation.Name }}</td>
-                                <td><a href="/projects/{{.ID}}/details">Details<a></td>
+                                <td>{{ .Type }}</td>
+                                <td><a href="/policies/{{.ID}}/details">Details<a></td>
                             </tr>
                         {{ end }}
                         </tbody>
                     </table>
                 </div>
+
                 <div class="row">
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
-                        <a class="btn btn-primary" role="button" href="/projects/add">Add Project</a>
+                        <a class="btn btn-primary" role="button" href="/policies/add">Add Policy</a>
                     </div>
                 </div>
-
                 <!--div class="row">
                     <div class="col-md-6 align-self-center">
                         <p id="dataTable_info" class="dataTables_info" role="status" aria-live="polite">Showing 1 to 10 of 27</p>
@@ -74,8 +70,8 @@
         </div>
     </div>
 </div>
-
 {{template "bottom" . }}
+
 
 
 

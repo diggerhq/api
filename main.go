@@ -7,6 +7,8 @@ import (
 	"digger.dev/cloud/services"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -18,13 +20,26 @@ var Version = "dev"
 func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
-
 	web := controllers.WebController{Config: cfg}
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           os.Getenv("SENTRY_DSN"),
+		EnableTracing: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+		Release:          "api@" + Version,
+		Debug:            true,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v", err)
+	}
 
 	//database migrations
 	models.ConnectDatabase()
 
 	r := gin.Default()
+	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
 	r.Static("/static", "./templates/static")
 
@@ -37,9 +52,8 @@ func main() {
 		})
 	})
 
-	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
-	r.GET("/", web.MainPage)
-	r.GET("/oauth/callback", web.MainPage)
+	r.LoadHTMLGlob("templates/*.tmpl")
+	r.GET("/", web.RedirectToLoginSubdomain)
 
 	auth := services.Auth{
 		HttpClient: http.Client{},
@@ -47,9 +61,26 @@ func main() {
 		Secret:     os.Getenv("AUTH_SECRET"),
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
-	webGroup := r.Group("/projects")
-	webGroup.Use(middleware.WebAuth(auth))
-	webGroup.GET("/", web.ProjectsPage)
+	projectsGroup := r.Group("/projects")
+	projectsGroup.Use(middleware.WebAuth(auth))
+	projectsGroup.GET("/", web.ProjectsPage)
+	projectsGroup.GET("/add", web.AddProjectPage)
+	projectsGroup.POST("/add", web.AddProjectPage)
+	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
+	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
+
+	runsGroup := r.Group("/runs")
+	runsGroup.Use(middleware.WebAuth(auth))
+	runsGroup.GET("/", web.RunsPage)
+	runsGroup.GET("/:runid/details", web.RunDetailsPage)
+
+	policiesGroup := r.Group("/policies")
+	policiesGroup.Use(middleware.WebAuth(auth))
+	policiesGroup.GET("/", web.PoliciesPage)
+	policiesGroup.GET("/add", web.AddPolicyPage)
+	policiesGroup.POST("/add", web.AddPolicyPage)
+	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
+	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))

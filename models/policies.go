@@ -16,7 +16,7 @@ type Policy struct {
 	Type           string
 	CreatedBy      *User
 	CreatedByID    *uint
-	Organisation   Organisation
+	Organisation   *Organisation
 	OrganisationID uint
 	Namespace      *Namespace
 	NamespaceID    *uint

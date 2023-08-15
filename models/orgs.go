@@ -15,13 +15,13 @@ type Namespace struct {
 	gorm.Model
 	Name           string `gorm:"uniqueIndex:idx_org_namespace"`
 	OrganisationID uint   `gorm:"uniqueIndex:idx_org_namespace"`
-	Organisation   Organisation
+	Organisation   *Organisation
 }
 
 type ProjectRun struct {
 	gorm.Model
 	ProjectID uint
-	Project   Project
+	Project   *Project
 	StartedAt int64
 	EndedAt   int64
 	Status    string
@@ -55,9 +55,9 @@ type Project struct {
 	gorm.Model
 	Name              string `gorm:"uniqueIndex:idx_project"`
 	OrganisationID    uint   `gorm:"uniqueIndex:idx_project"`
-	Organisation      Organisation
+	Organisation      *Organisation
 	NamespaceID       uint `gorm:"uniqueIndex:idx_project"`
-	Namespace         Namespace
+	Namespace         *Namespace
 	ConfigurationYaml string
 }
 
@@ -83,7 +83,7 @@ type Token struct {
 	gorm.Model
 	Value          string `gorm:"uniqueIndex:idx_token"`
 	OrganisationID uint
-	Organisation   Organisation
+	Organisation   *Organisation
 	Type           string
 }
 

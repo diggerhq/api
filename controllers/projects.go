@@ -140,7 +140,7 @@ func ReportProjectsForNamespace(c *gin.Context) {
 			namespace := models.Namespace{
 				Name:           namespaceName,
 				OrganisationID: org.ID,
-				Organisation:   org,
+				Organisation:   &org,
 			}
 
 			err = models.DB.Create(&namespace).Error
@@ -162,8 +162,8 @@ func ReportProjectsForNamespace(c *gin.Context) {
 		ConfigurationYaml: request.ConfigurationYaml,
 		NamespaceID:       namespace.ID,
 		OrganisationID:    org.ID,
-		Namespace:         namespace,
-		Organisation:      org,
+		Namespace:         &namespace,
+		Organisation:      &org,
 	}
 
 	err = models.DB.Create(&project).Error
@@ -301,7 +301,7 @@ func CreateRunForProject(c *gin.Context) {
 		Command:   request.Command,
 		Output:    request.Output,
 		ProjectID: project.ID,
-		Project:   project,
+		Project:   &project,
 	}
 
 	err = models.DB.Create(&run).Error

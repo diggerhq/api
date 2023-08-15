@@ -3,9 +3,11 @@ package middleware
 import (
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"os"
@@ -25,14 +27,20 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 			return fmt.Errorf("token is invalid")
 		}
 		tenantId = tenantId.(string)
+		fmt.Printf("tenantId: %s", tenantId)
 		err := models.DB.Take(&org, "external_id = ?", tenantId).Error
 		if err != nil {
 			log.Printf("Error while fetching organisation: %v", err.Error())
-			return fmt.Errorf("token is invalid")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.String(http.StatusNotFound, fmt.Sprintf("Could not find active organisation: %v", tenantId))
+			} else {
+				c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
+			}
+			c.Abort()
 		}
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
-		fmt.Printf("save org id %v\n", org.ID)
+		fmt.Printf("set org id %v\n", org.ID)
 
 		tokenType := claims["type"].(string)
 
