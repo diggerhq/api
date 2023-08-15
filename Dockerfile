@@ -18,9 +18,12 @@ RUN go version
 RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 
 # Multi-stage build will just copy the binary to an alpine image.
-FROM ubuntu:22.04
+FROM ubuntu:22.04 as runner
 ARG COMMIT_SHA
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y ca-certificates && apt-get clean all
+RUN update-ca-certificates
 
 RUN echo "commit sha: ${COMMIT_SHA}"
 
