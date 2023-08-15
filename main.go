@@ -36,13 +36,29 @@ func main() {
 		})
 	})
 
-	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
-	r.GET("/", web.MainPage)
-	r.GET("/oauth/callback", web.MainPage)
+	r.LoadHTMLGlob("templates/*.tmpl")
+	r.GET("/", web.RedirectToLoginSubdomain)
 
-	webGroup := r.Group("/projects")
-	webGroup.Use(middleware.WebAuth())
-	webGroup.GET("/", web.ProjectsPage)
+	projectsGroup := r.Group("/projects")
+	projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.GET("/", web.ProjectsPage)
+	projectsGroup.GET("/add", web.AddProjectPage)
+	projectsGroup.POST("/add", web.AddProjectPage)
+	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
+	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
+
+	runsGroup := r.Group("/runs")
+	runsGroup.Use(middleware.WebAuth())
+	runsGroup.GET("/", web.RunsPage)
+	runsGroup.GET("/:runid/details", web.RunDetailsPage)
+
+	policiesGroup := r.Group("/policies")
+	policiesGroup.Use(middleware.WebAuth())
+	policiesGroup.GET("/", web.PoliciesPage)
+	policiesGroup.GET("/add", web.AddPolicyPage)
+	policiesGroup.POST("/add", web.AddPolicyPage)
+	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
+	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
@@ -67,7 +83,7 @@ func main() {
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-	authorized.POST("/orgs/:organisation/report-projects", controllers.ReportProjectsForOrg)
+	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForOrg)
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)

@@ -1,0 +1,51 @@
+{{template "top" . }}
+
+<div id="content">
+    <div class="container-fluid">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <p class="text-primary m-0 fw-bold">Project Run Details</p>
+            </div>
+            <div class="card-body">
+
+            {{if .Message}}
+               <div class="alert alert-success" role="alert">
+                 {{.Message}}
+               </div>
+            {{end}}
+
+
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" ><strong>Project Name</strong></label>
+                            <input class="form-control" type="text"  readonly value="{{.Run.Project.Name}}"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" ><strong>Project Run Status</strong></label>
+                            <input class="form-control" type="text"  readonly value="{{.Run.Status}}"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" ><strong>Command</strong></label>
+                            <input class="form-control" type="text" readonly value="{{.Run.Command}}" ></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3"><label class="form-label" ><strong>Output</strong></label>
+                            <textarea class="form-control" type="text" readonly>{{.Run.Output}}</textarea>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{template "bottom" . }}
+
+
+
+
