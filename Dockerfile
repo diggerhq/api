@@ -1,4 +1,4 @@
-FROM golang:1.20.4 as builder
+FROM golang:1.20 as builder
 ARG COMMIT_SHA
 RUN echo "commit sha: ${COMMIT_SHA}"
 
@@ -18,7 +18,7 @@ RUN go version
 RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 
 # Multi-stage build will just copy the binary to an alpine image.
-FROM ubuntu:latest
+FROM ubuntu:22.04
 ARG COMMIT_SHA
 WORKDIR /app
 
