@@ -2,8 +2,6 @@ FROM golang:1.20.4 as builder
 ARG COMMIT_SHA
 RUN echo "commit sha: ${COMMIT_SHA}"
 
-RUN update-ca-certificates
-
 # Set the working directory
 WORKDIR $GOPATH/src/github.com/diggerhq/cloud
 
