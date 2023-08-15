@@ -24,7 +24,6 @@ func main() {
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:           os.Getenv("SENTRY_DSN"),
 		EnableTracing: true,
-
 		// Set TracesSampleRate to 1.0 to capture 100%
 		// of transactions for performance monitoring.
 		// We recommend adjusting this value in production,
