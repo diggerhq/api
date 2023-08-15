@@ -106,7 +106,7 @@ type CreateProjectRequest struct {
 
 func ReportProjectsForNamespace(c *gin.Context) {
 	var request CreateProjectRequest
-	err := c.BindJSON(request)
+	err := c.BindJSON(&request)
 	if err != nil {
 		log.Printf("Error binding JSON: %v", err)
 		return
