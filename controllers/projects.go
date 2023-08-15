@@ -135,6 +135,23 @@ func ReportProjectsForNamespace(c *gin.Context) {
 	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
 
 	if err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			namespace := models.Namespace{
+				Name:           namespaceName,
+				OrganisationID: org.ID,
+				Organisation:   org,
+			}
+
+			err = models.DB.Create(&namespace).Error
+
+			if err != nil {
+				log.Printf("Error creating namespace: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating namespace"})
+				return
+			}
+		}
+
 		log.Printf("Error fetching namespace: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
 		return
