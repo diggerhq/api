@@ -6,6 +6,8 @@ import (
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -17,13 +19,26 @@ var Version = "dev"
 func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
-
 	web := controllers.WebController{Config: cfg}
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           os.Getenv("SENTRY_DSN"),
+		EnableTracing: true,
+
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+		Release:          "api@" + Version,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v", err)
+	}
 
 	//database migrations
 	models.ConnectDatabase()
 
 	r := gin.Default()
+	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
 	r.Static("/static", "./templates/static")
 
