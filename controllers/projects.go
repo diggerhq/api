@@ -150,11 +150,11 @@ func ReportProjectsForNamespace(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating namespace"})
 				return
 			}
+		} else {
+			log.Printf("Error fetching namespace: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
+			return
 		}
-
-		log.Printf("Error fetching namespace: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
-		return
 	}
 
 	project := models.Project{
