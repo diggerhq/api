@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
@@ -8,6 +10,7 @@ import (
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"os"
 )
@@ -40,11 +43,22 @@ func main() {
 	r.LoadHTMLFiles("templates/index.tmpl", "templates/projects.tmpl")
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM([]byte(os.Getenv("JWT_PUBLIC_KEY"))) {
+		log.Fatal("Failed to append CA cert")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	auth := services.Auth{
-		HttpClient: http.Client{},
-		Host:       os.Getenv("AUTH_HOST"),
-		Secret:     os.Getenv("AUTH_SECRET"),
-		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
+		HttpClient: http.Client{
+			Transport: transport,
+		},
+		Host:     os.Getenv("AUTH_HOST"),
+		Secret:   os.Getenv("AUTH_SECRET"),
+		ClientId: os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
 	webGroup := r.Group("/projects")
 	webGroup.Use(middleware.WebAuth(auth))
