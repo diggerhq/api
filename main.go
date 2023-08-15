@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
@@ -42,17 +41,11 @@ func main() {
 	r.GET("/", web.MainPage)
 	r.GET("/oauth/callback", web.MainPage)
 
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-	}
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	auth := services.Auth{
-		HttpClient: http.Client{
-			Transport: transport,
-		},
-		Host:     os.Getenv("AUTH_HOST"),
-		Secret:   os.Getenv("AUTH_SECRET"),
-		ClientId: os.Getenv("FRONTEGG_CLIENT_ID"),
+		HttpClient: http.Client{},
+		Host:       os.Getenv("AUTH_HOST"),
+		Secret:     os.Getenv("AUTH_SECRET"),
+		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
 	webGroup := r.Group("/projects")
 	webGroup.Use(middleware.WebAuth(auth))
