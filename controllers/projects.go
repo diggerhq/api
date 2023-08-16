@@ -276,7 +276,7 @@ func CreateRunForProject(c *gin.Context) {
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id", projectName, namespace.ID, org.ID).First(&project).Error
+	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id = ?", projectName, namespace.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
