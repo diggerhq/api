@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"net/http"
+	"time"
 )
 
 func FindProjectsForNamespace(c *gin.Context) {
@@ -104,9 +105,9 @@ type CreateProjectRequest struct {
 	ConfigurationYaml string `json:"configurationYaml"`
 }
 
-func ReportProjectsForOrg(c *gin.Context) {
+func ReportProjectsForNamespace(c *gin.Context) {
 	var request CreateProjectRequest
-	err := c.BindJSON(request)
+	err := c.BindJSON(&request)
 	if err != nil {
 		log.Printf("Error binding JSON: %v", err)
 		return
@@ -135,9 +136,26 @@ func ReportProjectsForOrg(c *gin.Context) {
 	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
 
 	if err != nil {
-		log.Printf("Error fetching namespace: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
-		return
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			namespace := models.Namespace{
+				Name:           namespaceName,
+				OrganisationID: org.ID,
+				Organisation:   &org,
+			}
+
+			err = models.DB.Create(&namespace).Error
+
+			if err != nil {
+				log.Printf("Error creating namespace: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating namespace"})
+				return
+			}
+		} else {
+			log.Printf("Error fetching namespace: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
+			return
+		}
 	}
 
 	project := models.Project{
@@ -220,16 +238,16 @@ func RunHistoryForProject(c *gin.Context) {
 }
 
 type CreateProjectRunRequest struct {
-	StartedAt int64  `json:"startedAt"`
-	EndedAt   int64  `json:"endedAt"`
-	Status    string `json:"status"`
-	Command   string `json:"command"`
-	Output    string `json:"output"`
+	StartedAt time.Time `json:"startedAt"`
+	EndedAt   time.Time `json:"endedAt"`
+	Status    string    `json:"status"`
+	Command   string    `json:"command"`
+	Output    string    `json:"output"`
 }
 
 func CreateRunForProject(c *gin.Context) {
 	namespaceName := c.Param("namespace")
-	projectName := c.Param("project")
+	projectName := c.Param("projectName")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
@@ -259,7 +277,7 @@ func CreateRunForProject(c *gin.Context) {
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id", projectName, namespace.ID, org.ID).First(&project).Error
+	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id = ?", projectName, namespace.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
@@ -278,8 +296,8 @@ func CreateRunForProject(c *gin.Context) {
 	}
 
 	run := models.ProjectRun{
-		StartedAt: request.StartedAt,
-		EndedAt:   request.EndedAt,
+		StartedAt: request.StartedAt.UnixMilli(),
+		EndedAt:   request.EndedAt.UnixMilli(),
 		Status:    request.Status,
 		Command:   request.Command,
 		Output:    request.Output,

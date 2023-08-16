@@ -2,6 +2,7 @@ package models
 
 import (
 	"gorm.io/gorm"
+	"time"
 )
 
 type Organisation struct {
@@ -31,20 +32,20 @@ type ProjectRun struct {
 
 func (p *ProjectRun) MapToJsonStruct() interface{} {
 	return struct {
-		Id          uint   `json:"id"`
-		ProjectID   uint   `json:"projectId"`
-		ProjectName string `json:"projectName"`
-		StartedAt   int64  `json:"startedAt"`
-		EndedAt     int64  `json:"endedAt"`
-		Status      string `json:"status"`
-		Command     string `json:"command"`
-		Output      string `json:"output"`
+		Id          uint      `json:"id"`
+		ProjectID   uint      `json:"projectId"`
+		ProjectName string    `json:"projectName"`
+		StartedAt   time.Time `json:"startedAt"`
+		EndedAt     time.Time `json:"endedAt"`
+		Status      string    `json:"status"`
+		Command     string    `json:"command"`
+		Output      string    `json:"output"`
 	}{
 		Id:          p.ID,
 		ProjectID:   p.ProjectID,
 		ProjectName: p.Project.Name,
-		StartedAt:   p.StartedAt,
-		EndedAt:     p.EndedAt,
+		StartedAt:   time.UnixMilli(p.StartedAt),
+		EndedAt:     time.UnixMilli(p.EndedAt),
 		Status:      p.Status,
 		Command:     p.Command,
 		Output:      p.Output,
