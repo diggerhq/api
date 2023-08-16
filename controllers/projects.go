@@ -246,7 +246,7 @@ type CreateProjectRunRequest struct {
 
 func CreateRunForProject(c *gin.Context) {
 	namespaceName := c.Param("namespace")
-	projectName := c.Param("project")
+	projectName := c.Param("projectName")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
