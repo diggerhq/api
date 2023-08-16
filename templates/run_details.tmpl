@@ -1,5 +1,33 @@
 {{template "top" . }}
 
+<link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Ubuntu+Mono" />
+<style>
+.terraform-output-bold {
+    color: white;
+}
+
+.terraform-output-fg-green {
+color: #26A269;
+}
+
+.terraform-output-fg-red {
+color: #C01C28;
+}
+
+.terraform-output-fg-yellow {
+color: #A2734C;
+}
+
+.terraform-output-fg-bright-black {
+color: #5E5C64;
+}
+
+.terraform-output-bg {
+background-color: #300A24;
+font-family: Ubuntu Mono;
+}
+
+</style>
 <div id="content">
     <div class="container-fluid">
         <div class="card shadow">
@@ -35,8 +63,8 @@
                     </div>
                     <div class="row">
                         <div class="col">
-                            <div class="mb-3"><label class="form-label" ><strong>Output</strong></label>
-                            <textarea class="form-control" type="text" readonly>{{.Run.Output}}</textarea>
+                            <div class="mb-3"><label class="form-label" ><strong>Output:</strong></label>
+                            <div class="terraform-output-bg">{{.RunOutput}}</div>
                             </div>
                         </div>
                     </div>

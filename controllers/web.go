@@ -6,6 +6,8 @@ import (
 	"digger.dev/cloud/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/robert-nix/ansihtml"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -222,9 +224,14 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 		return
 	}
 
+	runOutput := string(ansihtml.ConvertToHTMLWithClasses([]byte(run.Output), "terraform-output-", true))
+	runOutput = strings.Replace(runOutput, "  ", "&nbsp;&nbsp;", -1)
+	runOutput = strings.Replace(runOutput, "\n", "<br>\n", -1)
+
 	fmt.Println("run_details.tmpl")
 	c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
-		"Run": run,
+		"Run":       run,
+		"RunOutput": template.HTML(runOutput),
 	})
 }
 
