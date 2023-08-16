@@ -296,8 +296,8 @@ func CreateRunForProject(c *gin.Context) {
 	}
 
 	run := models.ProjectRun{
-		StartedAt: request.StartedAt,
-		EndedAt:   request.EndedAt,
+		StartedAt: request.StartedAt.UnixMilli(),
+		EndedAt:   request.EndedAt.UnixMilli(),
 		Status:    request.Status,
 		Command:   request.Command,
 		Output:    request.Output,

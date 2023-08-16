@@ -23,8 +23,8 @@ type ProjectRun struct {
 	gorm.Model
 	ProjectID uint
 	Project   *Project
-	StartedAt time.Time
-	EndedAt   time.Time
+	StartedAt int64
+	EndedAt   int64
 	Status    string
 	Command   string
 	Output    string
@@ -44,8 +44,8 @@ func (p *ProjectRun) MapToJsonStruct() interface{} {
 		Id:          p.ID,
 		ProjectID:   p.ProjectID,
 		ProjectName: p.Project.Name,
-		StartedAt:   p.StartedAt,
-		EndedAt:     p.EndedAt,
+		StartedAt:   time.UnixMilli(p.StartedAt),
+		EndedAt:     time.UnixMilli(p.EndedAt),
 		Status:      p.Status,
 		Command:     p.Command,
 		Output:      p.Output,
