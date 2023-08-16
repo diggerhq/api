@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"net/http"
+	"time"
 )
 
 func FindProjectsForNamespace(c *gin.Context) {
@@ -237,11 +238,11 @@ func RunHistoryForProject(c *gin.Context) {
 }
 
 type CreateProjectRunRequest struct {
-	StartedAt int64  `json:"startedAt"`
-	EndedAt   int64  `json:"endedAt"`
-	Status    string `json:"status"`
-	Command   string `json:"command"`
-	Output    string `json:"output"`
+	StartedAt time.Time `json:"startedAt"`
+	EndedAt   time.Time `json:"endedAt"`
+	Status    string    `json:"status"`
+	Command   string    `json:"command"`
+	Output    string    `json:"output"`
 }
 
 func CreateRunForProject(c *gin.Context) {
