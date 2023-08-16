@@ -4,6 +4,7 @@ import (
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
@@ -54,8 +55,14 @@ func main() {
 	r.LoadHTMLGlob("templates/*.tmpl")
 	r.GET("/", web.RedirectToLoginSubdomain)
 
+	auth := services.Auth{
+		HttpClient: http.Client{},
+		Host:       os.Getenv("AUTH_HOST"),
+		Secret:     os.Getenv("AUTH_SECRET"),
+		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
+	}
 	projectsGroup := r.Group("/projects")
-	projectsGroup.Use(middleware.WebAuth())
+	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
 	projectsGroup.GET("/add", web.AddProjectPage)
 	projectsGroup.POST("/add", web.AddProjectPage)
@@ -63,12 +70,12 @@ func main() {
 	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
 
 	runsGroup := r.Group("/runs")
-	runsGroup.Use(middleware.WebAuth())
+	runsGroup.Use(middleware.WebAuth(auth))
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
 	policiesGroup := r.Group("/policies")
-	policiesGroup.Use(middleware.WebAuth())
+	policiesGroup.Use(middleware.WebAuth(auth))
 	policiesGroup.GET("/", web.PoliciesPage)
 	policiesGroup.GET("/add", web.AddPolicyPage)
 	policiesGroup.POST("/add", web.AddPolicyPage)
@@ -76,10 +83,10 @@ func main() {
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BearerTokenAuth(), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
 
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
@@ -96,9 +103,9 @@ func main() {
 	authorized.GET("/repos/:namespace/projects/:projectName/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:namespace/projects/:projectName/runs", controllers.CreateRunForProject)
 	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
+	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForNamespace)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForOrg)
 
 	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)

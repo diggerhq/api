@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,7 @@ import (
 	"strings"
 )
 
-func SetContextParameters(c *gin.Context, token *jwt.Token) error {
+func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) error {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		if claims.Valid() != nil {
 			log.Printf("Token's claim is invalid")
@@ -41,14 +42,27 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 
 		fmt.Printf("set org id %v\n", org.ID)
 
-		permissions := claims["permissions"]
-		if permissions == nil {
-			log.Printf("claim's permissions is nil")
-			return fmt.Errorf("token is invalid")
+		tokenType := claims["type"].(string)
+
+		permissions := make([]string, 0)
+		if tokenType == "tenantAccessToken" {
+			permission, err := auth.FetchTokenPermissions(claims["sub"].(string))
+			if err != nil {
+				log.Printf("Error while fetching permissions: %v", err.Error())
+				return fmt.Errorf("token is invalid")
+			}
+			permissions = permission
+		} else {
+			permissionsClaims := claims["permissions"]
+			if permissionsClaims == nil {
+				log.Printf("claim's permissions is nil")
+				return fmt.Errorf("token is invalid")
+			}
+			for _, permissionClaim := range permissionsClaims.([]interface{}) {
+				permissions = append(permissions, permissionClaim.(string))
+			}
 		}
-		permissions = permissions.([]interface{})
-		for _, permission := range permissions.([]interface{}) {
-			permission = permission.(string)
+		for _, permission := range permissions {
 			if permission == "digger.all.*" {
 				c.Set(ACCESS_LEVEL_KEY, models.AdminPolicyType)
 				return nil
@@ -65,7 +79,7 @@ func SetContextParameters(c *gin.Context, token *jwt.Token) error {
 	return nil
 }
 
-func WebAuth() gin.HandlerFunc {
+func WebAuth(auth services.Auth) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tokenString string
 		tokenString, err := c.Cookie("token")
@@ -112,7 +126,7 @@ func WebAuth() gin.HandlerFunc {
 		}
 
 		if token.Valid {
-			err = SetContextParameters(c, token)
+			err = SetContextParameters(c, auth, token)
 			if err != nil {
 				c.String(http.StatusForbidden, err.Error())
 				c.Abort()
@@ -163,16 +177,16 @@ func SecretCodeAuth() gin.HandlerFunc {
 	}
 }
 
-func BearerTokenAuth() gin.HandlerFunc {
+func BearerTokenAuth(auth services.Auth) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		auth := c.Request.Header.Get("Authorization")
-		if auth == "" {
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
 			c.String(http.StatusForbidden, "No Authorization header provided")
 			c.Abort()
 			return
 		}
-		token := strings.TrimPrefix(auth, "Bearer ")
-		if token == auth {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token == authHeader {
 			c.String(http.StatusForbidden, "Could not find bearer token in Authorization header")
 			c.Abort()
 			return
@@ -236,7 +250,7 @@ func BearerTokenAuth() gin.HandlerFunc {
 				return
 			}
 
-			err = SetContextParameters(c, token)
+			err = SetContextParameters(c, auth, token)
 			if err != nil {
 				c.String(http.StatusForbidden, err.Error())
 				c.Abort()
