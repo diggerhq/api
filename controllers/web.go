@@ -226,7 +226,6 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 
 	stateSyncOutput := ""
 	terraformPlanOutput := ""
-
 	runOutput := string(ansihtml.ConvertToHTMLWithClasses([]byte(run.Output), "terraform-output-", true))
 	runOutput = strings.Replace(runOutput, "  ", "&nbsp;&nbsp;", -1)
 	runOutput = strings.Replace(runOutput, "\n", "<br>\n", -1)
@@ -247,7 +246,6 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 			"RunOutput": template.HTML(runOutput),
 		})
 	}
-
 }
 
 func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
