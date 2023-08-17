@@ -36,13 +36,52 @@
                             <input class="form-control" type="text" readonly value="{{.Run.Command}}" ></div>
                         </div>
                     </div>
+
+                    {{ if .RunOutput }}
                     <div class="row">
                         <div class="col">
                             <div class="mb-3"><label class="form-label" ><strong>Output:</strong></label>
-                            <div class="terraform-output-bg">{{.RunOutput}}</div>
+                                <div class="terraform-output-bg">{{.RunOutput}}</div>
                             </div>
                         </div>
                     </div>
+                    {{ else }}
+
+                    <div class="row">
+                      <div class="col">
+                        <div class="mb-3"><label class="form-label" ><strong>Output:</strong></label>
+                          <div id="collapseTerraformStateSync">
+                            <div class="card">
+                              <a href="#collapseTerraformStateSyncChevron" class="card-header collapse-indicator-chevron" id="headingTerraformStateSync" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseIndicatorChevron">
+                                Terraform State Sync
+                              </a>
+                              <div id="collapseTerraformStateSyncChevron" class="collapse" aria-labelledby="headingTerraformStateSync" data-bs-parent="#collapseTerraformStateSync">
+                                <div class="card-body">
+                                    <div class="terraform-output-bg">{{.TerraformStateSyncOutput}}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div id="collapseTerraformPlan">
+                            <div class="card">
+                              <a href="#collapseTerraformPlanChevron" class="card-header collapse-indicator-chevron" id="headingTerraformPlan" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseTerraformPlanChevron">
+                                Terraform Plan
+                              </a>
+
+                              <div id="collapseTerraformPlanChevron" class="collapse show" aria-labelledby="headingTerraformPlan" data-bs-parent="#collapseTerraformPlan">
+                                <div class="card-body">
+                                  <div class="terraform-output-bg">{{.TerraformPlanOutput}}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {{ end }}
+
             </div>
         </div>
     </div>

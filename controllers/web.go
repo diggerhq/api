@@ -224,15 +224,28 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 		return
 	}
 
+	stateSyncOutput := ""
+	terraformPlanOutput := ""
 	runOutput := string(ansihtml.ConvertToHTMLWithClasses([]byte(run.Output), "terraform-output-", true))
 	runOutput = strings.Replace(runOutput, "  ", "&nbsp;&nbsp;", -1)
 	runOutput = strings.Replace(runOutput, "\n", "<br>\n", -1)
 
-	fmt.Println("run_details.tmpl")
-	c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
-		"Run":       run,
-		"RunOutput": template.HTML(runOutput),
-	})
+	planIndex := strings.Index(runOutput, "Terraform used the selected providers to generate the following execution")
+	if planIndex != -1 {
+		stateSyncOutput = runOutput[:planIndex]
+		terraformPlanOutput = runOutput[planIndex:]
+
+		c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
+			"Run":                      run,
+			"TerraformStateSyncOutput": template.HTML(stateSyncOutput),
+			"TerraformPlanOutput":      template.HTML(terraformPlanOutput),
+		})
+	} else {
+		c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
+			"Run":       run,
+			"RunOutput": template.HTML(runOutput),
+		})
+	}
 }
 
 func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
