@@ -132,14 +132,6 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 			"Message": message, "Projects": projects, "PolicyTypes": policyTypes,
 		})
 	} else if c.Request.Method == "POST" {
-		message := ""
-		namespace, ok := models.GetDefaultNamespace(c, middleware.ORGANISATION_ID_KEY)
-		if !ok {
-			message = "failed to create a new policy"
-			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
-				"Message": message,
-			})
-		}
 		policyText := c.PostForm("policytext")
 		if policyText == "" {
 			message := "Policy can't be empty"
@@ -165,9 +157,9 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("namespace: %v", namespace)
+		fmt.Printf("namespace: %v", project.Namespace)
 
-		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: namespace.Organisation, Namespace: namespace}
+		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: project.Organisation, Namespace: project.Namespace}
 
 		err = models.DB.Create(&policy).Error
 		if err != nil {
