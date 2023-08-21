@@ -8,7 +8,7 @@ The repository for digger official API.
 ### 1. Pull the official Digger API Docker image
 
 ```
-docker pull diggerdevhq/backend:latest
+docker pull diggerdevhq/backend:main
 ```
 ### 2. Run with Docker
 The Digger Docker image requires several required environment variables. You'll need to add the required environment variables listed below to your docker run command
