@@ -1,4 +1,4 @@
-name: Build&Push to Prod ECR
+name: Build&Push to dockerhub
 on:
   push:
     branches: [ main ]
