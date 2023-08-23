@@ -1,16 +1,20 @@
 package controllers
 
 import (
+	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"errors"
 	"fmt"
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-github/v54/github"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 type CreatePolicyInput struct {
@@ -300,4 +304,80 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func GithubWebhookHandler(c *gin.Context) {
+	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
+	if err != nil {
+		log.Printf("Error validating payload: %v", err)
+		c.String(http.StatusBadRequest, "Error validating payload")
+		return
+	}
+
+	event, err := github.ParseWebHook(github.WebHookType(c.Request), payload)
+	if err != nil {
+		log.Printf("Error parsing webhook: %v", err)
+		c.String(http.StatusBadRequest, "Error parsing webhook")
+		return
+	}
+
+	switch event := event.(type) {
+	case *github.InstallationEvent:
+		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
+		if event.GetAction() == "created" {
+			err := models.DB.Create(&models.GithubAppInstallation{
+				GithubInstallationId: *event.Installation.ID,
+				GithubAppId:          *event.Installation.AppID,
+			}).Error
+			if err != nil {
+				log.Printf("Error creating github event: %v", err)
+			}
+			c.String(http.StatusOK, "OK")
+		}
+
+	case *github.PullRequestEvent:
+		log.Printf("Got pull request event for %v", event.GetPullRequest().GetTitle())
+		installation := models.GithubAppInstallation{}
+		err := models.DB.Where("github_installation_id = ?", *event.Installation.ID).Take(&installation).Error
+		if err != nil {
+			log.Printf("Error getting installation: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting installation")
+			return
+		}
+		ghApp := models.GithubApp{}
+		err = models.DB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
+		if err != nil {
+			log.Printf("Error getting app: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting app")
+			return
+		}
+		tr := http.DefaultTransport
+
+		itr, err := ghinstallation.NewKeyFromFile(tr, installation.GithubInstallationId, installation.GithubAppId, ghApp.PrivateKey)
+		if err != nil {
+			log.Printf("Error initialising installation: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting app")
+			return
+		}
+
+		client := github.NewClient(&http.Client{Transport: itr})
+
+		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Repo.Organization.Name, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+			Ref:    event.PullRequest.Head.GetRef(),
+			Inputs: nil,
+		})
+
+		if err != nil {
+			log.Printf("Error getting app: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting app")
+			return
+		}
+
+		log.Printf("Got response: %v", resp)
+
+	default:
+		log.Printf("Unhandled event type: %v", event)
+	}
+
+	c.String(http.StatusOK, "OK")
 }
