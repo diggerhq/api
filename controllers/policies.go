@@ -106,7 +106,7 @@ func findPolicyForOrg(c *gin.Context, policyType string) {
 }
 
 func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
-	return models.DB.Preload("Organisation").Preload("Namespace").Preload("Project").
+	return models.DB.Preload("Organisation").Preload("Repo").Preload("Project").
 		Joins("LEFT JOIN namespaces ON policies.namespace_id = namespaces.id").
 		Joins("LEFT JOIN projects ON policies.project_id = projects.id").
 		Joins("LEFT JOIN organisations ON policies.organisation_id = organisations.id")
@@ -208,10 +208,10 @@ func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
 	}
 	namespace := c.Param("namespace")
 	projectName := c.Param("projectName")
-	namespaceModel := models.Namespace{}
+	namespaceModel := models.Repo{}
 	namespaceResult := models.DB.Where("name = ?", namespace).Take(&namespaceModel)
 	if namespaceResult.RowsAffected == 0 {
-		namespaceModel = models.Namespace{
+		namespaceModel = models.Repo{
 			OrganisationID: orgID.(uint),
 			Name:           namespace,
 		}

@@ -12,11 +12,12 @@ type Organisation struct {
 	ExternalId     string `gorm:"uniqueIndex:idx_external_source"`
 }
 
-type Namespace struct {
+type Repo struct {
 	gorm.Model
 	Name           string `gorm:"uniqueIndex:idx_org_namespace"`
 	OrganisationID uint   `gorm:"uniqueIndex:idx_org_namespace"`
 	Organisation   *Organisation
+	DiggerConfig   string
 }
 
 type ProjectRun struct {
@@ -58,7 +59,7 @@ type Project struct {
 	OrganisationID    uint   `gorm:"uniqueIndex:idx_project"`
 	Organisation      *Organisation
 	NamespaceID       uint `gorm:"uniqueIndex:idx_project"`
-	Namespace         *Namespace
+	Namespace         *Repo
 	ConfigurationYaml string
 }
 

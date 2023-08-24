@@ -22,7 +22,7 @@ func FindProjectsForNamespace(c *gin.Context) {
 
 	var projects []models.Project
 
-	err := models.DB.Preload("Organisation").Preload("Namespace").
+	err := models.DB.Preload("Organisation").Preload("Repo").
 		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("namespaces.name = ? AND projects.organisation_id = ?", namespace, orgId).Find(&projects).Error
@@ -75,7 +75,7 @@ func FindProjectsForOrg(c *gin.Context) {
 
 	var projects []models.Project
 
-	err = models.DB.Preload("Organisation").Preload("Namespace").
+	err = models.DB.Preload("Organisation").Preload("Repo").
 		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", org.ID).Find(&projects).Error
@@ -131,14 +131,14 @@ func ReportProjectsForNamespace(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Namespace
+	var namespace models.Repo
 
 	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
 
 	if err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			namespace := models.Namespace{
+			namespace := models.Repo{
 				Name:           namespaceName,
 				OrganisationID: org.ID,
 				Organisation:   &org,
@@ -198,7 +198,7 @@ func RunHistoryForProject(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Namespace
+	var namespace models.Repo
 
 	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
 
@@ -265,7 +265,7 @@ func CreateRunForProject(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Namespace
+	var namespace models.Repo
 
 	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
 

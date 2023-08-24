@@ -18,6 +18,6 @@ type Policy struct {
 	CreatedByID    *uint
 	Organisation   *Organisation
 	OrganisationID uint
-	Namespace      *Namespace
+	Namespace      *Repo
 	NamespaceID    *uint
 }
