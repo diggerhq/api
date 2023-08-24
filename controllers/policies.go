@@ -335,7 +335,18 @@ func GithubWebhookHandler(c *gin.Context) {
 			}
 			c.String(http.StatusOK, "OK")
 		}
-
+	case *github.InstallationRepositoriesEvent:
+		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
+		if event.GetAction() == "added" {
+			err := models.DB.Create(&models.GithubAppInstallation{
+				GithubInstallationId: *event.Installation.ID,
+				GithubAppId:          *event.Installation.AppID,
+			}).Error
+			if err != nil {
+				log.Printf("Error creating github event: %v", err)
+			}
+			c.String(http.StatusOK, "OK")
+		}
 	case *github.PullRequestEvent:
 		log.Printf("Got pull request event for %v", event.GetPullRequest().GetTitle())
 		installation := models.GithubAppInstallation{}
