@@ -385,7 +385,7 @@ func GithubWebhookHandler(c *gin.Context) {
 			return
 		}
 
-		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Repo.Organization.Name, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Name, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    event.PullRequest.Head.GetRef(),
 			Inputs: map[string]interface{}{"jobs": jobs},
 		})
