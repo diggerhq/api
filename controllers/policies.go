@@ -385,12 +385,7 @@ func GithubWebhookHandler(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("client %v", client)
-		fmt.Printf("event %v", event)
-		fmt.Printf("event.Organization %v", event.Organization)
-		fmt.Printf("event.Repo %v", event.Repo)
-
-		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Name, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    event.PullRequest.Head.GetRef(),
 			Inputs: map[string]interface{}{"jobs": jobs},
 		})
