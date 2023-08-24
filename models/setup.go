@@ -61,5 +61,17 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `ProjectRun`!")
 	}
 
+	err = database.AutoMigrate(&GithubAppInstallation{})
+
+	if err != nil {
+		panic("Failed to perform migration for `GithubAppInstallation`!")
+	}
+
+	err = database.AutoMigrate(&GithubApp{})
+
+	if err != nil {
+		panic("Failed to perform migration for `GithubApp`!")
+	}
+
 	DB = database
 }
