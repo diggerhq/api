@@ -4,10 +4,13 @@ go 1.20
 
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
+	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/google/go-github/v54 v54.0.0
 	github.com/google/uuid v1.3.0
+	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.0.2
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.1
@@ -15,7 +18,6 @@ require (
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
-	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
@@ -29,7 +31,6 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-github/v53 v53.2.0 // indirect
-	github.com/google/go-github/v54 v54.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -47,7 +48,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
-	github.com/robert-nix/ansihtml v1.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/spf13/afero v1.1.1 // indirect
 	github.com/spf13/cast v1.2.0 // indirect
