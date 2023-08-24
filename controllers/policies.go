@@ -365,7 +365,7 @@ func GithubWebhookHandler(c *gin.Context) {
 		}
 		tr := http.DefaultTransport
 
-		itr, err := ghinstallation.New(tr, installation.GithubInstallationId, installation.GithubAppId, []byte(ghApp.PrivateKey))
+		itr, err := ghinstallation.New(tr, installation.GithubAppId, installation.GithubInstallationId, []byte(ghApp.PrivateKey))
 		if err != nil {
 			log.Printf("Error initialising installation: %v", err)
 			c.String(http.StatusInternalServerError, "Error getting app")
