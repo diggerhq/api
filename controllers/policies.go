@@ -4,7 +4,6 @@ import (
 	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -374,20 +373,11 @@ func GithubWebhookHandler(c *gin.Context) {
 
 		client := github.NewClient(&http.Client{Transport: itr})
 
-		var jobs []Job
-
 		jobString := "[\n  {\n    \"projectName\": \"prod\",\n    \"projectDir\": \"prod\",\n    \"projectWorkspace\": \"default\",\n    \"terragrunt\": false,\n    \"commands\": [\"digger plan\"],\n    \"applyStage\": {\n      \"steps\": [\n        { \"action\": \"init\", \"extraArgs\": [] },\n        { \"action\": \"apply\", \"extraArgs\": [] }\n      ]\n    },\n    \"planStage\": {\n      \"steps\": [\n        { \"action\": \"init\", \"extraArgs\": [] },\n        { \"action\": \"plan\", \"extraArgs\": [] }\n      ]\n    },\n    \"pullRequestNumber\": 1,\n    \"eventName\": \"pull_request\",\n    \"requestedBy\": \"Spartakovic\",\n    \"namespace\": \"diggerhq/digger-demo-ghapp\",\n    \"stateEnvVars\": {\n      \"TF_VAR_aws_region\": \"us-east-1\",\n      \"TF_VAR_aws_access_key_id\": \"AKIA\"\n    },\n    \"commandEnvVars\": {\n      \"TF_VAR_aws_region\": \"us-east-1\",\n      \"TF_VAR_aws_access_key_id\": \"AKIA\"\n    }\n  }\n]\n"
-
-		err = json.Unmarshal([]byte(jobString), &jobs)
-		if err != nil {
-			log.Printf("Error unmarshalling jobs: %v", err)
-			c.String(http.StatusInternalServerError, "Error unmarshalling jobs")
-			return
-		}
 
 		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    event.PullRequest.Head.GetRef(),
-			Inputs: map[string]interface{}{"jobs": jobs},
+			Inputs: map[string]interface{}{"jobs": jobString},
 		})
 
 		if err != nil {
