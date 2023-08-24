@@ -381,8 +381,8 @@ func GithubWebhookHandler(c *gin.Context) {
 		})
 
 		if err != nil {
-			log.Printf("Error getting app: %v", err)
-			c.String(http.StatusInternalServerError, "Error getting app")
+			log.Printf("Error calling github api: %v", err)
+			c.String(http.StatusInternalServerError, "Error calling github api")
 			return
 		}
 
