@@ -59,7 +59,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 		})
 	} else if c.Request.Method == "POST" {
 		message := ""
-		namespace, ok := models.GetDefaultNamespace(c, middleware.ORGANISATION_ID_KEY)
+		repo, ok := models.GetDefaultRepo(c, middleware.ORGANISATION_ID_KEY)
 		if !ok {
 			message = "failed to create a new project"
 			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
@@ -74,10 +74,10 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("namespace: %v", namespace)
-		//TODO: gorm is trying to insert new namespace and organisation on every insert of a new project,
+		fmt.Printf("repo: %v", repo)
+		//TODO: gorm is trying to insert new repo and organisation on every insert of a new project,
 		// there should be a way to avoid it
-		project := models.Project{Name: projectName, Organisation: namespace.Organisation, Namespace: namespace}
+		project := models.Project{Name: projectName, Organisation: repo.Organisation, Repo: repo}
 
 		err := models.DB.Create(&project).Error
 		if err != nil {
@@ -157,9 +157,9 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("namespace: %v", project.Namespace)
+		fmt.Printf("repo: %v", project.Repo)
 
-		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: project.Organisation, Namespace: project.Namespace}
+		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: project.Organisation, Repo: project.Repo}
 
 		err = models.DB.Create(&policy).Error
 		if err != nil {

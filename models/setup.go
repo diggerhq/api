@@ -34,7 +34,7 @@ func ConnectDatabase() {
 	err = database.AutoMigrate(&Repo{})
 
 	if err != nil {
-		panic("Failed to perform migration for `Namespaces`!")
+		panic("Failed to perform migration for `Repos`!")
 	}
 
 	err = database.AutoMigrate(&Project{})

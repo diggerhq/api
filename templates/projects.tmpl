@@ -31,7 +31,7 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Namespace</th>
+                                <th>Repo</th>
                                 <th>Organisation</th>
                                 <th>Details</th>
                             </tr>
@@ -40,7 +40,7 @@
                         {{ range .Projects }}
                             <tr>
                                 <td>{{ .Name }}</td>
-                                <td>{{ .Namespace.Name }}</td>
+                                <td>{{ .Repo.Name }}</td>
                                 <td>{{ .Organisation.Name }}</td>
                                 <td><a href="/projects/{{.ID}}/details">Details<a></td>
                             </tr>

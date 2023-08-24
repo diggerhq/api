@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func FindProjectsForNamespace(c *gin.Context) {
-	namespace := c.Param("namespace")
+func FindProjectsForRepo(c *gin.Context) {
+	repo := c.Param("repo")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
@@ -23,9 +23,9 @@ func FindProjectsForNamespace(c *gin.Context) {
 	var projects []models.Project
 
 	err := models.DB.Preload("Organisation").Preload("Repo").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("namespaces.name = ? AND projects.organisation_id = ?", namespace, orgId).Find(&projects).Error
+		Where("repos.name = ? AND projects.organisation_id = ?", repo, orgId).Find(&projects).Error
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 		return
@@ -76,7 +76,7 @@ func FindProjectsForOrg(c *gin.Context) {
 	var projects []models.Project
 
 	err = models.DB.Preload("Organisation").Preload("Repo").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", org.ID).Find(&projects).Error
 
@@ -105,7 +105,7 @@ type CreateProjectRequest struct {
 	ConfigurationYaml string `json:"configurationYaml"`
 }
 
-func ReportProjectsForNamespace(c *gin.Context) {
+func ReportProjectsForRepo(c *gin.Context) {
 	var request CreateProjectRequest
 	err := c.BindJSON(&request)
 	if err != nil {
@@ -113,7 +113,7 @@ func ReportProjectsForNamespace(c *gin.Context) {
 		return
 	}
 
-	namespaceName := c.Param("namespace")
+	repoName := c.Param("repo")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
@@ -131,29 +131,29 @@ func ReportProjectsForNamespace(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Repo
+	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
+	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			namespace := models.Repo{
-				Name:           namespaceName,
+			repo := models.Repo{
+				Name:           repoName,
 				OrganisationID: org.ID,
 				Organisation:   &org,
 			}
 
-			err = models.DB.Create(&namespace).Error
+			err = models.DB.Create(&repo).Error
 
 			if err != nil {
-				log.Printf("Error creating namespace: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating namespace"})
+				log.Printf("Error creating repo: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating repo"})
 				return
 			}
 		} else {
-			log.Printf("Error fetching namespace: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
+			log.Printf("Error fetching repo: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching repo"})
 			return
 		}
 	}
@@ -161,9 +161,9 @@ func ReportProjectsForNamespace(c *gin.Context) {
 	project := models.Project{
 		Name:              request.Name,
 		ConfigurationYaml: request.ConfigurationYaml,
-		NamespaceID:       namespace.ID,
+		RepoID:            repo.ID,
 		OrganisationID:    org.ID,
-		Namespace:         &namespace,
+		Repo:              &repo,
 		Organisation:      &org,
 	}
 
@@ -179,7 +179,7 @@ func ReportProjectsForNamespace(c *gin.Context) {
 }
 
 func RunHistoryForProject(c *gin.Context) {
-	namespaceName := c.Param("namespace")
+	repoName := c.Param("repo")
 	projectName := c.Param("project")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
@@ -198,19 +198,19 @@ func RunHistoryForProject(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Repo
+	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
+	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
-		log.Printf("Error fetching namespace: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
+		log.Printf("Error fetching repo: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching repo"})
 		return
 	}
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id", projectName, namespace.ID, org.ID).First(&project).Error
+	err = models.DB.Where("name = ? AND repo_id = ? AND organisation_id", projectName, repo.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
@@ -246,7 +246,7 @@ type CreateProjectRunRequest struct {
 }
 
 func CreateRunForProject(c *gin.Context) {
-	namespaceName := c.Param("namespace")
+	repoName := c.Param("repo")
 	projectName := c.Param("projectName")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
@@ -265,19 +265,19 @@ func CreateRunForProject(c *gin.Context) {
 		return
 	}
 
-	var namespace models.Repo
+	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", namespaceName, orgId).First(&namespace).Error
+	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
-		log.Printf("Error fetching namespace: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching namespace"})
+		log.Printf("Error fetching repo: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching repo"})
 		return
 	}
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND namespace_id = ? AND organisation_id = ?", projectName, namespace.ID, org.ID).First(&project).Error
+	err = models.DB.Where("name = ? AND repo_id = ? AND organisation_id = ?", projectName, repo.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
