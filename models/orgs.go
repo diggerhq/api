@@ -12,11 +12,12 @@ type Organisation struct {
 	ExternalId     string `gorm:"uniqueIndex:idx_external_source"`
 }
 
-type Namespace struct {
+type Repo struct {
 	gorm.Model
-	Name           string `gorm:"uniqueIndex:idx_org_namespace"`
-	OrganisationID uint   `gorm:"uniqueIndex:idx_org_namespace"`
+	Name           string `gorm:"uniqueIndex:idx_org_repo"`
+	OrganisationID uint   `gorm:"uniqueIndex:idx_org_repo"`
 	Organisation   *Organisation
+	DiggerConfig   string
 }
 
 type ProjectRun struct {
@@ -57,8 +58,8 @@ type Project struct {
 	Name              string `gorm:"uniqueIndex:idx_project"`
 	OrganisationID    uint   `gorm:"uniqueIndex:idx_project"`
 	Organisation      *Organisation
-	NamespaceID       uint `gorm:"uniqueIndex:idx_project"`
-	Namespace         *Namespace
+	RepoID            uint `gorm:"uniqueIndex:idx_project"`
+	Repo              *Repo
 	ConfigurationYaml string
 }
 
@@ -68,15 +69,15 @@ func (p *Project) MapToJsonStruct() interface{} {
 		Name             string `json:"name"`
 		OrganisationID   uint   `json:"organisationId"`
 		OrganisationName string `json:"organisationName"`
-		NamespaceID      uint   `json:"namespaceId"`
-		NamespaceName    string `json:"namespaceName"`
+		RepoID           uint   `json:"repoId"`
+		RepoName         string `json:"repoName"`
 	}{
 		Id:               p.ID,
 		Name:             p.Name,
 		OrganisationID:   p.OrganisationID,
-		NamespaceID:      p.NamespaceID,
+		RepoID:           p.RepoID,
 		OrganisationName: p.Organisation.Name,
-		NamespaceName:    p.Namespace.Name,
+		RepoName:         p.Repo.Name,
 	}
 }
 

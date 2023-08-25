@@ -25,7 +25,7 @@
                         <thead>
                             <tr>
                                 <th>Project</th>
-                                <th>Namespace</th>
+                                <th>Repo</th>
                                 <th>Organisation</th>
                                 <th>Type</th>
                                 <th>Details</th>
@@ -35,7 +35,7 @@
                         {{ range .Policies }}
                             <tr>
                                 <td>{{ .Project.Name }}</td>
-                                <td>{{ .Namespace.Name }}</td>
+                                <td>{{ .Repo.Name }}</td>
                                 <td>{{ .Organisation.Name }}</td>
                                 <td>{{ .Type }}</td>
                                 <td><a href="/policies/{{.ID}}/details">Details<a></td>

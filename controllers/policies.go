@@ -30,7 +30,7 @@ func FindDriftPolicy(c *gin.Context) {
 }
 
 func findPolicy(c *gin.Context, policyType string) {
-	namespace := c.Param("namespace")
+	repo := c.Param("repo")
 	projectName := c.Param("projectName")
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
@@ -41,22 +41,22 @@ func findPolicy(c *gin.Context, policyType string) {
 	}
 
 	var policy models.Policy
-	query := JoinedOrganisationNamespaceProjectQuery()
+	query := JoinedOrganisationRepoProjectQuery()
 
-	if namespace != "" && projectName != "" {
+	if repo != "" && projectName != "" {
 		err := query.
-			Where("namespaces.name = ? AND projects.name = ? AND policies.organisation_id = ? AND policies.type = ?", namespace, projectName, orgId, policyType).
+			Where("repos.name = ? AND projects.name = ? AND policies.organisation_id = ? AND policies.type = ?", repo, projectName, orgId, policyType).
 			First(&policy).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.String(http.StatusNotFound, fmt.Sprintf("Could not find policy for namespace %v and project name %v", namespace, projectName))
+				c.String(http.StatusNotFound, fmt.Sprintf("Could not find policy for repo %v and project name %v", repo, projectName))
 			} else {
 				c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 			}
 			return
 		}
 	} else {
-		c.String(http.StatusBadRequest, "Should pass namespace and project name")
+		c.String(http.StatusBadRequest, "Should pass repo and project name")
 		return
 	}
 
@@ -79,10 +79,10 @@ func FindDriftPolicyForOrg(c *gin.Context) {
 func findPolicyForOrg(c *gin.Context, policyType string) {
 	organisation := c.Param("organisation")
 	var policy models.Policy
-	query := JoinedOrganisationNamespaceProjectQuery()
+	query := JoinedOrganisationRepoProjectQuery()
 
 	err := query.
-		Where("organisations.name = ? AND (namespaces.id IS NULL AND projects.id IS NULL) AND policies.type = ? ", organisation, policyType).
+		Where("organisations.name = ? AND (repos.id IS NULL AND projects.id IS NULL) AND policies.type = ? ", organisation, policyType).
 		First(&policy).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -105,9 +105,9 @@ func findPolicyForOrg(c *gin.Context, policyType string) {
 	c.String(http.StatusOK, policy.Policy)
 }
 
-func JoinedOrganisationNamespaceProjectQuery() *gorm.DB {
-	return models.DB.Preload("Organisation").Preload("Namespace").Preload("Project").
-		Joins("LEFT JOIN namespaces ON policies.namespace_id = namespaces.id").
+func JoinedOrganisationRepoProjectQuery() *gorm.DB {
+	return models.DB.Preload("Organisation").Preload("Repo").Preload("Project").
+		Joins("LEFT JOIN repos ON policies.repo_id = repos.id").
 		Joins("LEFT JOIN projects ON policies.project_id = projects.id").
 		Joins("LEFT JOIN organisations ON policies.organisation_id = organisations.id")
 }
@@ -151,7 +151,7 @@ func upsertPolicyForOrg(c *gin.Context, policyType string) {
 
 	policy := models.Policy{}
 
-	policyResult := models.DB.Where("organisation_id = ? AND (namespace_id IS NULL AND project_id IS NULL) AND type = ?", org.ID, policyType).Take(&policy)
+	policyResult := models.DB.Where("organisation_id = ? AND (repo_id IS NULL AND project_id IS NULL) AND type = ?", org.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
 		err := models.DB.Create(&models.Policy{
@@ -177,19 +177,19 @@ func upsertPolicyForOrg(c *gin.Context, policyType string) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-func UpsertAccessPolicyForNamespaceAndProject(c *gin.Context) {
-	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_ACCESS)
+func UpsertAccessPolicyForRepoAndProject(c *gin.Context) {
+	upsertPolicyForRepoAndProject(c, models.POLICY_TYPE_ACCESS)
 }
 
-func UpsertPlanPolicyForNamespaceAndProject(c *gin.Context) {
-	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_PLAN)
+func UpsertPlanPolicyForRepoAndProject(c *gin.Context) {
+	upsertPolicyForRepoAndProject(c, models.POLICY_TYPE_PLAN)
 }
 
-func UpsertDriftPolicyForNamespaceAndProject(c *gin.Context) {
-	upsertPolicyForNamespaceAndProject(c, models.POLICY_TYPE_DRIFT)
+func UpsertDriftPolicyForRepoAndProject(c *gin.Context) {
+	upsertPolicyForRepoAndProject(c, models.POLICY_TYPE_DRIFT)
 }
 
-func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
+func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 	orgID, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
@@ -206,19 +206,19 @@ func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
 		c.String(http.StatusInternalServerError, "Error reading request body")
 		return
 	}
-	namespace := c.Param("namespace")
+	repo := c.Param("repo")
 	projectName := c.Param("projectName")
-	namespaceModel := models.Namespace{}
-	namespaceResult := models.DB.Where("name = ?", namespace).Take(&namespaceModel)
-	if namespaceResult.RowsAffected == 0 {
-		namespaceModel = models.Namespace{
+	repoModel := models.Repo{}
+	repoResult := models.DB.Where("name = ?", repo).Take(&repoModel)
+	if repoResult.RowsAffected == 0 {
+		repoModel = models.Repo{
 			OrganisationID: orgID.(uint),
-			Name:           namespace,
+			Name:           repo,
 		}
-		result := models.DB.Create(&namespaceModel)
+		result := models.DB.Create(&repoModel)
 		if result.Error != nil {
-			log.Printf("Error creating namespace: %v", err)
-			c.String(http.StatusInternalServerError, "Error creating missing namespace")
+			log.Printf("Error creating repo: %v", err)
+			c.String(http.StatusInternalServerError, "Error creating missing repo")
 			return
 		}
 	}
@@ -228,7 +228,7 @@ func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
 	if projectResult.RowsAffected == 0 {
 		projectModel = models.Project{
 			OrganisationID: orgID.(uint),
-			NamespaceID:    namespaceModel.ID,
+			RepoID:         repoModel.ID,
 			Name:           projectName,
 		}
 		err := models.DB.Create(&projectModel).Error
@@ -241,12 +241,12 @@ func upsertPolicyForNamespaceAndProject(c *gin.Context, policyType string) {
 
 	var policy models.Policy
 
-	policyResult := models.DB.Where("organisation_id = ? AND namespace_id = ? AND project_id = ? AND type = ?", orgID, namespaceModel.ID, projectModel.ID, policyType).Take(&policy)
+	policyResult := models.DB.Where("organisation_id = ? AND repo_id = ? AND project_id = ? AND type = ?", orgID, repoModel.ID, projectModel.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
 		err := models.DB.Create(&models.Policy{
 			OrganisationID: orgID.(uint),
-			NamespaceID:    &namespaceModel.ID,
+			RepoID:         &repoModel.ID,
 			ProjectID:      &projectModel.ID,
 			Type:           policyType,
 			Policy:         string(policyData),
