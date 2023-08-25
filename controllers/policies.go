@@ -401,7 +401,7 @@ workflows:
 
 		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(configStr)
 
-		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(event, config, &ghService)
+		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(*event, config, &ghService)
 
 		if err != nil {
 			log.Printf("Error processing event: %v", err)
