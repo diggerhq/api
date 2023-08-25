@@ -442,7 +442,7 @@ workflows:
 
 				_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 					Ref:    event.PullRequest.Head.GetRef(),
-					Inputs: map[string]interface{}{"jobs": []string{string(marshalled)}},
+					Inputs: map[string]interface{}{"job": marshalled},
 				})
 				if err != nil {
 					successPerJob[job.ProjectName] = false
