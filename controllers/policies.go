@@ -4,6 +4,7 @@ import (
 	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -422,6 +423,7 @@ workflows:
 			c.String(http.StatusInternalServerError, "Error converting event to jobs")
 			return
 		}
+
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
 		var successPerJob map[string]bool
@@ -429,9 +431,18 @@ workflows:
 		for _, job := range jobs {
 			go func(job orchestrator.Job) {
 				defer wg.Done()
-				_, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+
+				marshalled, err := json.Marshal(jobToJson(job))
+
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error marshalling job: %v", err)
+					return
+				}
+
+				_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 					Ref:    event.PullRequest.Head.GetRef(),
-					Inputs: map[string]interface{}{"jobs": jobToJson(job)},
+					Inputs: map[string]interface{}{"jobs": []string{string(marshalled)}},
 				})
 				if err != nil {
 					successPerJob[job.ProjectName] = false
