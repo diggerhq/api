@@ -7,14 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	dg_configuration "github.com/diggerhq/lib-digger-config"
+	orchestrator "github.com/diggerhq/lib-orchestrator"
+	dg_github "github.com/diggerhq/lib-orchestrator/github"
+	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/v54/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 type CreatePolicyInput struct {
@@ -373,20 +378,77 @@ func GithubWebhookHandler(c *gin.Context) {
 
 		client := github.NewClient(&http.Client{Transport: itr})
 
-		jobString := "[\n  {\n    \"projectName\": \"prod\",\n    \"projectDir\": \"prod\",\n    \"projectWorkspace\": \"default\",\n    \"terragrunt\": false,\n    \"commands\": [\"digger plan\"],\n    \"applyStage\": {\n      \"steps\": [\n        { \"action\": \"init\", \"extraArgs\": [] },\n        { \"action\": \"apply\", \"extraArgs\": [] }\n      ]\n    },\n    \"planStage\": {\n      \"steps\": [\n        { \"action\": \"init\", \"extraArgs\": [] },\n        { \"action\": \"plan\", \"extraArgs\": [] }\n      ]\n    },\n    \"pullRequestNumber\": 1,\n    \"eventName\": \"pull_request\",\n    \"requestedBy\": \"Spartakovic\",\n    \"namespace\": \"diggerhq/digger-demo-ghapp\",\n    \"stateEnvVars\": {\n      \"TF_VAR_aws_region\": \"us-east-1\",\n      \"TF_VAR_aws_access_key_id\": \"AKIA\"\n    },\n    \"commandEnvVars\": {\n      \"TF_VAR_aws_region\": \"us-east-1\",\n      \"TF_VAR_aws_access_key_id\": \"AKIA\"\n    }\n  }\n]\n"
-
-		resp, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
-			Ref:    event.PullRequest.Head.GetRef(),
-			Inputs: map[string]interface{}{"jobs": jobString},
-		})
-
-		if err != nil {
-			log.Printf("Error calling github api: %v", err)
-			c.String(http.StatusInternalServerError, "Error calling github api")
-			return
+		ghService := dg_github.GithubService{
+			Client:   client,
+			RepoName: *event.Repo.Name,
+			Owner:    *event.Repo.Owner.Login,
 		}
 
-		log.Printf("Got response: %v", resp)
+		configStr := `
+projects:
+- name: dev
+  dir: dev
+  workflow: my_custom_workflow
+- name: prod
+  dir: prod
+  workflow: my_custom_workflow
+workflows:
+  my_custom_workflow:
+    workflow_configuration:
+      on_pull_request_pushed: [digger plan]
+      on_pull_request_closed: [digger unlock]
+      on_commit_to_default: [digger apply]`
+
+		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(configStr)
+
+		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(event, config, &ghService)
+
+		if err != nil {
+			log.Printf("Error processing event: %v", err)
+			c.String(http.StatusInternalServerError, "Error processing event")
+			return
+		}
+		eventPackage := dg_github_models.EventPackage{
+			Event:      event,
+			EventName:  "pull_request",
+			Actor:      *event.Sender.Login,
+			Repository: *event.Repo.FullName,
+		}
+
+		jobs, _, err := dg_github.ConvertGithubEventToJobs(eventPackage, impactedProjects, requestedProject, config.Workflows)
+
+		if err != nil {
+			log.Printf("Error converting event to jobs: %v", err)
+			c.String(http.StatusInternalServerError, "Error converting event to jobs")
+			return
+		}
+		var wg sync.WaitGroup
+		wg.Add(len(jobs))
+		var successPerJob map[string]bool
+
+		for _, job := range jobs {
+			go func(job orchestrator.Job) {
+				defer wg.Done()
+				_, err := client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+					Ref:    event.PullRequest.Head.GetRef(),
+					Inputs: map[string]interface{}{"jobs": jobToJson(job)},
+				})
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error dispatching workflow: %v", err)
+					return
+				}
+				successPerJob[job.ProjectName] = true
+			}(job)
+		}
+		c.String(http.StatusOK, "OK")
+		wg.Wait()
+		for projecName, success := range successPerJob {
+			err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
+			if err != nil {
+				log.Printf("Error publishing comment: %v", err)
+			}
+		}
 
 	default:
 		log.Printf("Unhandled event type: %v", event)
@@ -412,10 +474,44 @@ type Job struct {
 	Commands          []string          `json:"commands"`
 	ApplyStage        Stage             `json:"applyStage"`
 	PlanStage         Stage             `json:"planStage"`
-	PullRequestNumber int               `json:"pullRequestNumber"`
+	PullRequestNumber *int              `json:"pullRequestNumber"`
 	EventName         string            `json:"eventName"`
 	RequestedBy       string            `json:"requestedBy"`
 	Namespace         string            `json:"namespace"`
 	StateEnvVars      map[string]string `json:"stateEnvVars"`
 	CommandEnvVars    map[string]string `json:"commandEnvVars"`
+}
+
+func jobToJson(job orchestrator.Job) Job {
+	return Job{
+		ProjectName:       job.ProjectName,
+		ProjectDir:        job.ProjectDir,
+		ProjectWorkspace:  job.ProjectWorkspace,
+		Terragrunt:        job.Terragrunt,
+		Commands:          job.Commands,
+		ApplyStage:        stageToJson(job.ApplyStage),
+		PlanStage:         stageToJson(job.PlanStage),
+		PullRequestNumber: job.PullRequestNumber,
+		EventName:         job.EventName,
+		RequestedBy:       job.RequestedBy,
+		Namespace:         job.Namespace,
+		StateEnvVars:      job.StateEnvVars,
+		CommandEnvVars:    job.CommandEnvVars,
+	}
+}
+
+func stageToJson(stage *orchestrator.Stage) Stage {
+	if stage == nil {
+		return Stage{}
+	}
+	steps := make([]Step, len(stage.Steps))
+	for i, step := range stage.Steps {
+		steps[i] = Step{
+			Action:    step.Action,
+			ExtraArgs: step.ExtraArgs,
+		}
+	}
+	return Stage{
+		Steps: steps,
+	}
 }
