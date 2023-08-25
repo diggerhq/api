@@ -5,6 +5,7 @@ import (
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"fmt"
+	configuration "github.com/diggerhq/lib-digger-config"
 	"github.com/gin-gonic/gin"
 	"github.com/robert-nix/ansihtml"
 	"html/template"
@@ -297,4 +298,60 @@ func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
 		host = strings.Join(hostParts, ".")
 	}
 	context.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s", host))
+}
+
+func (web *WebController) UpdateRepoPage(c *gin.Context) {
+	repoId64, err := strconv.ParseUint(c.Param("repoid"), 10, 32)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to parse repo id")
+		return
+	}
+	repoId := uint(repoId64)
+	repo, ok := models.GetRepo(c, middleware.ORGANISATION_ID_KEY, repoId)
+	if !ok {
+		c.String(http.StatusForbidden, "Failed to find repo")
+		return
+	}
+
+	if c.Request.Method == "GET" {
+		message := ""
+		c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
+			"Message": message, "Repo": repo,
+		})
+	} else if c.Request.Method == "POST" {
+		diggerConfigYaml := c.PostForm("diggerconfig")
+		if diggerConfigYaml == "" {
+			message := "Digger config can't be empty"
+			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
+				"Message": message, "Repo": repo,
+			})
+		}
+
+		fmt.Printf("repo: %v", repo)
+		repo.DiggerConfig = diggerConfigYaml
+		err := validateDiggerConfigYaml(diggerConfigYaml)
+		if err != nil {
+			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
+				"Message": "Digger config YAML is not valid, " + err.Error(), "Repo": repo,
+			})
+			return
+		}
+		tx := models.DB.Save(&repo)
+		if tx.Error != nil {
+			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
+				"Message": "Failed to update repo", "Repo": repo,
+			})
+			return
+		}
+
+		c.Redirect(http.StatusFound, "/projects")
+	}
+}
+
+func validateDiggerConfigYaml(configYaml string) error {
+	_, _, _, err := configuration.LoadDiggerConfigFromString(configYaml)
+	if err != nil {
+		return err
+	}
+	return nil
 }

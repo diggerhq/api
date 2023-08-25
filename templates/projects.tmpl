@@ -40,7 +40,7 @@
                         {{ range .Projects }}
                             <tr>
                                 <td>{{ .Name }}</td>
-                                <td>{{ .Repo.Name }}</td>
+                                <td><a href="/repo/{{.Repo.ID}}/">{{ .Repo.Name }}<a></td>
                                 <td>{{ .Organisation.Name }}</td>
                                 <td><a href="/projects/{{.ID}}/details">Details<a></td>
                             </tr>

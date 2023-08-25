@@ -74,6 +74,11 @@ func main() {
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
+	reposGroup := r.Group("/repo")
+	reposGroup.Use(middleware.WebAuth(auth))
+	reposGroup.GET("/:repoid/", web.UpdateRepoPage)
+	reposGroup.POST("/:repoid/", web.UpdateRepoPage)
+
 	policiesGroup := r.Group("/policies")
 	policiesGroup.Use(middleware.WebAuth(auth))
 	policiesGroup.GET("/", web.PoliciesPage)
