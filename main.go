@@ -74,6 +74,11 @@ func main() {
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
+	reposGroup := r.Group("/repo")
+	reposGroup.Use(middleware.WebAuth(auth))
+	reposGroup.GET("/:repoid/", web.UpdateRepoPage)
+	reposGroup.POST("/:repoid/", web.UpdateRepoPage)
+
 	policiesGroup := r.Group("/policies")
 	policiesGroup.Use(middleware.WebAuth(auth))
 	policiesGroup.GET("/", web.PoliciesPage)
@@ -94,29 +99,29 @@ func main() {
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
-	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindAccessPolicy)
+	authorized.GET("/repos/:repo/projects/:projectName/access-policy", controllers.FindAccessPolicy)
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
 
-	authorized.GET("/repos/:namespace/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
+	authorized.GET("/repos/:repo/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
 	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
 
-	authorized.GET("/repos/:namespace/projects/:projectName/drift-policy", controllers.FindDriftPolicy)
+	authorized.GET("/repos/:repo/projects/:projectName/drift-policy", controllers.FindDriftPolicy)
 	authorized.GET("/orgs/:organisation/drift-policy", controllers.FindDriftPolicyForOrg)
 
-	authorized.GET("/repos/:namespace/projects/:projectName/runs", controllers.RunHistoryForProject)
-	authorized.POST("/repos/:namespace/projects/:projectName/runs", controllers.CreateRunForProject)
-	authorized.GET("/repos/:namespace/projects", controllers.FindProjectsForNamespace)
-	authorized.POST("/repos/:namespace/report-projects", controllers.ReportProjectsForNamespace)
+	authorized.GET("/repos/:repo/projects/:projectName/runs", controllers.RunHistoryForProject)
+	authorized.POST("/repos/:repo/projects/:projectName/runs", controllers.CreateRunForProject)
+	authorized.GET("/repos/:repo/projects", controllers.FindProjectsForRepo)
+	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForNamespaceAndProject)
+	admin.PUT("/repos/:repo/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForRepoAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForNamespaceAndProject)
+	admin.PUT("/repos/:repo/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForRepoAndProject)
 	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/drift-policy", controllers.UpsertDriftPolicyForNamespaceAndProject)
+	admin.PUT("/repos/:repo/projects/:projectName/drift-policy", controllers.UpsertDriftPolicyForRepoAndProject)
 	admin.PUT("/orgs/:organisation/drift-policy", controllers.UpsertDriftPolicyForOrg)
 
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)

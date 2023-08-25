@@ -18,9 +18,9 @@ func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
 
 	var projects []Project
 
-	err := DB.Preload("Organisation").Preload("Namespace").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
-		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
+	err := DB.Preload("Organisation").Preload("Repo").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
+		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&projects).Error
 
 	if err != nil {
@@ -44,9 +44,9 @@ func GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 
 	var policies []Policy
 
-	err := DB.Preload("Organisation").Preload("Namespace").Preload("Project").
+	err := DB.Preload("Organisation").Preload("Repo").Preload("Project").
 		Joins("LEFT JOIN projects ON projects.id = policies.project_id").
-		Joins("LEFT JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&policies).Error
 
@@ -71,9 +71,9 @@ func GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, b
 
 	var runs []ProjectRun
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
+	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&runs).Error
 
@@ -96,9 +96,9 @@ func GetProjectByRunId(c *gin.Context, runId uint, orgIdKey string) (*ProjectRun
 	fmt.Printf("GetProjectByRunId, org id: %v\n", loggedInOrganisationId)
 	var projectRun ProjectRun
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
+	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).
 		Where("project_runs.id = ?", runId).First(&projectRun).Error
@@ -121,8 +121,8 @@ func GetProjectByProjectId(c *gin.Context, projectId uint, orgIdKey string) (*Pr
 	fmt.Printf("GetProjectByProjectId, org id: %v\n", loggedInOrganisationId)
 	var project Project
 
-	err := DB.Preload("Organisation").Preload("Namespace").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
+	err := DB.Preload("Organisation").Preload("Repo").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).
 		Where("projects.id = ?", projectId).First(&project).Error
@@ -145,9 +145,9 @@ func GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Polic
 	fmt.Printf("getPolicyByPolicyId, org id: %v\n", loggedInOrganisationId)
 	var policy Policy
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Namespace").
+	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = policies.project_id").
-		Joins("INNER JOIN namespaces ON projects.namespace_id = namespaces.id").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).
 		Where("policies.id = ?", policyId).First(&policy).Error
@@ -160,24 +160,46 @@ func GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Polic
 	return &policy, true
 }
 
-func GetDefaultNamespace(c *gin.Context, orgIdKey string) (*Namespace, bool) {
+func GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		fmt.Print("Not allowed to access this resource")
 		return nil, false
 	}
 
-	fmt.Printf("getDefaultNamespace, org id: %v\n", loggedInOrganisationId)
-	var namespace Namespace
+	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
+	var repo Repo
 
 	err := DB.Preload("Organisation").
-		Joins("INNER JOIN organisations ON namespaces.organisation_id = organisations.id").
-		Where("organisations.id = ?", loggedInOrganisationId).First(&namespace).Error
+		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
+		Where("organisations.id = ?", loggedInOrganisationId).First(&repo).Error
 
 	if err != nil {
 		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
-	return &namespace, true
+	return &repo, true
+}
+
+func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
+	loggedInOrganisationId, exists := c.Get(orgIdKey)
+	if !exists {
+		fmt.Print("Not allowed to access this resource")
+		return nil, false
+	}
+
+	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
+	var repo Repo
+
+	err := DB.Preload("Organisation").
+		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
+		Where("organisations.id = ? AND repos.id=?", loggedInOrganisationId, repoId).First(&repo).Error
+
+	if err != nil {
+		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, false
+	}
+
+	return &repo, true
 }
