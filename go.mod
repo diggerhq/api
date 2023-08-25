@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
-	github.com/diggerhq/lib-digger-config v0.0.0-20230825105038-4fde4c56d5f6
+	github.com/diggerhq/lib-digger-config v0.0.0-20230825134347-d793f8a8e101
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
