@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -385,22 +386,17 @@ func GithubWebhookHandler(c *gin.Context) {
 			Owner:    *event.Repo.Owner.Login,
 		}
 
-		configStr := `
-projects:
-- name: dev
-  dir: dev
-  workflow: my_custom_workflow
-- name: prod
-  dir: prod
-  workflow: my_custom_workflow
-workflows:
-  my_custom_workflow:
-    workflow_configuration:
-      on_pull_request_pushed: [digger plan]
-      on_pull_request_closed: [digger unlock]
-      on_commit_to_default: [digger apply]`
+		var repo models.Repo
 
-		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(configStr)
+		err = models.DB.Where("name = ? AND organisation_id = ?", strings.ReplaceAll(*event.Repo.FullName, "/", "-"), ghApp.OrganisationId).Take(&repo).Error
+
+		if err != nil {
+			log.Printf("Error getting repo: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting repo")
+			return
+		}
+
+		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(repo.DiggerConfig)
 
 		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(*event, config, &ghService)
 
