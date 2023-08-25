@@ -426,7 +426,7 @@ workflows:
 
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
-		var successPerJob map[string]bool
+		successPerJob := make(map[string]bool, len(jobs))
 
 		for _, job := range jobs {
 			go func(job orchestrator.Job) {
