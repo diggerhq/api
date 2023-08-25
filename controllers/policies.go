@@ -409,7 +409,7 @@ workflows:
 			return
 		}
 		eventPackage := dg_github_models.EventPackage{
-			Event:      event,
+			Event:      *event,
 			EventName:  "pull_request",
 			Actor:      *event.Sender.Login,
 			Repository: *event.Repo.FullName,
