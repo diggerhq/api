@@ -433,6 +433,8 @@ github.com/diggerhq/lib-digger-config v0.0.0-20230825134347-d793f8a8e101 h1:D8I+
 github.com/diggerhq/lib-digger-config v0.0.0-20230825134347-d793f8a8e101/go.mod h1:AdWua640lLPJJwWe7kZmKP6rk1+ycxxPjd1M4cQJDbs=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230825114620-f51fa4eb2fe3 h1:C6syzTVX/AodFt5uUB/HwDeSsyK7uBdBeu4pGDUqVdY=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230825114620-f51fa4eb2fe3/go.mod h1:JBjRXAr8bJQjIIhwmJwbLSSt8xziGFcWVcvAQArYfzs=
+github.com/diggerhq/lib-orchestrator v0.0.0-20230829160318-c3cce42f5f35 h1:vy9Xi+7z6Qr192CKGri8MG+5N9ONg6N2LwrMLrKdH/8=
+github.com/diggerhq/lib-orchestrator v0.0.0-20230829160318-c3cce42f5f35/go.mod h1:JBjRXAr8bJQjIIhwmJwbLSSt8xziGFcWVcvAQArYfzs=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
 github.com/dimchansky/utfbom v1.1.1 h1:vV6w1AhK4VMnhBno/TPVCoK9U/LP0PkLCS9tbxHdi/U=
 github.com/dimchansky/utfbom v1.1.1/go.mod h1:SxdoEBH5qIqFocHMyGOXVAybYJdr71b1Q/j0mACtrfE=

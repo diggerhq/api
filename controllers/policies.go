@@ -428,7 +428,7 @@ func GithubWebhookHandler(c *gin.Context) {
 			go func(job orchestrator.Job) {
 				defer wg.Done()
 
-				marshalled, err := json.Marshal(jobToJson(job))
+				marshalled, err := json.Marshal(orchestrator.JobToJson(job))
 
 				if err != nil {
 					successPerJob[job.ProjectName] = false
@@ -462,63 +462,4 @@ func GithubWebhookHandler(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "OK")
-}
-
-type Step struct {
-	Action    string   `json:"action"`
-	ExtraArgs []string `json:"extraArgs"`
-}
-
-type Stage struct {
-	Steps []Step `json:"steps"`
-}
-
-type Job struct {
-	ProjectName       string            `json:"projectName"`
-	ProjectDir        string            `json:"projectDir"`
-	ProjectWorkspace  string            `json:"projectWorkspace"`
-	Terragrunt        bool              `json:"terragrunt"`
-	Commands          []string          `json:"commands"`
-	ApplyStage        Stage             `json:"applyStage"`
-	PlanStage         Stage             `json:"planStage"`
-	PullRequestNumber *int              `json:"pullRequestNumber"`
-	EventName         string            `json:"eventName"`
-	RequestedBy       string            `json:"requestedBy"`
-	Namespace         string            `json:"namespace"`
-	StateEnvVars      map[string]string `json:"stateEnvVars"`
-	CommandEnvVars    map[string]string `json:"commandEnvVars"`
-}
-
-func jobToJson(job orchestrator.Job) Job {
-	return Job{
-		ProjectName:       job.ProjectName,
-		ProjectDir:        job.ProjectDir,
-		ProjectWorkspace:  job.ProjectWorkspace,
-		Terragrunt:        job.Terragrunt,
-		Commands:          job.Commands,
-		ApplyStage:        stageToJson(job.ApplyStage),
-		PlanStage:         stageToJson(job.PlanStage),
-		PullRequestNumber: job.PullRequestNumber,
-		EventName:         job.EventName,
-		RequestedBy:       job.RequestedBy,
-		Namespace:         job.Namespace,
-		StateEnvVars:      job.StateEnvVars,
-		CommandEnvVars:    job.CommandEnvVars,
-	}
-}
-
-func stageToJson(stage *orchestrator.Stage) Stage {
-	if stage == nil {
-		return Stage{}
-	}
-	steps := make([]Step, len(stage.Steps))
-	for i, step := range stage.Steps {
-		steps[i] = Step{
-			Action:    step.Action,
-			ExtraArgs: step.ExtraArgs,
-		}
-	}
-	return Stage{
-		Steps: steps,
-	}
 }
