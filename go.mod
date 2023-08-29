@@ -6,7 +6,6 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
 	github.com/diggerhq/lib-digger-config v0.0.0-20230825134347-d793f8a8e101
-	github.com/diggerhq/lib-orchestrator v0.0.0-20230825114620-f51fa4eb2fe3
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -52,6 +51,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/diggerhq/lib-orchestrator v0.0.0-20230829160318-c3cce42f5f35 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dominikbraun/graph v0.23.0 // indirect
 	github.com/fatih/color v1.9.0 // indirect
