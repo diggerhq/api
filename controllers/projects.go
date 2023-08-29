@@ -158,24 +158,35 @@ func ReportProjectsForRepo(c *gin.Context) {
 		}
 	}
 
-	project := models.Project{
-		Name:              request.Name,
-		ConfigurationYaml: request.ConfigurationYaml,
-		RepoID:            repo.ID,
-		OrganisationID:    org.ID,
-		Repo:              &repo,
-		Organisation:      &org,
-	}
+	var project models.Project
 
-	err = models.DB.Create(&project).Error
+	err = models.DB.Where("name = ? AND organisation_id = ? AND repo_id = ?", request.Name, org.ID, repo.ID).First(&project).Error
 
 	if err != nil {
-		log.Printf("Error creating project: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating project"})
-		return
-	}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			project := models.Project{
+				Name:              request.Name,
+				ConfigurationYaml: request.ConfigurationYaml,
+				RepoID:            repo.ID,
+				OrganisationID:    org.ID,
+				Repo:              &repo,
+				Organisation:      &org,
+			}
 
-	c.JSON(http.StatusOK, project.MapToJsonStruct())
+			err = models.DB.Create(&project).Error
+
+			if err != nil {
+				log.Printf("Error creating project: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating project"})
+				return
+			}
+			c.JSON(http.StatusOK, project.MapToJsonStruct())
+		} else {
+			log.Printf("Error fetching project: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching project"})
+			return
+		}
+	}
 }
 
 func RunHistoryForProject(c *gin.Context) {
