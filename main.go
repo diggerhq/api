@@ -1,6 +1,7 @@
 package main
 
 import (
+	cloud_config "digger.dev/cloud/config"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
@@ -9,9 +10,9 @@ import (
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -35,8 +36,14 @@ func main() {
 		fmt.Printf("Sentry initialization failed: %v", err)
 	}
 
+	var envVars cloud_config.EnvVariables
+
+	if err := env.Parse(&envVars); err != nil {
+		fmt.Printf("%+v\n", err)
+	}
+
 	//database migrations
-	models.ConnectDatabase()
+	models.ConnectDatabase(&envVars)
 
 	r := gin.Default()
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
@@ -48,7 +55,7 @@ func main() {
 			"build_date":  cfg.GetString("build_date"),
 			"deployed_at": cfg.GetString("deployed_at"),
 			"version":     Version,
-			"commit_sha":  os.Getenv("COMMIT_SHA"),
+			"commit_sha":  Version,
 		})
 	})
 
@@ -61,6 +68,10 @@ func main() {
 		Secret:     os.Getenv("AUTH_SECRET"),
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
+  
+  r.POST("/github-app-callback", controllers.GitHubAppCallback())
+	r.POST("/github-app-webhook", controllers.GitHubAppWebHook())
+  
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
@@ -96,8 +107,9 @@ func main() {
 	admin := r.Group("/")
 	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
 
+
 	fronteggWebhookProcessor := r.Group("/")
-	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
+	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth(&envVars))
 
 	authorized.GET("/repos/:repo/projects/:projectName/access-policy", controllers.FindAccessPolicy)
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)

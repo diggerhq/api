@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"digger.dev/cloud/config"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
 	"errors"
@@ -10,7 +11,6 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -164,7 +164,7 @@ func SecretCodeAuth() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("WEBHOOK_SECRET")), nil
+			return []byte(envVars.WebhookSecret), nil
 		})
 
 		if err != nil {
@@ -212,7 +212,7 @@ func BearerTokenAuth(auth services.Auth) gin.HandlerFunc {
 			c.Set(ORGANISATION_ID_KEY, dbToken.OrganisationID)
 			c.Set(ACCESS_LEVEL_KEY, dbToken.Type)
 		} else {
-			jwtPublicKey := os.Getenv("JWT_PUBLIC_KEY")
+			jwtPublicKey := envVars.JwtPublicKey
 			if jwtPublicKey == "" {
 				log.Printf("No JWT_PUBLIC_KEY environment variable provided")
 				c.String(http.StatusInternalServerError, "Error occurred while reading public key")
