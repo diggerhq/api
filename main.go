@@ -87,6 +87,9 @@ func main() {
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
+	github := r.Group("/")
+	github.POST("/github-webhook", controllers.GithubWebhookHandler)
+
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 

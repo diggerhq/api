@@ -1,16 +1,27 @@
 package controllers
 
 import (
+	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bradleyfalzon/ghinstallation/v2"
+	dg_configuration "github.com/diggerhq/lib-digger-config"
+	orchestrator "github.com/diggerhq/lib-orchestrator"
+	dg_github "github.com/diggerhq/lib-orchestrator/github"
+	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-github/v53/github"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 )
 
 type CreatePolicyInput struct {
@@ -300,4 +311,214 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func GithubWebhookHandler(c *gin.Context) {
+	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
+	if err != nil {
+		log.Printf("Error validating payload: %v", err)
+		c.String(http.StatusBadRequest, "Error validating payload")
+		return
+	}
+
+	event, err := github.ParseWebHook(github.WebHookType(c.Request), payload)
+	if err != nil {
+		log.Printf("Error parsing webhook: %v", err)
+		c.String(http.StatusBadRequest, "Error parsing webhook")
+		return
+	}
+
+	switch event := event.(type) {
+	case *github.InstallationEvent:
+		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
+		if event.GetAction() == "created" {
+			err := models.DB.Create(&models.GithubAppInstallation{
+				GithubInstallationId: *event.Installation.ID,
+				GithubAppId:          *event.Installation.AppID,
+			}).Error
+			if err != nil {
+				log.Printf("Error creating github event: %v", err)
+			}
+			c.String(http.StatusOK, "OK")
+		}
+	case *github.InstallationRepositoriesEvent:
+		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
+		if event.GetAction() == "added" {
+			err := models.DB.Create(&models.GithubAppInstallation{
+				GithubInstallationId: *event.Installation.ID,
+				GithubAppId:          *event.Installation.AppID,
+			}).Error
+			if err != nil {
+				log.Printf("Error creating github event: %v", err)
+			}
+			c.String(http.StatusOK, "OK")
+		}
+	case *github.PullRequestEvent:
+		log.Printf("Got pull request event for %v", event.GetPullRequest().GetTitle())
+		installation := models.GithubAppInstallation{}
+		err := models.DB.Where("github_installation_id = ?", *event.Installation.ID).Take(&installation).Error
+		if err != nil {
+			log.Printf("Error getting installation: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting installation")
+			return
+		}
+		ghApp := models.GithubApp{}
+		err = models.DB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
+		if err != nil {
+			log.Printf("Error getting app: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting app")
+			return
+		}
+		tr := http.DefaultTransport
+
+		itr, err := ghinstallation.New(tr, installation.GithubAppId, installation.GithubInstallationId, []byte(ghApp.PrivateKey))
+		if err != nil {
+			log.Printf("Error initialising installation: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting app")
+			return
+		}
+
+		client := github.NewClient(&http.Client{Transport: itr})
+
+		ghService := dg_github.GithubService{
+			Client:   client,
+			RepoName: *event.Repo.Name,
+			Owner:    *event.Repo.Owner.Login,
+		}
+
+		var repo models.Repo
+
+		err = models.DB.Where("name = ? AND organisation_id = ?", strings.ReplaceAll(*event.Repo.FullName, "/", "-"), ghApp.OrganisationId).Take(&repo).Error
+
+		if err != nil {
+			log.Printf("Error getting repo: %v", err)
+			c.String(http.StatusInternalServerError, "Error getting repo")
+			return
+		}
+
+		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(repo.DiggerConfig)
+
+		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(*event, config, &ghService)
+
+		if err != nil {
+			log.Printf("Error processing event: %v", err)
+			c.String(http.StatusInternalServerError, "Error processing event")
+			return
+		}
+		eventPackage := dg_github_models.EventPackage{
+			Event:      *event,
+			EventName:  "pull_request",
+			Actor:      *event.Sender.Login,
+			Repository: *event.Repo.FullName,
+		}
+
+		jobs, _, err := dg_github.ConvertGithubEventToJobs(eventPackage, impactedProjects, requestedProject, config.Workflows)
+
+		if err != nil {
+			log.Printf("Error converting event to jobs: %v", err)
+			c.String(http.StatusInternalServerError, "Error converting event to jobs")
+			return
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(len(jobs))
+		successPerJob := make(map[string]bool, len(jobs))
+
+		for _, job := range jobs {
+			go func(job orchestrator.Job) {
+				defer wg.Done()
+
+				marshalled, err := json.Marshal(jobToJson(job))
+
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error marshalling job: %v", err)
+					return
+				}
+
+				_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+					Ref:    event.PullRequest.Head.GetRef(),
+					Inputs: map[string]interface{}{"job": string(marshalled)},
+				})
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error dispatching workflow: %v", err)
+					return
+				}
+				successPerJob[job.ProjectName] = true
+			}(job)
+		}
+		c.String(http.StatusOK, "OK")
+		wg.Wait()
+		for projecName, success := range successPerJob {
+			err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
+			if err != nil {
+				log.Printf("Error publishing comment: %v", err)
+			}
+		}
+
+	default:
+		log.Printf("Unhandled event type: %v", event)
+	}
+
+	c.String(http.StatusOK, "OK")
+}
+
+type Step struct {
+	Action    string   `json:"action"`
+	ExtraArgs []string `json:"extraArgs"`
+}
+
+type Stage struct {
+	Steps []Step `json:"steps"`
+}
+
+type Job struct {
+	ProjectName       string            `json:"projectName"`
+	ProjectDir        string            `json:"projectDir"`
+	ProjectWorkspace  string            `json:"projectWorkspace"`
+	Terragrunt        bool              `json:"terragrunt"`
+	Commands          []string          `json:"commands"`
+	ApplyStage        Stage             `json:"applyStage"`
+	PlanStage         Stage             `json:"planStage"`
+	PullRequestNumber *int              `json:"pullRequestNumber"`
+	EventName         string            `json:"eventName"`
+	RequestedBy       string            `json:"requestedBy"`
+	Namespace         string            `json:"namespace"`
+	StateEnvVars      map[string]string `json:"stateEnvVars"`
+	CommandEnvVars    map[string]string `json:"commandEnvVars"`
+}
+
+func jobToJson(job orchestrator.Job) Job {
+	return Job{
+		ProjectName:       job.ProjectName,
+		ProjectDir:        job.ProjectDir,
+		ProjectWorkspace:  job.ProjectWorkspace,
+		Terragrunt:        job.Terragrunt,
+		Commands:          job.Commands,
+		ApplyStage:        stageToJson(job.ApplyStage),
+		PlanStage:         stageToJson(job.PlanStage),
+		PullRequestNumber: job.PullRequestNumber,
+		EventName:         job.EventName,
+		RequestedBy:       job.RequestedBy,
+		Namespace:         job.Namespace,
+		StateEnvVars:      job.StateEnvVars,
+		CommandEnvVars:    job.CommandEnvVars,
+	}
+}
+
+func stageToJson(stage *orchestrator.Stage) Stage {
+	if stage == nil {
+		return Stage{}
+	}
+	steps := make([]Step, len(stage.Steps))
+	for i, step := range stage.Steps {
+		steps[i] = Step{
+			Action:    step.Action,
+			ExtraArgs: step.ExtraArgs,
+		}
+	}
+	return Stage{
+		Steps: steps,
+	}
 }
