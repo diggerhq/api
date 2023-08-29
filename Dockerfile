@@ -1,4 +1,4 @@
-FROM golang:1.20.4 as builder
+FROM golang:1.20 as builder
 ARG COMMIT_SHA
 RUN echo "commit sha: ${COMMIT_SHA}"
 
@@ -18,9 +18,12 @@ RUN go version
 RUN go build -ldflags="-X 'main.Version=${COMMIT_SHA}'"
 
 # Multi-stage build will just copy the binary to an alpine image.
-FROM ubuntu:latest
+FROM ubuntu:22.04 as runner
 ARG COMMIT_SHA
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y ca-certificates && apt-get clean all
+RUN update-ca-certificates
 
 RUN echo "commit sha: ${COMMIT_SHA}"
 
@@ -32,6 +35,7 @@ EXPOSE 3000
 
 # Copy the binary to the corresponding folder
 COPY --from=builder /go/src/github.com/diggerhq/cloud/cloud .
+ADD templates ./templates
 
 # Run the binary
 CMD ["/app/cloud"]

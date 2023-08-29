@@ -31,10 +31,10 @@ func ConnectDatabase(envVars *config.EnvVariables) {
 		panic("Failed to perform migration for `Organisations`!")
 	}
 
-	err = database.AutoMigrate(&Namespace{})
+	err = database.AutoMigrate(&Repo{})
 
 	if err != nil {
-		panic("Failed to perform migration for `Namespaces`!")
+		panic("Failed to perform migration for `Repos`!")
 	}
 
 	err = database.AutoMigrate(&Project{})
@@ -55,9 +55,22 @@ func ConnectDatabase(envVars *config.EnvVariables) {
 		panic("Failed to perform migration for `Users`!")
 	}
 
-	err = database.AutoMigrate(&GitHubAppInstallation{})
+	err = database.AutoMigrate(&ProjectRun{})
+
 	if err != nil {
-		panic("Failed to perform migration for `GitHubAppInstallation`!")
+		panic("Failed to perform migration for `ProjectRun`!")
+	}
+
+	err = database.AutoMigrate(&GithubAppInstallation{})
+
+	if err != nil {
+		panic("Failed to perform migration for `GithubAppInstallation`!")
+	}
+
+	err = database.AutoMigrate(&GithubApp{})
+
+	if err != nil {
+		panic("Failed to perform migration for `GithubApp`!")
 	}
 
 	DB = database

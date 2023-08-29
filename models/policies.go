@@ -2,6 +2,12 @@ package models
 
 import "gorm.io/gorm"
 
+const (
+	POLICY_TYPE_ACCESS = "access"
+	POLICY_TYPE_PLAN   = "plan"
+	POLICY_TYPE_DRIFT  = "drift"
+)
+
 type Policy struct {
 	gorm.Model
 	Project        *Project
@@ -10,8 +16,8 @@ type Policy struct {
 	Type           string
 	CreatedBy      *User
 	CreatedByID    *uint
-	Organisation   Organisation
+	Organisation   *Organisation
 	OrganisationID uint
-	Namespace      *Namespace
-	NamespaceID    *uint
+	Repo           *Repo
+	RepoID         *uint
 }

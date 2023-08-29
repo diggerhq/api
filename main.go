@@ -5,8 +5,11 @@ import (
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
 	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -18,6 +21,20 @@ var Version = "dev"
 func main() {
 	cfg := config.New()
 	cfg.AutomaticEnv()
+	web := controllers.WebController{Config: cfg}
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           os.Getenv("SENTRY_DSN"),
+		EnableTracing: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+		Release:          "api@" + Version,
+		Debug:            true,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v", err)
+	}
 
 	var envVars cloud_config.EnvVariables
 
@@ -29,6 +46,9 @@ func main() {
 	models.ConnectDatabase(&envVars)
 
 	r := gin.Default()
+	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
+
+	r.Static("/static", "./templates/static")
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -39,24 +59,83 @@ func main() {
 		})
 	})
 
-	r.POST("/github-app-callback", controllers.GitHubAppCallback())
+	r.LoadHTMLGlob("templates/*.tmpl")
+	r.GET("/", web.RedirectToLoginSubdomain)
 
+	auth := services.Auth{
+		HttpClient: http.Client{},
+		Host:       os.Getenv("AUTH_HOST"),
+		Secret:     os.Getenv("AUTH_SECRET"),
+		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
+	}
+  
+  r.POST("/github-app-callback", controllers.GitHubAppCallback())
 	r.POST("/github-app-webhook", controllers.GitHubAppWebHook())
+  
+	projectsGroup := r.Group("/projects")
+	projectsGroup.Use(middleware.WebAuth(auth))
+	projectsGroup.GET("/", web.ProjectsPage)
+	projectsGroup.GET("/add", web.AddProjectPage)
+	projectsGroup.POST("/add", web.AddProjectPage)
+	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
+	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
+
+	runsGroup := r.Group("/runs")
+	runsGroup.Use(middleware.WebAuth(auth))
+	runsGroup.GET("/", web.RunsPage)
+	runsGroup.GET("/:runid/details", web.RunDetailsPage)
+
+	reposGroup := r.Group("/repo")
+	reposGroup.Use(middleware.WebAuth(auth))
+	reposGroup.GET("/:repoid/", web.UpdateRepoPage)
+	reposGroup.POST("/:repoid/", web.UpdateRepoPage)
+
+	policiesGroup := r.Group("/policies")
+	policiesGroup.Use(middleware.WebAuth(auth))
+	policiesGroup.GET("/", web.PoliciesPage)
+	policiesGroup.GET("/add", web.AddPolicyPage)
+	policiesGroup.POST("/add", web.AddPolicyPage)
+	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
+	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
+
+	github := r.Group("/")
+	github.POST("/github-webhook", controllers.GithubWebhookHandler)
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BearerTokenAuth(&envVars), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BearerTokenAuth(&envVars), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
+
 
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth(&envVars))
 
-	authorized.GET("/repos/:namespace/projects/:projectName/access-policy", controllers.FindPolicy)
-	authorized.GET("/orgs/:organisation/access-policy", controllers.FindPolicyForOrg)
+	authorized.GET("/repos/:repo/projects/:projectName/access-policy", controllers.FindAccessPolicy)
+	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
 
-	admin.PUT("/repos/:namespace/projects/:projectName/access-policy", controllers.UpsertPolicyForNamespaceAndProject)
-	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertPolicyForOrg)
+	authorized.GET("/repos/:repo/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
+	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
+
+	authorized.GET("/repos/:repo/projects/:projectName/drift-policy", controllers.FindDriftPolicy)
+	authorized.GET("/orgs/:organisation/drift-policy", controllers.FindDriftPolicyForOrg)
+
+	authorized.GET("/repos/:repo/projects/:projectName/runs", controllers.RunHistoryForProject)
+	authorized.POST("/repos/:repo/projects/:projectName/runs", controllers.CreateRunForProject)
+	authorized.GET("/repos/:repo/projects", controllers.FindProjectsForRepo)
+	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
+
+	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
+
+	admin.PUT("/repos/:repo/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForRepoAndProject)
+	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
+
+	admin.PUT("/repos/:repo/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForRepoAndProject)
+	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
+
+	admin.PUT("/repos/:repo/projects/:projectName/drift-policy", controllers.UpsertDriftPolicyForRepoAndProject)
+	admin.PUT("/orgs/:organisation/drift-policy", controllers.UpsertDriftPolicyForOrg)
+
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)

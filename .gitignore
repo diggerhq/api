@@ -5,5 +5,7 @@ venv/
 __azurite*
 ./digger
 cloud
-.env
+*.env
+*.env.*
 .docker-compose-env
+

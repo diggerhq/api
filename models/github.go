@@ -1,21 +1,15 @@
 package models
+import "gorm.io/gorm"
 
-import (
-	"gorm.io/gorm"
-)
-
-type GitHubAppState string
-
-const (
-	Active  GitHubAppState = "ACTIVE"
-	Deleted GitHubAppState = "DELETED"
-)
-
-type GitHubAppInstallation struct {
+type GithubApp struct {
 	gorm.Model
-	InstallationId int
-	AccountId      int
-	Login          string
-	Repo           string
-	State          GitHubAppState
+	GithubId       int64  `json:"githubId"`
+	OrganisationId int    `json:"organisationId"`
+	PrivateKey     string `json:"privateKey"`
+}
+
+type GithubAppInstallation struct {
+	gorm.Model
+	GithubInstallationId int64 `json:"githubInstallationId"`
+	GithubAppId          int64 `json:"githubAppId"`
 }
