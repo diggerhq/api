@@ -26,6 +26,7 @@
                                 <th>Project Name</th>
                                 <th>Status</th>
                                 <th>Command</th>
+                                <th>Started at</th>
                                 <th>Details</th>
                             </tr>
                         </thead>
@@ -35,6 +36,7 @@
                                 <td>{{ .Project.Name }}</td>
                                 <td>{{ .Status }}</td>
                                 <td>{{ .Command }}</td>
+                                <td>{{ .StartedAt | formatAsDate }}</td>
                                 <td><a href="/runs/{{.ID}}/details">Details<a></td>
                             </tr>
                         {{ end }}
