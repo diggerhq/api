@@ -60,8 +60,9 @@ func GitHubAppWebHook(c *gin.Context) {
 
 		if installation.Action == "deleted" {
 			installationId := installation.Installation.ID
+			appId := installation.Installation.AppID
 			for _, repo := range installation.Repositories {
-				err := repoRemoved(installationId, repo.FullName)
+				err := repoRemoved(installationId, appId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to remove item.")
 					return
@@ -85,8 +86,9 @@ func GitHubAppWebHook(c *gin.Context) {
 		}
 		if installationRepos.Action == "removed" {
 			installationId := installationRepos.Installation.ID
+			appId := installationRepos.Installation.AppID
 			for _, repo := range installationRepos.RepositoriesRemoved {
-				err := repoRemoved(installationId, repo.FullName)
+				err := repoRemoved(installationId, appId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to remove item.")
 					return
@@ -136,9 +138,9 @@ func repoAdded(installationId int64, appId int, login string, accountId int64, r
 	return nil
 }
 
-func repoRemoved(installationId int64, repoFullName string) error {
+func repoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := models.GithubAppInstallation{}
-	err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repoFullName).First(&item).Error
+	err := models.DB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, models.Active, appId, repoFullName).First(&item).Error
 	if err != nil {
 		return fmt.Errorf("failed to find github installation in database. %v", err)
 	}
