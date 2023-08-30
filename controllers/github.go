@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"digger.dev/cloud/models"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/webhooks/v6/github"
@@ -36,8 +37,9 @@ func GitHubAppWebHook(c *gin.Context) {
 
 	payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent)
 	if err != nil {
-		if err == github.ErrEventNotFound {
+		if errors.Is(err, github.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
+			fmt.Println("GitHub event  wasn't found.")
 		}
 	}
 	switch payload.(type) {
