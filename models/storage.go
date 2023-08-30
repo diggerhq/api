@@ -1,9 +1,12 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
+	"time"
 )
 
 func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
@@ -202,4 +205,59 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	}
 
 	return &repo, true
+}
+
+func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+	// check if item exist already
+	item := GithubAppInstallation{}
+	result := DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
+		}
+	}
+
+	if result.RowsAffected == 0 {
+		item := GithubAppInstallation{
+			GithubInstallationId: installationId,
+			GithubAppId:          int64(appId),
+			Login:                login,
+			AccountId:            int(accountId),
+			Repo:                 repoFullName,
+			State:                Active,
+		}
+		err := DB.Create(&item).Error
+		if err != nil {
+			fmt.Printf("Failed to save github installation item to database. %v\n", err)
+			return fmt.Errorf("failed to save github installation item to database. %v", err)
+		}
+	} else {
+		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
+		item.State = Active
+		item.UpdatedAt = time.Now()
+		err := DB.Save(item).Error
+		if err != nil {
+			return fmt.Errorf("failed to update github installation in the database. %v", err)
+		}
+	}
+	return nil
+}
+
+func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) error {
+	item := GithubAppInstallation{}
+	err := DB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
+			return nil
+		}
+		return fmt.Errorf("failed to find github installation in database. %v", err)
+	}
+	item.State = Deleted
+	item.UpdatedAt = time.Now()
+	err = DB.Save(item).Error
+	if err != nil {
+		return fmt.Errorf("failed to update github installation in the database. %v", err)
+	}
+	return nil
 }
