@@ -104,18 +104,29 @@ func GitHubAppWebHook(c *gin.Context) {
 }
 
 func repoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
-	item := models.GithubAppInstallation{
-		GithubInstallationId: installationId,
-		GithubAppId:          int64(appId),
-		Login:                login,
-		AccountId:            int(accountId),
-		Repo:                 repoFullName,
-		State:                models.Active,
+	// check if item exist already
+	item := models.GithubAppInstallation{}
+	result := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repoFullName).First(&item)
+	if result.Error != nil {
+		return fmt.Errorf("failed to find github installation in database. %v", result.Error)
 	}
-	err := models.DB.Create(&item).Error
-	if err != nil {
-		fmt.Printf("Failed to save github installation item to database. %v\n", err)
-		return fmt.Errorf("failed to save github installation item to database. %v", err)
+
+	if result.RowsAffected == 0 {
+		item := models.GithubAppInstallation{
+			GithubInstallationId: installationId,
+			GithubAppId:          int64(appId),
+			Login:                login,
+			AccountId:            int(accountId),
+			Repo:                 repoFullName,
+			State:                models.Active,
+		}
+		err := models.DB.Create(&item).Error
+		if err != nil {
+			fmt.Printf("Failed to save github installation item to database. %v\n", err)
+			return fmt.Errorf("failed to save github installation item to database. %v", err)
+		}
+	} else {
+		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
 	}
 	return nil
 }
