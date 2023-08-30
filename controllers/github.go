@@ -40,6 +40,8 @@ func GitHubAppWebHook(c *gin.Context) {
 		if errors.Is(err, github.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
 			fmt.Println("GitHub event  wasn't found.")
+		} else {
+			fmt.Println("Failed to parse Github Event.")
 		}
 	}
 	switch payload.(type) {
