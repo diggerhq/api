@@ -100,3 +100,7 @@ func GitHubAppWebHook() func(c *gin.Context) {
 		c.JSON(200, "ok")
 	}
 }
+
+func GitHubAppSetupPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
+}
