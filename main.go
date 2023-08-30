@@ -10,8 +10,10 @@ import (
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"html/template"
 	"net/http"
 	"os"
+	"time"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -28,7 +30,7 @@ func main() {
 		// Set TracesSampleRate to 1.0 to capture 100%
 		// of transactions for performance monitoring.
 		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
+		TracesSampleRate: 0.1,
 		Release:          "api@" + Version,
 		Debug:            true,
 	}); err != nil {
@@ -50,6 +52,12 @@ func main() {
 			"version":     Version,
 			"commit_sha":  Version,
 		})
+	})
+
+	r.SetFuncMap(template.FuncMap{
+		"formatAsDate": func(msec int64) time.Time {
+			return time.UnixMilli(msec)
+		},
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
