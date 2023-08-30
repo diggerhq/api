@@ -24,6 +24,8 @@ func GitHubAppCallback(c *gin.Context) {
 }
 
 func GitHubAppWebHook(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+
 	requestBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		fmt.Printf("Error reading request body. %v\n", err)
@@ -43,12 +45,16 @@ func GitHubAppWebHook(c *gin.Context) {
 		} else {
 			fmt.Println("Failed to parse Github Event.")
 		}
+		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
+		return
 	}
 	switch payload.(type) {
 
 	case github.InstallationPayload:
+		fmt.Println("case github.InstallationPayload:")
 		installation := payload.(github.InstallationPayload)
 		if installation.Action == "created" {
+			fmt.Println("github.InstallationPayload, created")
 			installationId := installation.Installation.ID
 			login := installation.Installation.Account.Login
 			accountId := installation.Installation.Account.ID
@@ -72,6 +78,7 @@ func GitHubAppWebHook(c *gin.Context) {
 		}
 
 		if installation.Action == "deleted" {
+			fmt.Println("github.InstallationPayload, deleted")
 			installationId := installation.Installation.ID
 			login := installation.Installation.Account.Login
 			accountId := installation.Installation.Account.ID
@@ -97,7 +104,7 @@ func GitHubAppWebHook(c *gin.Context) {
 		// Do whatever you want from here...
 		fmt.Printf("new comment: %+v", issueComment)
 	}
-	c.Header("Content-Type", "application/json")
+
 	c.JSON(200, "ok")
 }
 
