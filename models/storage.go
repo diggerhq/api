@@ -207,9 +207,9 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	return &repo, true
 }
 
-func GitHubRepoAdded(orgId int64, installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
-	result := DB.Where(&app, GithubApp{GithubId: int64(appId), OrganisationId: int(orgId)}).FirstOrCreate(&app)
+	result := DB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to create github app in database. %v", result.Error)
