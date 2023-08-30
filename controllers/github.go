@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"time"
 )
 
 func GitHubAppCallback(c *gin.Context) {
@@ -133,6 +134,7 @@ func repoAdded(installationId int64, appId int, login string, accountId int64, r
 	} else {
 		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
 		item.State = models.Active
+		item.UpdatedAt = time.Now()
 		err := models.DB.Save(item).Error
 		if err != nil {
 			return fmt.Errorf("failed to update github installation in the database. %v", err)
@@ -152,6 +154,7 @@ func repoRemoved(installationId int64, appId int, repoFullName string) error {
 		return fmt.Errorf("failed to find github installation in database. %v", err)
 	}
 	item.State = models.Deleted
+	item.UpdatedAt = time.Now()
 	err = models.DB.Save(item).Error
 	if err != nil {
 		return fmt.Errorf("failed to update github installation in the database. %v", err)
