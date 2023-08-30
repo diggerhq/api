@@ -50,18 +50,9 @@ func GitHubAppWebHook(c *gin.Context) {
 			fmt.Printf("accountId: %d\n", accountId)
 
 			for _, repo := range installation.Repositories {
-				item := models.GithubAppInstallation{
-					GithubInstallationId: installationId,
-					GithubAppId:          int64(appId),
-					Login:                login,
-					AccountId:            int(accountId),
-					Repo:                 repo.FullName,
-					State:                models.Active,
-				}
-				err := models.DB.Create(&item).Error
+				err := repoAdded(installationId, appId, login, accountId, repo.FullName)
 				if err != nil {
-					fmt.Printf("Failed to save record to database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to save record to database.")
+					c.String(http.StatusInternalServerError, "Failed to store item.")
 					return
 				}
 			}
@@ -69,50 +60,40 @@ func GitHubAppWebHook(c *gin.Context) {
 
 		if installation.Action == "deleted" {
 			installationId := installation.Installation.ID
-			accountId := installation.Installation.Account.ID
-			fmt.Printf("accountId: %d\n", accountId)
-
 			for _, repo := range installation.Repositories {
-				item := models.GithubAppInstallation{}
-				err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo.FullName).First(&item).Error
+				err := repoRemoved(installationId, repo.FullName)
 				if err != nil {
-					fmt.Printf("Failed to find github installation in database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to find github installation.")
-					return
-				}
-				item.State = models.Deleted
-				err = models.DB.Save(item).Error
-				if err != nil {
-					fmt.Printf("Failed to update github installationin in database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to update github installation.")
+					c.String(http.StatusInternalServerError, "Failed to remove item.")
 					return
 				}
 			}
 		}
 	case github.InstallationRepositoriesPayload:
 		installationRepos := payload.(github.InstallationRepositoriesPayload)
-		if installationRepos.Action == "removed" {
+		if installationRepos.Action == "added" {
 			installationId := installationRepos.Installation.ID
+			login := installationRepos.Installation.Account.Login
 			accountId := installationRepos.Installation.Account.ID
-			fmt.Printf("accountId: %d\n", accountId)
-
-			for _, repo := range installationRepos.RepositoriesRemoved {
-				item := models.GithubAppInstallation{}
-				err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo.FullName).First(&item).Error
+			appId := installationRepos.Installation.AppID
+			for _, repo := range installationRepos.RepositoriesAdded {
+				err := repoAdded(installationId, appId, login, accountId, repo.FullName)
 				if err != nil {
-					fmt.Printf("Failed to find github installation in database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to find github installation.")
-					return
-				}
-				item.State = models.Deleted
-				err = models.DB.Save(item).Error
-				if err != nil {
-					fmt.Printf("Failed to update github installationin in database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to update github installation.")
+					c.String(http.StatusInternalServerError, "Failed to store item.")
 					return
 				}
 			}
 		}
+		if installationRepos.Action == "removed" {
+			installationId := installationRepos.Installation.ID
+			for _, repo := range installationRepos.RepositoriesRemoved {
+				err := repoRemoved(installationId, repo.FullName)
+				if err != nil {
+					c.String(http.StatusInternalServerError, "Failed to remove item.")
+					return
+				}
+			}
+		}
+
 	case github.IssueCommentPayload:
 		issueComment := payload.(github.IssueCommentPayload)
 		// Do whatever you want from here...
@@ -120,6 +101,37 @@ func GitHubAppWebHook(c *gin.Context) {
 	}
 
 	c.JSON(200, "ok")
+}
+
+func repoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+	item := models.GithubAppInstallation{
+		GithubInstallationId: installationId,
+		GithubAppId:          int64(appId),
+		Login:                login,
+		AccountId:            int(accountId),
+		Repo:                 repoFullName,
+		State:                models.Active,
+	}
+	err := models.DB.Create(&item).Error
+	if err != nil {
+		fmt.Printf("Failed to save github installation item to database. %v\n", err)
+		return fmt.Errorf("failed to save github installation item to database. %v", err)
+	}
+	return nil
+}
+
+func repoRemoved(installationId int64, repoFullName string) error {
+	item := models.GithubAppInstallation{}
+	err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repoFullName).First(&item).Error
+	if err != nil {
+		return fmt.Errorf("failed to find github installation in database. %v", err)
+	}
+	item.State = models.Deleted
+	err = models.DB.Save(item).Error
+	if err != nil {
+		return fmt.Errorf("failed to update github installation in the database. %v", err)
+	}
+	return nil
 }
 
 func GitHubAppSetupPage(c *gin.Context) {
