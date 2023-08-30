@@ -27,7 +27,7 @@ func GitHubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	hook, _ := github.New()
 
-	payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent)
+	payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent, github.InstallationRepositoriesEvent)
 	if err != nil {
 		if errors.Is(err, github.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
@@ -65,7 +65,6 @@ func GitHubAppWebHook(c *gin.Context) {
 					return
 				}
 			}
-
 		}
 
 		if installation.Action == "deleted" {
@@ -74,6 +73,30 @@ func GitHubAppWebHook(c *gin.Context) {
 			fmt.Printf("accountId: %d\n", accountId)
 
 			for _, repo := range installation.Repositories {
+				item := models.GithubAppInstallation{}
+				err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo.FullName).First(&item).Error
+				if err != nil {
+					fmt.Printf("Failed to find github installation in database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to find github installation.")
+					return
+				}
+				item.State = models.Deleted
+				err = models.DB.Save(item).Error
+				if err != nil {
+					fmt.Printf("Failed to update github installationin in database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to update github installation.")
+					return
+				}
+			}
+		}
+	case github.InstallationRepositoriesPayload:
+		installationRepos := payload.(github.InstallationRepositoriesPayload)
+		if installationRepos.Action == "removed" {
+			installationId := installationRepos.Installation.ID
+			accountId := installationRepos.Installation.Account.ID
+			fmt.Printf("accountId: %d\n", accountId)
+
+			for _, repo := range installationRepos.RepositoriesRemoved {
 				item := models.GithubAppInstallation{}
 				err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo.FullName).First(&item).Error
 				if err != nil {
