@@ -106,7 +106,7 @@ func GitHubAppWebHook(c *gin.Context) {
 func repoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	// check if item exist already
 	item := models.GithubAppInstallation{}
-	result := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repoFullName).First(&item)
+	result := models.DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
 	if result.Error != nil {
 		return fmt.Errorf("failed to find github installation in database. %v", result.Error)
 	}
@@ -127,6 +127,11 @@ func repoAdded(installationId int64, appId int, login string, accountId int64, r
 		}
 	} else {
 		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
+		item.State = models.Active
+		err := models.DB.Save(item).Error
+		if err != nil {
+			return fmt.Errorf("failed to update github installation in the database. %v", err)
+		}
 	}
 	return nil
 }
