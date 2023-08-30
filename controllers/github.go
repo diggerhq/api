@@ -25,17 +25,6 @@ func GitHubAppCallback(c *gin.Context) {
 
 func GitHubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-
-	/*
-		requestBody, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			fmt.Printf("Error reading request body. %v\n", err)
-			c.String(http.StatusInternalServerError, "Error reading request body")
-			return
-		}
-
-		fmt.Printf("webhook request: %s", string(requestBody))
-	*/
 	hook, _ := github.New()
 
 	payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent)
@@ -43,11 +32,8 @@ func GitHubAppWebHook(c *gin.Context) {
 		if errors.Is(err, github.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
 			fmt.Println("GitHub event  wasn't found.")
-		} else {
-			fmt.Println("Failed to parse Github Event.")
 		}
-		fmt.Printf("error:%v", err.Error())
-		fmt.Printf("error:%v", err)
+		fmt.Printf("Failed to parse Github Event. :%v", err)
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
 		return
 	}
@@ -57,10 +43,10 @@ func GitHubAppWebHook(c *gin.Context) {
 		fmt.Println("case github.InstallationPayload:")
 		installation := payload.(github.InstallationPayload)
 		if installation.Action == "created" {
-			fmt.Println("github.InstallationPayload, created")
 			installationId := installation.Installation.ID
 			login := installation.Installation.Account.Login
 			accountId := installation.Installation.Account.ID
+			fmt.Printf("accountId: %d\n", accountId)
 
 			for _, repo := range installation.Repositories {
 				item := models.GithubAppInstallation{
@@ -81,23 +67,24 @@ func GitHubAppWebHook(c *gin.Context) {
 		}
 
 		if installation.Action == "deleted" {
-			fmt.Println("github.InstallationPayload, deleted")
 			installationId := installation.Installation.ID
-			login := installation.Installation.Account.Login
 			accountId := installation.Installation.Account.ID
+			fmt.Printf("accountId: %d\n", accountId)
 
 			for _, repo := range installation.Repositories {
-				item := models.GithubAppInstallation{
-					GithubInstallationId: installationId,
-					Login:                login,
-					AccountId:            int(accountId),
-					Repo:                 repo.FullName,
-					State:                models.Deleted,
-				}
+				item := models.GithubAppInstallation{}
+				models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo).First(&item)
 				err := models.DB.Create(&item).Error
 				if err != nil {
-					fmt.Printf("Failed to save record to database. %v\n", err)
-					c.String(http.StatusInternalServerError, "Failed to save record to database.")
+					fmt.Printf("Failed to find github installationin database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to find github installation.")
+					return
+				}
+				item.State = models.Deleted
+				err = models.DB.Save(item).Error
+				if err != nil {
+					fmt.Printf("Failed to update github installationin in database. %v\n", err)
+					c.String(http.StatusInternalServerError, "Failed to update github installation.")
 					return
 				}
 			}
