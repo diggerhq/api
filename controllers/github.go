@@ -46,11 +46,13 @@ func GitHubAppWebHook(c *gin.Context) {
 			installationId := installation.Installation.ID
 			login := installation.Installation.Account.Login
 			accountId := installation.Installation.Account.ID
+			appId := installation.Installation.AppID
 			fmt.Printf("accountId: %d\n", accountId)
 
 			for _, repo := range installation.Repositories {
 				item := models.GithubAppInstallation{
 					GithubInstallationId: installationId,
+					GithubAppId:          int64(appId),
 					Login:                login,
 					AccountId:            int(accountId),
 					Repo:                 repo.FullName,
