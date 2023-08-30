@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/webhooks/v6/github"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 )
@@ -110,7 +111,9 @@ func repoAdded(installationId int64, appId int, login string, accountId int64, r
 	item := models.GithubAppInstallation{}
 	result := models.DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
 	if result.Error != nil {
-		return fmt.Errorf("failed to find github installation in database. %v", result.Error)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
+		}
 	}
 
 	if result.RowsAffected == 0 {
@@ -142,6 +145,10 @@ func repoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := models.GithubAppInstallation{}
 	err := models.DB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, models.Active, appId, repoFullName).First(&item).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
+			return nil
+		}
 		return fmt.Errorf("failed to find github installation in database. %v", err)
 	}
 	item.State = models.Deleted
