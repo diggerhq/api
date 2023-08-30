@@ -45,6 +45,7 @@ func GitHubAppWebHook(c *gin.Context) {
 		} else {
 			fmt.Println("Failed to parse Github Event.")
 		}
+		fmt.Println(err.Error())
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
 		return
 	}
