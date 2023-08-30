@@ -207,10 +207,18 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	return &repo, true
 }
 
-func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+func GitHubRepoAdded(orgId int64, installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+	app := GithubApp{}
+	result := DB.Where(&app, GithubApp{GithubId: int64(appId), OrganisationId: int(orgId)}).FirstOrCreate(&app)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to create github app in database. %v", result.Error)
+		}
+	}
+
 	// check if item exist already
 	item := GithubAppInstallation{}
-	result := DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
+	result = DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
