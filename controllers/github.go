@@ -75,8 +75,7 @@ func GitHubAppWebHook(c *gin.Context) {
 
 			for _, repo := range installation.Repositories {
 				item := models.GithubAppInstallation{}
-				models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo).First(&item)
-				err := models.DB.Create(&item).Error
+				err := models.DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, models.Active, repo).First(&item).Error
 				if err != nil {
 					fmt.Printf("Failed to find github installationin database. %v\n", err)
 					c.String(http.StatusInternalServerError, "Failed to find github installation.")
