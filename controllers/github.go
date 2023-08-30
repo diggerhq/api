@@ -26,15 +26,16 @@ func GitHubAppCallback(c *gin.Context) {
 func GitHubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 
-	requestBody, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		fmt.Printf("Error reading request body. %v\n", err)
-		c.String(http.StatusInternalServerError, "Error reading request body")
-		return
-	}
+	/*
+		requestBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			fmt.Printf("Error reading request body. %v\n", err)
+			c.String(http.StatusInternalServerError, "Error reading request body")
+			return
+		}
 
-	fmt.Printf("webhook request: %s", string(requestBody))
-
+		fmt.Printf("webhook request: %s", string(requestBody))
+	*/
 	hook, _ := github.New()
 
 	payload, err := hook.Parse(c.Request, github.InstallationEvent, github.PullRequestEvent, github.IssueCommentEvent)
