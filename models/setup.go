@@ -1,18 +1,18 @@
 package models
 
 import (
-	"digger.dev/cloud/config"
 	"gorm.io/driver/postgres"
 	_ "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"os"
 )
 
 var DB *gorm.DB
 
-func ConnectDatabase(envVars *config.EnvVariables) {
+func ConnectDatabase() {
 
-	database, err := gorm.Open(postgres.Open(envVars.DatabaseUrl), &gorm.Config{
+	database, err := gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 

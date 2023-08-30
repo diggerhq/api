@@ -23,5 +23,5 @@ type GithubAppInstallation struct {
 	AccountId            int
 	Login                string
 	Repo                 string
-	State                GithubAppInstallState `gorm:"type:enum('active', 'deleted')"`
+	State                GithubAppInstallState
 }

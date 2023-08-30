@@ -1,7 +1,6 @@
 package main
 
 import (
-	cloud_config "digger.dev/cloud/config"
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
@@ -12,6 +11,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	//database migrations
-	models.ConnectDatabase(&envVars)
+	models.ConnectDatabase()
 
 	r := gin.Default()
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
@@ -61,8 +61,8 @@ func main() {
 		Secret:     os.Getenv("AUTH_SECRET"),
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
-  
-  r.POST("/github-app-callback", controllers.GitHubAppCallback())
+
+	r.POST("/github-app-callback", controllers.GitHubAppCallback())
 	r.POST("/github-app-webhook", controllers.GitHubAppWebHook())
 
 	projectsGroup := r.Group("/projects")
@@ -101,29 +101,7 @@ func main() {
 	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
 
 	fronteggWebhookProcessor := r.Group("/")
-	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth(&envVars))
-
-	authorized.GET("/repos/:repo/projects/:projectName/access-policy", controllers.FindAccessPolicy)
-	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
-
-	authorized.GET("/repos/:repo/projects/:projectName/plan-policy", controllers.FindPlanPolicy)
-	authorized.GET("/orgs/:organisation/plan-policy", controllers.FindPlanPolicyForOrg)
-
-	authorized.GET("/repos/:repo/projects/:projectName/drift-policy", controllers.FindDriftPolicy)
-	authorized.GET("/orgs/:organisation/drift-policy", controllers.FindDriftPolicyForOrg)
-
-	authorized.GET("/repos/:repo/projects/:projectName/runs", controllers.RunHistoryForProject)
-	authorized.POST("/repos/:repo/projects/:projectName/runs", controllers.CreateRunForProject)
-	authorized.GET("/repos/:repo/projects", controllers.FindProjectsForRepo)
-	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
-
-	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-
-	admin.PUT("/repos/:repo/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForRepoAndProject)
-	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
-
-	admin.PUT("/repos/:repo/projects/:projectName/plan-policy", controllers.UpsertPlanPolicyForRepoAndProject)
-	admin.PUT("/orgs/:organisation/plan-policy", controllers.UpsertPlanPolicyForOrg)
+	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())
 
 	authorized.GET("/repos/:repo/projects/:projectName/access-policy", controllers.FindAccessPolicy)
 	authorized.GET("/orgs/:organisation/access-policy", controllers.FindAccessPolicyForOrg)
