@@ -53,12 +53,12 @@ func GitHubAppWebHook() func(c *gin.Context) {
 				accountId := installation.Installation.Account.ID
 
 				for _, repo := range installation.Repositories {
-					item := models.GitHubAppInstallation{
-						InstallationId: int(installationId),
-						Login:          login,
-						AccountId:      int(accountId),
-						Repo:           repo.FullName,
-						State:          models.Active,
+					item := models.GithubAppInstallation{
+						GithubInstallationId: installationId,
+						Login:                login,
+						AccountId:            int(accountId),
+						Repo:                 repo.FullName,
+						State:                models.Active,
 					}
 					err := models.DB.Create(&item).Error
 					if err != nil {
@@ -76,12 +76,12 @@ func GitHubAppWebHook() func(c *gin.Context) {
 				accountId := installation.Installation.Account.ID
 
 				for _, repo := range installation.Repositories {
-					item := models.GitHubAppInstallation{
-						InstallationId: int(installationId),
-						Login:          login,
-						AccountId:      int(accountId),
-						Repo:           repo.FullName,
-						State:          models.Deleted,
+					item := models.GithubAppInstallation{
+						GithubInstallationId: installationId,
+						Login:                login,
+						AccountId:            int(accountId),
+						Repo:                 repo.FullName,
+						State:                models.Deleted,
 					}
 					err := models.DB.Create(&item).Error
 					if err != nil {
