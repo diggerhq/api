@@ -1,25 +1,47 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/storage/memory"
+	"log"
+	"os"
 )
 
-func CloneGitRepo(repoUrl string, accessToken string, branch string) (*git.Repository, error) {
-	r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+func createTempDir() string {
+	tempDir, err := os.MkdirTemp("", "repo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Temp dir created:", tempDir)
+	return tempDir
+}
+
+type action func(string)
+
+func CloneGitRepoAndDoAction(repoUrl string, accessToken string, branch string, action action) error {
+	dir := createTempDir()
+	println(dir)
+	_, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL: repoUrl,
 		Auth: &http.BasicAuth{
 			Username: "x-access-token", // anything except an empty string
 			Password: accessToken,
 		},
 		ReferenceName: plumbing.NewBranchReferenceName(branch),
-		SingleBranch:  true,
 		Depth:         1,
+		SingleBranch:  true,
 	})
 	if err != nil {
-		return nil, err
+		println(err)
+		return err
 	}
-	return r, nil
+
+	action(dir)
+
+	defer os.RemoveAll(dir)
+	return nil
+
 }
