@@ -50,7 +50,7 @@ func main() {
 			"build_date":  cfg.GetString("build_date"),
 			"deployed_at": cfg.GetString("deployed_at"),
 			"version":     Version,
-			"commit_sha":  os.Getenv("COMMIT_SHA"),
+			"commit_sha":  Version,
 		})
 	})
 
@@ -69,6 +69,14 @@ func main() {
 		Secret:     os.Getenv("AUTH_SECRET"),
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
+
+	r.POST("/github-app-callback", controllers.GitHubAppCallback)
+	r.POST("/github-app-webhook", controllers.GitHubAppWebHook)
+
+	githubGroup := r.Group("/github")
+	githubGroup.Use(middleware.WebAuth(auth))
+	githubGroup.GET("/setup", controllers.GitHubAppSetupPage)
+
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
