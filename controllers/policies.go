@@ -407,18 +407,13 @@ func GithubWebhookHandler(c *gin.Context) {
 		}
 
 		if configYaml.GenerateProjectsConfig != nil {
-			token, _, err := ghClient.Apps.CreateInstallationToken(context.Background(), installation.GithubInstallationId, &github.InstallationTokenOptions{
-				RepositoryIDs: []int64{*event.Repo.ID},
-				Permissions: &github.InstallationPermissions{
-					Contents: github.String("read"),
-				},
-			})
+			token, err := itr.Token(context.Background())
 			if err != nil {
-				log.Printf("Error getting installation token: %v", err)
-				c.String(http.StatusInternalServerError, "Error getting installation token")
+				log.Printf("Error getting token: %v", err)
+				c.String(http.StatusInternalServerError, "Error getting token")
 				return
 			}
-			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, *token.Token, "", func(dir string) {
+			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, token, event.PullRequest.Head.GetRef(), func(dir string) {
 				dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
 			})
 			if err != nil {
