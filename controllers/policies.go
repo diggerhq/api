@@ -421,10 +421,12 @@ func GithubWebhookHandler(c *gin.Context) {
 				c.String(http.StatusInternalServerError, "Error generating projects")
 				return
 			}
+			fmt.Println("Generated projects %v", configYaml.Projects)
 		}
 
 		config, _, err := loadDiggerConfig(configYaml)
 
+		fmt.Println("Loaded projects %v", config.Projects)
 		if err != nil {
 			log.Printf("Error loading digger config: %v", err)
 			c.String(http.StatusInternalServerError, "Error loading digger config")
@@ -493,8 +495,6 @@ func GithubWebhookHandler(c *gin.Context) {
 	default:
 		log.Printf("Unhandled event type: %v", event)
 	}
-
-	c.String(http.StatusOK, "OK")
 }
 
 func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
