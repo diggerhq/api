@@ -23,7 +23,6 @@ type action func(string)
 
 func CloneGitRepoAndDoAction(repoUrl string, accessToken string, branch string, action action) error {
 	dir := createTempDir()
-	println(dir)
 	_, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL: repoUrl,
 		Auth: &http.BasicAuth{
@@ -35,7 +34,6 @@ func CloneGitRepoAndDoAction(repoUrl string, accessToken string, branch string, 
 		SingleBranch:  true,
 	})
 	if err != nil {
-		println(err)
 		return err
 	}
 
