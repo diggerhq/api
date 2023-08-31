@@ -414,18 +414,6 @@ func GithubWebhookHandler(c *gin.Context) {
 				return
 			}
 			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, token, event.PullRequest.Head.GetRef(), func(dir string) {
-				fmt.Printf("clone url %v\n", *event.Repo.CloneURL)
-				fmt.Printf("dir %v\n", dir)
-				fmt.Printf("ref %v\n", event.PullRequest.Head.GetRef())
-				fmt.Printf("files in dir")
-				files, err := os.ReadDir(dir)
-				if err != nil {
-					log.Printf("Error reading dir: %v", err)
-				}
-				for _, file := range files {
-					fmt.Printf("file %v\n", file.Name())
-				}
-
 				dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
 			})
 			if err != nil {
@@ -433,12 +421,10 @@ func GithubWebhookHandler(c *gin.Context) {
 				c.String(http.StatusInternalServerError, "Error generating projects")
 				return
 			}
-			fmt.Println("Generated projects %v", configYaml.Projects)
 		}
 
 		config, _, err := loadDiggerConfig(configYaml)
 
-		fmt.Println("Loaded projects %v", config.Projects)
 		if err != nil {
 			log.Printf("Error loading digger config: %v", err)
 			c.String(http.StatusInternalServerError, "Error loading digger config")
