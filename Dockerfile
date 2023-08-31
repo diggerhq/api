@@ -22,7 +22,7 @@ FROM ubuntu:22.04 as runner
 ARG COMMIT_SHA
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y ca-certificates && apt-get clean all
+RUN apt-get update && apt-get install -y ca-certificates && apt-get install git && apt-get clean all
 RUN update-ca-certificates
 
 RUN echo "commit sha: ${COMMIT_SHA}"
