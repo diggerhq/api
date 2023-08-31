@@ -4,6 +4,7 @@ import (
 	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	orchestrator "github.com/diggerhq/lib-orchestrator"
 	dg_github "github.com/diggerhq/lib-orchestrator/github"
 	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
+	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v53/github"
 	"github.com/google/uuid"
@@ -378,10 +380,10 @@ func GithubWebhookHandler(c *gin.Context) {
 			return
 		}
 
-		client := github.NewClient(&http.Client{Transport: itr})
+		ghClient := github.NewClient(&http.Client{Transport: itr})
 
 		ghService := dg_github.GithubService{
-			Client:   client,
+			Client:   ghClient,
 			RepoName: *event.Repo.Name,
 			Owner:    *event.Repo.Owner.Login,
 		}
@@ -396,7 +398,43 @@ func GithubWebhookHandler(c *gin.Context) {
 			return
 		}
 
-		config, _, _, err := dg_configuration.LoadDiggerConfigFromString(repo.DiggerConfig)
+		configYaml, err := dg_configuration.LoadDiggerConfigYamlFromString(repo.DiggerConfig)
+
+		if err != nil {
+			log.Printf("Error loading digger config: %v", err)
+			c.String(http.StatusInternalServerError, "Error loading digger config")
+			return
+		}
+
+		if configYaml.GenerateProjectsConfig != nil {
+			token, _, err := ghClient.Apps.CreateInstallationToken(context.Background(), installation.GithubInstallationId, &github.InstallationTokenOptions{
+				RepositoryIDs: []int64{*event.Repo.ID},
+				Permissions: &github.InstallationPermissions{
+					Contents: github.String("read"),
+				},
+			})
+			if err != nil {
+				log.Printf("Error getting installation token: %v", err)
+				c.String(http.StatusInternalServerError, "Error getting installation token")
+				return
+			}
+			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, *token.Token, "", func(dir string) {
+				dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
+			})
+			if err != nil {
+				log.Printf("Error generating projects: %v", err)
+				c.String(http.StatusInternalServerError, "Error generating projects")
+				return
+			}
+		}
+
+		config, _, err := loadDiggerConfig(configYaml)
+
+		if err != nil {
+			log.Printf("Error loading digger config: %v", err)
+			c.String(http.StatusInternalServerError, "Error loading digger config")
+			return
+		}
 
 		impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(*event, config, &ghService)
 
@@ -436,7 +474,7 @@ func GithubWebhookHandler(c *gin.Context) {
 					return
 				}
 
-				_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+				_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), *event.Organization.Login, *event.Repo.Name, "plan.yml", github.CreateWorkflowDispatchEventRequest{
 					Ref:    event.PullRequest.Head.GetRef(),
 					Inputs: map[string]interface{}{"job": string(marshalled)},
 				})
@@ -462,4 +500,26 @@ func GithubWebhookHandler(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "OK")
+}
+
+func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
+
+	err := dg_configuration.ValidateDiggerConfigYaml(configYaml, "loaded config")
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error validating config: %v", err)
+	}
+
+	config, depGraph, err := dg_configuration.ConvertDiggerYamlToConfig(configYaml)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error converting config: %v", err)
+	}
+
+	err = dg_configuration.ValidateDiggerConfig(config)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error validating config: %v", err)
+	}
+	return config, depGraph, nil
 }
