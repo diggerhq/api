@@ -4,6 +4,7 @@ import (
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
@@ -121,10 +122,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 		return
 	}
 
-	var org models.Organisation
-
-	err = models.DB.Where("id = ?", orgId).First(&org).Error
-
+	org, err := GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
@@ -141,7 +139,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 			repo := models.Repo{
 				Name:           repoName,
 				OrganisationID: org.ID,
-				Organisation:   &org,
+				Organisation:   org,
 			}
 
 			err = models.DB.Create(&repo).Error
@@ -170,7 +168,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 				RepoID:            repo.ID,
 				OrganisationID:    org.ID,
 				Repo:              &repo,
-				Organisation:      &org,
+				Organisation:      org,
 			}
 
 			err = models.DB.Create(&project).Error
@@ -189,6 +187,16 @@ func ReportProjectsForRepo(c *gin.Context) {
 	}
 }
 
+func GetOrganisationById(orgId any) (*models.Organisation, error) {
+	fmt.Printf("GetOrganisationById, orgId: %v, type: %T \n", orgId, orgId)
+	org := models.Organisation{}
+	err := models.DB.Where("id = ?", orgId).First(&org).Error
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching organisation: %v\n", err)
+	}
+	return &org, nil
+}
+
 func RunHistoryForProject(c *gin.Context) {
 	repoName := c.Param("repo")
 	projectName := c.Param("project")
@@ -199,10 +207,7 @@ func RunHistoryForProject(c *gin.Context) {
 		return
 	}
 
-	var org models.Organisation
-
-	err := models.DB.Where("id = ?", orgId).First(&org).Error
-
+	org, err := GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
@@ -266,10 +271,7 @@ func CreateRunForProject(c *gin.Context) {
 		return
 	}
 
-	var org models.Organisation
-
-	err := models.DB.Where("id = ?", orgId).First(&org).Error
-
+	org, err := GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})

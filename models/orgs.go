@@ -33,14 +33,14 @@ type ProjectRun struct {
 
 func (p *ProjectRun) MapToJsonStruct() interface{} {
 	return struct {
-		Id          uint      `json:"id"`
-		ProjectID   uint      `json:"projectId"`
-		ProjectName string    `json:"projectName"`
-		StartedAt   time.Time `json:"startedAt"`
-		EndedAt     time.Time `json:"endedAt"`
-		Status      string    `json:"status"`
-		Command     string    `json:"command"`
-		Output      string    `json:"output"`
+		Id          uint
+		ProjectID   uint
+		ProjectName string
+		StartedAt   time.Time
+		EndedAt     time.Time
+		Status      string
+		Command     string
+		Output      string
 	}{
 		Id:          p.ID,
 		ProjectID:   p.ProjectID,

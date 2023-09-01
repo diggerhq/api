@@ -35,7 +35,7 @@ func CloneGitRepoAndDoAction(repoUrl string, accessToken string, branch string, 
 		SingleBranch:  true,
 	})
 	if err != nil {
-		println(err)
+		fmt.Printf("PlainClone error: %v\n", err)
 		return err
 	}
 

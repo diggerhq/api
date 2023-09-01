@@ -13,9 +13,11 @@ require (
 	github.com/go-playground/webhooks/v6 v6.3.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v53 v53.2.0
+	github.com/google/go-github/v54 v54.0.0
 	github.com/google/uuid v1.3.0
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.3.2
+	golang.org/x/oauth2 v0.11.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.1
 )
@@ -154,7 +156,6 @@ require (
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.11.0 // indirect

@@ -269,3 +269,43 @@ func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) err
 	}
 	return nil
 }
+
+func GetGitHubAppInstallation(installationId int64) (*GithubAppInstallation, error) {
+	installation := GithubAppInstallation{GithubInstallationId: installationId}
+	err := DB.Find(&installation).Error
+	if err != nil {
+		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, err
+	}
+
+	// If not found, the values will be default values, which means ID will be 0
+	if installation.Model.ID == 0 {
+		return nil, nil
+	}
+	return &installation, nil
+}
+
+func CreateGitHubInstallationLink(org *Organisation, installation *GithubAppInstallation) (*GithubAppInstallationLink, error) {
+	l := GithubAppInstallationLink{}
+	// check if there is already a link to another org, and throw an error in this case
+	result := DB.Where("github_installation_id = ? ", installation.ID).Find(&l)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	if result.RowsAffected > 0 {
+		if l.OrganisationId != org.ID {
+			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installation.ID)
+		}
+		// record already exist, do nothing
+		return &l, nil
+	}
+
+	link := GithubAppInstallationLink{Organisation: org, GithubInstallation: installation}
+	result = DB.Save(&link)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &link, nil
+}

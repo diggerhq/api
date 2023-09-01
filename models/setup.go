@@ -73,5 +73,11 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `GithubApp`!")
 	}
 
+	err = database.AutoMigrate(&GithubAppInstallationLink{})
+
+	if err != nil {
+		panic("Failed to perform migration for `GithubAppInstallationLink`!")
+	}
+
 	DB = database
 }
