@@ -381,14 +381,14 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	var actor string
 
 	switch event := event.(type) {
-	case *github.PullRequestEvent:
+	case github.PullRequestEvent:
 		installationId = *event.Installation.ID
 		repoName = *event.Repo.Name
 		repoOwner = *event.Repo.Owner.Login
 		repoFullName = *event.Repo.FullName
 		cloneURL = *event.Repo.CloneURL
 		actor = *event.Sender.Login
-	case *github.IssueCommentEvent:
+	case github.IssueCommentEvent:
 		installationId = *event.Installation.ID
 		repoName = *event.Repo.Name
 		repoOwner = *event.Repo.Owner.Login
@@ -433,9 +433,9 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	var prBranch string
 
 	switch event := event.(type) {
-	case *github.PullRequestEvent:
+	case github.PullRequestEvent:
 		prBranch = event.PullRequest.Head.GetRef()
-	case *github.IssueCommentEvent:
+	case github.IssueCommentEvent:
 		prBranch, err = ghService.GetBranchName(event.Issue.GetNumber())
 		if err != nil {
 			log.Printf("Error getting branch name: %v", err)
