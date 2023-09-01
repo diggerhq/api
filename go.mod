@@ -6,7 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
 	github.com/diggerhq/lib-digger-config v0.0.0-20230830135904-34e94987682e
-	github.com/diggerhq/lib-orchestrator v0.0.0-20230829160318-c3cce42f5f35
+	github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/gin-gonic/gin v1.9.1
