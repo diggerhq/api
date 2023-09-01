@@ -364,15 +364,14 @@ func GithubWebhookHandler(c *gin.Context) {
 			return
 		}
 		handlePullRequestRelatedEvent(c, *event)
-
-		c.String(http.StatusOK, "OK")
-
 	default:
 		log.Printf("Unhandled event type: %v", event)
+		c.String(http.StatusBadRequest, "Unhandled event type")
+		return
 	}
 }
 
-func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
+func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -397,6 +396,8 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 		actor = *event.Sender.Login
 	default:
 		log.Printf("Unhandled event type: %T", event)
+		c.String(http.StatusInternalServerError, "Error getting installation")
+		return
 	}
 
 	installation := models.GithubAppInstallation{}
@@ -404,14 +405,14 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting installation")
-		return true
+		return
 	}
 	ghApp := models.GithubApp{}
 	err = models.DB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
 	if err != nil {
 		log.Printf("Error getting app: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting app")
-		return true
+		return
 	}
 	tr := http.DefaultTransport
 
@@ -419,7 +420,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error initialising installation: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting app")
-		return true
+		return
 	}
 
 	ghClient := github.NewClient(&http.Client{Transport: itr})
@@ -440,10 +441,12 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 		if err != nil {
 			log.Printf("Error getting branch name: %v", err)
 			c.String(http.StatusInternalServerError, "Error getting branch name")
-			return true
+			return
 		}
 	default:
 		log.Printf("Unhandled event type: %T", event)
+		c.String(http.StatusInternalServerError, "Error getting branch name")
+		return
 	}
 
 	var repo models.Repo
@@ -453,7 +456,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error getting repo: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting repo")
-		return true
+		return
 	}
 
 	configYaml, err := dg_configuration.LoadDiggerConfigYamlFromString(repo.DiggerConfig)
@@ -461,7 +464,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error loading digger config: %v", err)
 		c.String(http.StatusInternalServerError, "Error loading digger config")
-		return true
+		return
 	}
 
 	if configYaml.GenerateProjectsConfig != nil {
@@ -469,7 +472,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 		if err != nil {
 			log.Printf("Error getting token: %v", err)
 			c.String(http.StatusInternalServerError, "Error getting token")
-			return true
+			return
 		}
 		err = utils.CloneGitRepoAndDoAction(cloneURL, prBranch, token, func(dir string) {
 			dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
@@ -477,7 +480,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 		if err != nil {
 			log.Printf("Error generating projects: %v", err)
 			c.String(http.StatusInternalServerError, "Error generating projects")
-			return true
+			return
 		}
 	}
 
@@ -494,7 +497,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		c.String(http.StatusInternalServerError, "Error processing event")
-		return true
+		return
 	}
 	eventPackage := dg_github_models.EventPackage{
 		Event:      event,
@@ -508,7 +511,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
 		c.String(http.StatusInternalServerError, "Error converting event to jobs")
-		return true
+		return
 	}
 
 	var wg sync.WaitGroup
@@ -547,7 +550,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) bool {
 			log.Printf("Error publishing comment: %v", err)
 		}
 	}
-	return false
+	return
 }
 
 func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
