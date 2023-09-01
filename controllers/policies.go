@@ -413,7 +413,7 @@ func GithubWebhookHandler(c *gin.Context) {
 				c.String(http.StatusInternalServerError, "Error getting token")
 				return
 			}
-			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, token, event.PullRequest.Head.GetRef(), func(dir string) {
+			err = utils.CloneGitRepoAndDoAction(*event.Repo.CloneURL, event.PullRequest.Head.GetRef(), token, func(dir string) {
 				dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
 			})
 			if err != nil {
