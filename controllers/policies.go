@@ -489,7 +489,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
 	if err != nil {
 		log.Printf("Error loading digger config: %v", err)
 		c.String(http.StatusInternalServerError, "Error loading digger config")
-		return true
+		return
 	}
 
 	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(event, config, &ghService)
