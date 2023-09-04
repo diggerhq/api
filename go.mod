@@ -13,7 +13,7 @@ require (
 	github.com/go-git/go-git v4.7.0+incompatible
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/go-github/v53 v53.2.0
+	github.com/google/go-github/v54 v54.0.0
 	github.com/google/go-github/v54 v54.0.0
 	github.com/google/uuid v1.3.0
 	github.com/robert-nix/ansihtml v1.0.1
