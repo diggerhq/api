@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -14,16 +13,13 @@ func createTempDir() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println("Temp dir created:", tempDir)
 	return tempDir
 }
 
 type action func(string)
 
-func CloneGitRepoAndDoAction(repoUrl string, accessToken string, branch string, action action) error {
+func CloneGitRepoAndDoAction(repoUrl string, branch string, accessToken string, action action) error {
 	dir := createTempDir()
-	println(dir)
 	_, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL: repoUrl,
 		Auth: &http.BasicAuth{
