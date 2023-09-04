@@ -20,7 +20,7 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.8.4
 	gorm.io/driver/postgres v1.5.2
-	gorm.io/gorm v1.25.1
+	gorm.io/gorm v1.25.4
 )
 
 require (
