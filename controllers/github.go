@@ -34,7 +34,6 @@ func GitHubAppWebHook(c *gin.Context) {
 	switch payload.(type) {
 
 	case webhooks.InstallationPayload:
-		fmt.Println("case github.InstallationPayload:")
 		installation := payload.(webhooks.InstallationPayload)
 		if installation.Action == "created" {
 			installationId := installation.Installation.ID
