@@ -1,9 +1,12 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
+	"time"
 )
 
 func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
@@ -202,4 +205,107 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	}
 
 	return &repo, true
+}
+
+func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+	app := GithubApp{}
+	result := DB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to create github app in database. %v", result.Error)
+		}
+	}
+
+	// check if item exist already
+	item := GithubAppInstallation{}
+	result = DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
+		}
+	}
+
+	if result.RowsAffected == 0 {
+		item := GithubAppInstallation{
+			GithubInstallationId: installationId,
+			GithubAppId:          int64(appId),
+			Login:                login,
+			AccountId:            int(accountId),
+			Repo:                 repoFullName,
+			State:                Active,
+		}
+		err := DB.Create(&item).Error
+		if err != nil {
+			fmt.Printf("Failed to save github installation item to database. %v\n", err)
+			return fmt.Errorf("failed to save github installation item to database. %v", err)
+		}
+	} else {
+		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
+		item.State = Active
+		item.UpdatedAt = time.Now()
+		err := DB.Save(item).Error
+		if err != nil {
+			return fmt.Errorf("failed to update github installation in the database. %v", err)
+		}
+	}
+	return nil
+}
+
+func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) error {
+	item := GithubAppInstallation{}
+	err := DB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
+			return nil
+		}
+		return fmt.Errorf("failed to find github installation in database. %v", err)
+	}
+	item.State = Deleted
+	item.UpdatedAt = time.Now()
+	err = DB.Save(item).Error
+	if err != nil {
+		return fmt.Errorf("failed to update github installation in the database. %v", err)
+	}
+	return nil
+}
+
+func GetGitHubAppInstallation(installationId int64) (*GithubAppInstallation, error) {
+	installation := GithubAppInstallation{GithubInstallationId: installationId}
+	err := DB.Find(&installation).Error
+	if err != nil {
+		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, err
+	}
+
+	// If not found, the values will be default values, which means ID will be 0
+	if installation.Model.ID == 0 {
+		return nil, nil
+	}
+	return &installation, nil
+}
+
+func CreateGitHubInstallationLink(org *Organisation, installation *GithubAppInstallation) (*GithubAppInstallationLink, error) {
+	l := GithubAppInstallationLink{}
+	// check if there is already a link to another org, and throw an error in this case
+	result := DB.Where("github_installation_id = ? ", installation.ID).Find(&l)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	if result.RowsAffected > 0 {
+		if l.OrganisationId != org.ID {
+			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installation.ID)
+		}
+		// record already exist, do nothing
+		return &l, nil
+	}
+
+	link := GithubAppInstallationLink{Organisation: org, GithubInstallation: installation}
+	result = DB.Save(&link)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &link, nil
 }

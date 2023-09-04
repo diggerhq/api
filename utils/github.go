@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -31,6 +32,7 @@ func CloneGitRepoAndDoAction(repoUrl string, branch string, accessToken string, 
 		SingleBranch:  true,
 	})
 	if err != nil {
+		fmt.Printf("PlainClone error: %v\n", err)
 		return err
 	}
 
