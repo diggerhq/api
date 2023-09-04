@@ -14,9 +14,11 @@ require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v53 v53.2.0
+	github.com/google/go-github/v54 v54.0.0
 	github.com/google/uuid v1.3.0
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.3.2
+	github.com/stretchr/testify v1.8.4
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.1
 )
@@ -140,7 +142,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
