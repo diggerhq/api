@@ -349,7 +349,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 }
 
 func validateDiggerConfigYaml(configYaml string) error {
-	_, _, _, err := configuration.LoadDiggerConfigFromString(configYaml)
+	_, _, _, err := configuration.LoadDiggerConfigFromString(configYaml, "./")
 	if err != nil {
 		return err
 	}
