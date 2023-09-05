@@ -8,7 +8,7 @@ require (
 	github.com/diggerhq/lib-digger-config v0.0.3
 	github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d
 	github.com/dominikbraun/graph v0.23.0
-	github.com/getsentry/sentry-go v0.23.0
+	github.com/getsentry/sentry-go v0.24.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git v4.7.0+incompatible
 	github.com/go-git/go-git/v5 v5.8.1
