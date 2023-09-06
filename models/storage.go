@@ -360,7 +360,7 @@ func GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, err
 
 func CreateDiggerJob(repoFullName string) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
-	diggerJobId := fmt.Sprintf("digger job id: %s", uniuri.New())
+	diggerJobId := uniuri.New()
 	// check if there is already a link to another org, and throw an error in this case
 	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
 	if result.Error != nil {

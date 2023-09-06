@@ -170,9 +170,10 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 
 		for _, s := range (*workflowJob).Steps {
 			name := *s.Name
-			if strings.HasPrefix(name, "digger job id:") {
+			if strings.HasPrefix(name, "digger run ") {
 				// digger job id and workflow step name matched
-				_, err := models.UpdateDiggerJob(repoFullName, *s.Name, githubJobId)
+				jobId := strings.Replace(name, "digger run ", "", 1)
+				_, err := models.UpdateDiggerJob(repoFullName, jobId, githubJobId)
 				if err != nil {
 					return err
 				}
@@ -241,6 +242,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 
 	owner := "diggerhq"
 	repo := "github-job-scheduler"
+	workflowFileName := "plan.yml"
 	repoFullName := owner + "/" + repo
 
 	installation, err := models.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
@@ -262,7 +264,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	TriggerTestJob(client, owner, repo, link.DiggerJobId)
+	TriggerTestJob(client, owner, repo, link.DiggerJobId, workflowFileName)
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 
@@ -277,11 +279,11 @@ func GetGithubClient(githubAppId int64, installationId int64, githubAppPrivateKe
 	return ghClient, nil
 }
 
-func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jobId string) {
+func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jobId string, workflowFileName string) {
 	//_, _, _ := client.Repositories.Get(ctx, owner, repo_name)
 	ctx := context.Background()
 	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": jobId}}
-	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, "workflow.yml", event)
+	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		return
