@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/dchest/uniuri"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -209,6 +210,8 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 
 func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
+
+	// todo: do we need to create a github app here
 	result := DB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -218,7 +221,7 @@ func GitHubRepoAdded(installationId int64, appId int, login string, accountId in
 
 	// check if item exist already
 	item := GithubAppInstallation{}
-	result = DB.Where("github_installation_id = ? AND repo=?", installationId, repoFullName).First(&item)
+	result = DB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
@@ -270,12 +273,18 @@ func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) err
 	return nil
 }
 
-func GetGitHubAppInstallation(installationId int64) (*GithubAppInstallation, error) {
-	installation := GithubAppInstallation{GithubInstallationId: installationId}
-	err := DB.Find(&installation).Error
+func GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
+	link, err := GetGitHubInstallationLinkForOrg(orgId)
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, err
+	}
+
+	installation := GithubAppInstallation{}
+	result := DB.Where("github_installation_id = ? AND state=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
 	}
 
 	// If not found, the values will be default values, which means ID will be 0
@@ -285,27 +294,122 @@ func GetGitHubAppInstallation(installationId int64) (*GithubAppInstallation, err
 	return &installation, nil
 }
 
-func CreateGitHubInstallationLink(org *Organisation, installation *GithubAppInstallation) (*GithubAppInstallationLink, error) {
+func GetGitHubAppInstallationByIdAndRepo(installationId int64, repo string) (*GithubAppInstallation, error) {
+	installation := GithubAppInstallation{}
+	result := DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+
+	// If not found, the values will be default values, which means ID will be 0
+	if installation.Model.ID == 0 {
+		return nil, nil
+	}
+	return &installation, nil
+}
+
+func CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
-	result := DB.Where("github_installation_id = ? ", installation.ID).Find(&l)
+	result := DB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
 	if result.RowsAffected > 0 {
-		if l.OrganisationId != org.ID {
-			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installation.ID)
+		if l.OrganisationId != orgId {
+			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installationId)
 		}
 		// record already exist, do nothing
 		return &l, nil
 	}
 
-	link := GithubAppInstallationLink{Organisation: org, GithubInstallation: installation}
+	list := []GithubAppInstallationLink{}
+	// if there are other installation for this org, we need to make them inactive
+	result = DB.Where("github_installation_id <> ? AND organisation_id = ? AND status=?", installationId, orgId, GithubAppInstallationLinkActive).Find(&list)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	for _, item := range list {
+		item.Status = GithubAppInstallationLinkInactive
+		DB.Save(item)
+	}
+
+	link := GithubAppInstallationLink{OrganisationId: orgId, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
 	result = DB.Save(&link)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &link, nil
+}
+
+func GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
+	l := GithubAppInstallationLink{}
+	// check if there is already a link to another org, and throw an error in this case
+	result := DB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &l, nil
+}
+
+func CreateDiggerJob(repoFullName string) (*GithubDiggerJobLink, error) {
+	jobLink := GithubDiggerJobLink{}
+	diggerJobId := fmt.Sprintf("digger job id: %s", uniuri.New())
+	// check if there is already a link to another org, and throw an error in this case
+	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	if result.RowsAffected > 0 {
+		//if jobLink.GithubJobId != org.ID {
+		//	return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installation.ID)
+		//}
+		// record already exist, do nothing
+		return &jobLink, nil
+	}
+
+	link := GithubDiggerJobLink{Status: DiggerJobCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
+	result = DB.Save(&link)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &link, nil
+}
+
+func UpdateDiggerJob(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
+	jobLink := GithubDiggerJobLink{}
+	// check if there is already a link to another org, and throw an error in this case
+	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	if result.RowsAffected == 1 {
+		jobLink.GithubJobId = githubJobId
+		result = DB.Save(&jobLink)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		return &jobLink, nil
+	}
+	return &jobLink, nil
+}
+
+func GetOrganisationById(orgId any) (*Organisation, error) {
+	fmt.Printf("GetOrganisationById, orgId: %v, type: %T \n", orgId, orgId)
+	org := Organisation{}
+	err := DB.Where("id = ?", orgId).First(&org).Error
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching organisation: %v\n", err)
+	}
+	return &org, nil
 }
