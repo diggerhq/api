@@ -231,7 +231,7 @@ func GitHubAppCallbackPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 
-func GihHubCreateTestJob(c *gin.Context) {
+func GihHubCreateTestJobPage(c *gin.Context) {
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 	if !exists {
 		log.Printf("Organisation ID not found in context")
