@@ -56,7 +56,7 @@ func GitHubAppWebHook(c *gin.Context) {
 	case webhooks.InstallationPayload:
 		installation := payload.(webhooks.InstallationPayload)
 		if installation.Action == "created" {
-			err := handleInstallationCreatedEvent(c, installation)
+			err := handleInstallationCreatedEvent(installation)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to store item.")
 				return
@@ -64,7 +64,7 @@ func GitHubAppWebHook(c *gin.Context) {
 		}
 
 		if installation.Action == "deleted" {
-			err := handleInstallationDeletedEvent(c, installation)
+			err := handleInstallationDeletedEvent(installation)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to remove item.")
 				return
@@ -130,7 +130,7 @@ func getGitHubClient(githubAppId int64, installationId int64) (*github.Client, e
 	return client, nil
 }
 
-func handleInstallationCreatedEvent(c *gin.Context, installation webhooks.InstallationPayload) error {
+func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	login := installation.Installation.Account.Login
 	accountId := installation.Installation.Account.ID
@@ -146,7 +146,7 @@ func handleInstallationCreatedEvent(c *gin.Context, installation webhooks.Instal
 	return nil
 }
 
-func handleInstallationDeletedEvent(c *gin.Context, installation webhooks.InstallationPayload) error {
+func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	appId := installation.Installation.AppID
 	for _, repo := range installation.Repositories {
