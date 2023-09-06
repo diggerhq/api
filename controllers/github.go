@@ -23,23 +23,6 @@ func GitHubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	hook, _ := webhooks.New()
 
-	/*githubAppId := c.Request.Header.Get("X-GitHub-Hook-Installation-Target-ID")
-	githubAppId64, err := strconv.ParseInt(githubAppId, 10, 64)
-	if err != nil {
-		fmt.Printf("err: %v", err)
-		c.String(http.StatusInternalServerError, "Failed to parse installation_id.")
-		return
-	}
-
-
-	appInstallation, err := models.GetGitHubAppInstallationByAppId(githubAppId64)
-	if err != nil {
-		fmt.Printf("err: %v", err)
-		c.String(http.StatusInternalServerError, "Failed to parse installation_id.")
-		return
-	}
-	*/
-
 	payload, err := hook.Parse(c.Request, webhooks.InstallationEvent, webhooks.PullRequestEvent, webhooks.IssueCommentEvent,
 		webhooks.InstallationRepositoriesEvent, webhooks.WorkflowJobEvent, webhooks.WorkflowRunEvent)
 	if err != nil {
