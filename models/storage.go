@@ -358,7 +358,7 @@ func GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, err
 	return &l, nil
 }
 
-func CreateDiggerJob(repoFullName string) (*GithubDiggerJobLink, error) {
+func CreateDiggerJobLink(repoFullName string) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	diggerJobId := uniuri.New()
 	// check if there is already a link to another org, and throw an error in this case
@@ -384,7 +384,7 @@ func CreateDiggerJob(repoFullName string) (*GithubDiggerJobLink, error) {
 	return &link, nil
 }
 
-func UpdateDiggerJob(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
+func UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	// check if there is already a link to another org, and throw an error in this case
 	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
@@ -412,4 +412,46 @@ func GetOrganisationById(orgId any) (*Organisation, error) {
 		return nil, fmt.Errorf("Error fetching organisation: %v\n", err)
 	}
 	return &org, nil
+}
+
+func CreateDiggerJob(jobId string, parentJobId *string) (*DiggerJob, error) {
+	job := DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated}
+	result := DB.Save(&job)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &job, nil
+}
+
+func GetPendingDiggerJobs() ([]DiggerJob, error) {
+	jobs := make([]DiggerJob, 0)
+	result := DB.Where("status = ? AND parent_digger_job_id is NULL ", DiggerJobCreated).Find(&jobs)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return jobs, nil
+}
+
+func GetDiggerJob(jobId string) (*DiggerJob, error) {
+	job := &DiggerJob{}
+	result := DB.Where("digger_job_id=? ", jobId).Find(job)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return job, nil
+}
+
+func GetDiggerJobByParentId(jobId string) (*DiggerJob, error) {
+	job := &DiggerJob{}
+	result := DB.Where("parent_digger_job_id=? ", jobId).Find(job)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return job, nil
 }

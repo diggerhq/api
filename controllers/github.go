@@ -4,10 +4,12 @@ import (
 	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/dchest/uniuri"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v54/github"
@@ -168,17 +170,23 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 			return err
 		}
 
+		var jobId string
 		for _, s := range (*workflowJob).Steps {
 			name := *s.Name
 			if strings.HasPrefix(name, "digger run ") {
 				// digger job id and workflow step name matched
-				jobId := strings.Replace(name, "digger run ", "", 1)
-				_, err := models.UpdateDiggerJob(repoFullName, jobId, githubJobId)
+				jobId = strings.Replace(name, "digger run ", "", 1)
+				_, err := models.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
 				if err != nil {
 					return err
 				}
 			}
 		}
+		if jobId != "" {
+			workflowFileName := "workflow.yml"
+			services.DiggerJobCompleted(client, jobId, owner, repo, workflowFileName)
+		}
+
 	case "queued":
 	case "in_progress":
 	}
@@ -240,9 +248,33 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
+	diggerJobId := uniuri.New()
+	parentJobId := uniuri.New()
+	_, err := models.CreateDiggerJob(parentJobId, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
+		return
+	}
+	_, err = models.CreateDiggerJob(diggerJobId, &parentJobId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
+		return
+	}
+	/*
+		jobs, err := models.GetPendingDiggerJobs()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
+			return
+		}
+
+		for _, j := range jobs {
+			fmt.Printf("jobId: %v, parentJobId: %v", j.DiggerJobId, j.ParentDiggerJobId)
+		}
+	*/
+
 	owner := "diggerhq"
 	repo := "github-job-scheduler"
-	workflowFileName := "plan.yml"
+	workflowFileName := "workflow.yml"
 	repoFullName := owner + "/" + repo
 
 	installation, err := models.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
@@ -252,19 +284,21 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 	}
 
 	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
-	link, err := models.CreateDiggerJob(repoFullName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating a test job"})
-		return
-	}
 
+	/*
+		link, err := models.CreateDiggerJobLink(repoFullName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating a test job"})
+			return
+		}
+	*/
 	client, err := GetGithubClient(installation.GithubAppId, installation.GithubInstallationId, githubAppPrivateKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
 		return
 	}
 
-	TriggerTestJob(client, owner, repo, link.DiggerJobId, workflowFileName)
+	services.TriggerTestJob(client, owner, repo, parentJobId, workflowFileName)
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 
@@ -277,17 +311,6 @@ func GetGithubClient(githubAppId int64, installationId int64, githubAppPrivateKe
 
 	ghClient := github.NewClient(&http.Client{Transport: itr})
 	return ghClient, nil
-}
-
-func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jobId string, workflowFileName string) {
-	//_, _, _ := client.Repositories.Get(ctx, owner, repo_name)
-	ctx := context.Background()
-	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": jobId}}
-	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		return
-	}
 }
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/

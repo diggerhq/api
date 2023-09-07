@@ -85,5 +85,11 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `GithubDiggerJobLink`!")
 	}
 
+	err = database.AutoMigrate(&DiggerJob{})
+
+	if err != nil {
+		panic("Failed to perform migration for `DiggerJob`!")
+	}
+
 	DB = database
 }
