@@ -388,6 +388,8 @@ github.com/dchest/uniuri v1.2.0/go.mod h1:fSzm4SLHzNZvWLvWJew423PhAzkpNQYq+uNLq4
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/diggerhq/lib-digger-config v0.0.3 h1:+5459ZX+0Fe50GTzOrONkncVN7bjKAKG6QDVffWZjmk=
 github.com/diggerhq/lib-digger-config v0.0.3/go.mod h1:8bZa9bYaw/veJ7v+jo0kiA8i624k1R8ty8pozPEEcP4=
+github.com/diggerhq/lib-digger-config v0.0.4 h1:vqZlszrqHkO3KAQZZOVXHOaVMK5SQffJpCmcVLJesUg=
+github.com/diggerhq/lib-digger-config v0.0.4/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d h1:v6D+4TPDLOAIFPFMEqZE+wINWDyXrkK9bpJZ8XAabmQ=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d/go.mod h1:JBjRXAr8bJQjIIhwmJwbLSSt8xziGFcWVcvAQArYfzs=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435 h1:OwD6WZx6c7cvC3+dukrUhnYs1sQB1wUuabMb1lk4YBE=
@@ -653,6 +655,8 @@ github.com/gruntwork-io/gruntwork-cli v0.7.0 h1:YgSAmfCj9c61H+zuvHwKfYUwlMhu5arn
 github.com/gruntwork-io/gruntwork-cli v0.7.0/go.mod h1:jp6Z7NcLF2avpY8v71fBx6hds9eOFPELSuD/VPv7w00=
 github.com/gruntwork-io/terragrunt v0.50.12 h1:59SnO7dQ7FHoBfl0xkWDWh6PCq84Yr3pQesO1feS9Ok=
 github.com/gruntwork-io/terragrunt v0.50.12/go.mod h1:QZzWZk+Agdx7YZtzWuYuAmGlZpf5WXKfxdcZZPhciUo=
+github.com/gruntwork-io/terragrunt v0.50.14 h1:8ozOMSA+tfiGapvL1ltfW0J9HGlqJlePV883w75VNoY=
+github.com/gruntwork-io/terragrunt v0.50.14/go.mod h1:QZzWZk+Agdx7YZtzWuYuAmGlZpf5WXKfxdcZZPhciUo=
 github.com/gruntwork-io/terratest v0.41.0 h1:QKFK6m0EMVnrV7lw2L06TlG+Ha3t0CcOXuBVywpeNRU=
 github.com/gruntwork-io/terratest v0.41.0/go.mod h1:qH1xkPTTGx30XkMHw8jAVIbzqheSjIa5IyiTwSV2vKI=
 github.com/hashicorp/aws-sdk-go-base v0.6.0/go.mod h1:2fRjWDv3jJBeN6mVWFHV6hFTNeFBx2gpDLQaZNxUVAY=
