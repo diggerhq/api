@@ -6,7 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
 	github.com/dchest/uniuri v1.2.0
-	github.com/diggerhq/lib-digger-config v0.0.3
+	github.com/diggerhq/lib-digger-config v0.0.4
 	github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d
 	github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435
 	github.com/dominikbraun/graph v0.23.0
@@ -92,7 +92,7 @@ require (
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408 // indirect
 	github.com/gruntwork-io/go-commons v0.17.1 // indirect
 	github.com/gruntwork-io/gruntwork-cli v0.7.0 // indirect
-	github.com/gruntwork-io/terragrunt v0.50.12 // indirect
+	github.com/gruntwork-io/terragrunt v0.50.14 // indirect
 	github.com/gruntwork-io/terratest v0.41.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
