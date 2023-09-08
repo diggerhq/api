@@ -530,7 +530,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
 				return
 			}
 
-			_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "plan.yml", github.CreateWorkflowDispatchEventRequest{
+			_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
 				Ref:    prBranch,
 				Inputs: map[string]interface{}{"job": string(marshalled)},
 			})
