@@ -5,14 +5,14 @@ go 1.20
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
+	github.com/dchest/uniuri v1.2.0
 	github.com/diggerhq/lib-digger-config v0.0.3
 	github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d
+	github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-git/go-git v4.7.0+incompatible
 	github.com/go-git/go-git/v5 v5.8.1
-	github.com/go-playground/webhooks/v6 v6.3.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v53 v53.2.0
 	github.com/google/go-github/v54 v54.0.0
@@ -50,7 +50,6 @@ require (
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
-	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/apparentlymart/go-versions v1.0.1 // indirect
 	github.com/armon/go-metrics v0.4.0 // indirect
@@ -88,7 +87,6 @@ require (
 	github.com/google/go-github/v35 v35.3.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408 // indirect
@@ -180,7 +178,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
-	github.com/urfave/cli v1.22.3 // indirect
 	github.com/urfave/cli/v2 v2.25.5 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
@@ -213,8 +210,6 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
-	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
-	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
