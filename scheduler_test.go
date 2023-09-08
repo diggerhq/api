@@ -48,8 +48,4 @@ func TestCreateDiggerJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.NotZero(t, job.ID)
-
-	// run tests
-	//os.Exit(m.Run())
-	print("ssdsd")
 }
