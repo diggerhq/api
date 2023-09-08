@@ -8,7 +8,7 @@ require (
 	github.com/dchest/uniuri v1.2.0
 	github.com/diggerhq/lib-digger-config v0.0.3
 	github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d
-	github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435
+	github.com/diggerhq/webhooks aa8d8a0131bd
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.0
 	github.com/gin-gonic/gin v1.9.1
