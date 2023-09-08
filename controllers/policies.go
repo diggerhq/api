@@ -15,7 +15,7 @@ import (
 	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
 	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"

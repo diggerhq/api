@@ -12,7 +12,7 @@ import (
 	"github.com/dchest/uniuri"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/v54/github"
+	"github.com/google/go-github/v55/github"
 	"golang.org/x/oauth2"
 	"log"
 	"net/http"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"digger.dev/cloud/models"
 	"fmt"
-	"github.com/google/go-github/v54/github"
+	"github.com/google/go-github/v55/github"
 )
 
 func DiggerJobCompleted(client *github.Client, jobId string, repoOwner string, repoName string, workflowFileName string) error {
