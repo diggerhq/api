@@ -8,7 +8,7 @@ import (
 )
 
 func DiggerJobCompleted(client *github.Client, jobId string, repoOwner string, repoName string, workflowFileName string) error {
-	job, err := models.GetDiggerJobByParentId(jobId)
+	job, err := models.DB.GetDiggerJobByParentId(jobId)
 	if err != nil {
 		return err
 	}

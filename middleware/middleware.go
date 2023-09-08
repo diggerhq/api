@@ -3,11 +3,9 @@ package middleware
 import (
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"os"
@@ -20,7 +18,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 			log.Printf("Token's claim is invalid")
 			return fmt.Errorf("token is invalid")
 		}
-		var org models.Organisation
+		var org *models.Organisation
 		tenantId := claims["tenantId"]
 		if tenantId == nil {
 			log.Printf("claim's tenantId is nil")
@@ -28,16 +26,16 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 		}
 		tenantId = tenantId.(string)
 		fmt.Printf("tenantId: %s", tenantId)
-		err := models.DB.Take(&org, "external_id = ?", tenantId).Error
-		if err != nil {
-			log.Printf("Error while fetching organisation: %v", err.Error())
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.String(http.StatusNotFound, fmt.Sprintf("Could not find active organisation: %v", tenantId))
-			} else {
-				c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-			}
+
+		org, err := models.DB.GetOrganisation(tenantId)
+		if org == nil {
+			c.String(http.StatusNotFound, fmt.Sprintf("Could not find active organisation: %v", tenantId))
+			c.Abort()
+		} else if err != nil {
+			c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 			c.Abort()
 		}
+
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
 		fmt.Printf("set org id %v\n", org.ID)
@@ -195,16 +193,15 @@ func BearerTokenAuth(auth services.Auth) gin.HandlerFunc {
 		if strings.HasPrefix(token, "t:") {
 			var dbToken models.Token
 
-			tokenResults := models.DB.Take(&dbToken, "value = ?", token)
-
-			if tokenResults.RowsAffected == 0 {
+			token, err := models.DB.GetToken(token)
+			if token == nil {
 				c.String(http.StatusForbidden, "Invalid bearer token")
 				c.Abort()
 				return
 			}
 
-			if tokenResults.Error != nil {
-				log.Printf("Error while fetching token from database: %v", tokenResults.Error)
+			if err != nil {
+				log.Printf("Error while fetching token from database: %v", err)
 				c.String(http.StatusInternalServerError, "Error occurred while fetching database")
 				c.Abort()
 				return

@@ -25,7 +25,7 @@ func (web *WebController) validateRequestProjectId(c *gin.Context) (*models.Proj
 		return nil, false
 	}
 	projectId := uint(projectId64)
-	projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
+	projects, done := models.DB.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return nil, false
 	}
@@ -41,7 +41,7 @@ func (web *WebController) validateRequestProjectId(c *gin.Context) (*models.Proj
 }
 
 func (web *WebController) ProjectsPage(c *gin.Context) {
-	projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
+	projects, done := models.DB.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -60,7 +60,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 		})
 	} else if c.Request.Method == "POST" {
 		message := ""
-		repo, ok := models.GetDefaultRepo(c, middleware.ORGANISATION_ID_KEY)
+		repo, ok := models.DB.GetDefaultRepo(c, middleware.ORGANISATION_ID_KEY)
 		if !ok {
 			message = "failed to create a new project"
 			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
@@ -80,7 +80,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 		// there should be a way to avoid it
 		project := models.Project{Name: projectName, Organisation: repo.Organisation, Repo: repo}
 
-		err := models.DB.Create(&project).Error
+		err := models.DB.GormDB.Create(&project).Error
 		if err != nil {
 			fmt.Printf("Failed to create a new project, %v\n", err)
 			message := "Failed to create a project"
@@ -94,7 +94,7 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 }
 
 func (web *WebController) RunsPage(c *gin.Context) {
-	runs, done := models.GetProjectRunsFromContext(c, middleware.ORGANISATION_ID_KEY)
+	runs, done := models.DB.GetProjectRunsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -104,7 +104,7 @@ func (web *WebController) RunsPage(c *gin.Context) {
 }
 
 func (web *WebController) PoliciesPage(c *gin.Context) {
-	policies, done := models.GetPoliciesFromContext(c, middleware.ORGANISATION_ID_KEY)
+	policies, done := models.DB.GetPoliciesFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
@@ -117,7 +117,7 @@ func (web *WebController) PoliciesPage(c *gin.Context) {
 func (web *WebController) AddPolicyPage(c *gin.Context) {
 	if c.Request.Method == "GET" {
 		message := ""
-		projects, done := models.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
+		projects, done := models.DB.GetProjectsFromContext(c, middleware.ORGANISATION_ID_KEY)
 		if !done {
 			return
 		}
@@ -149,7 +149,7 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 			return
 		}
 		projectId := uint(projectId64)
-		project, ok := models.GetProjectByProjectId(c, projectId, middleware.ORGANISATION_ID_KEY)
+		project, ok := models.DB.GetProjectByProjectId(c, projectId, middleware.ORGANISATION_ID_KEY)
 		if !ok {
 			fmt.Printf("Failed to fetch specified project by id: %v, %v\n", projectIdStr, err)
 			message := "Failed to create a policy"
@@ -162,7 +162,7 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 
 		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: project.Organisation, Repo: project.Repo}
 
-		err = models.DB.Create(&policy).Error
+		err = models.DB.GormDB.Create(&policy).Error
 		if err != nil {
 			fmt.Printf("Failed to create a new policy, %v\n", err)
 			message := "Failed to create a policy"
@@ -182,7 +182,7 @@ func (web *WebController) PolicyDetailsPage(c *gin.Context) {
 		return
 	}
 	policyId := uint(policyId64)
-	policy, ok := models.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
+	policy, ok := models.DB.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
@@ -212,7 +212,7 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 		return
 	}
 	runId := uint(runId64)
-	run, ok := models.GetProjectByRunId(c, runId, middleware.ORGANISATION_ID_KEY)
+	run, ok := models.DB.GetProjectByRunId(c, runId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
@@ -251,7 +251,7 @@ func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
 	projectName := c.PostForm("project_name")
 	if projectName != project.Name {
 		project.Name = projectName
-		models.DB.Save(project)
+		models.DB.GormDB.Save(project)
 		fmt.Printf("project name has been updated to %s\n", projectName)
 		message = "Project has been updated successfully"
 	}
@@ -269,7 +269,7 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 		return
 	}
 	policyId := uint(policyId64)
-	policy, ok := models.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
+	policy, ok := models.DB.GetPolicyByPolicyId(c, policyId, middleware.ORGANISATION_ID_KEY)
 	if !ok {
 		return
 	}
@@ -279,7 +279,7 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 	fmt.Printf("policyText: %v\n", policyText)
 	if policyText != policy.Policy {
 		policy.Policy = policyText
-		models.DB.Save(policy)
+		models.DB.GormDB.Save(policy)
 		fmt.Printf("Policy has been updated. policy id: %v", policy.ID)
 		message = "Policy has been updated successfully"
 	}
@@ -307,7 +307,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 		return
 	}
 	repoId := uint(repoId64)
-	repo, ok := models.GetRepo(c, middleware.ORGANISATION_ID_KEY, repoId)
+	repo, ok := models.DB.GetRepo(c, middleware.ORGANISATION_ID_KEY, repoId)
 	if !ok {
 		c.String(http.StatusForbidden, "Failed to find repo")
 		return
@@ -336,7 +336,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 			})
 			return
 		}
-		tx := models.DB.Save(&repo)
+		tx := models.DB.GormDB.Save(&repo)
 		if tx.Error != nil {
 			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
 				"Message": "Failed to update repo", "Repo": repo,

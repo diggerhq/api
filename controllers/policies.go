@@ -119,7 +119,7 @@ func findPolicyForOrg(c *gin.Context, policyType string) {
 }
 
 func JoinedOrganisationRepoProjectQuery() *gorm.DB {
-	return models.DB.Preload("Organisation").Preload("Repo").Preload("Project").
+	return models.DB.GormDB.Preload("Organisation").Preload("Repo").Preload("Project").
 		Joins("LEFT JOIN repos ON policies.repo_id = repos.id").
 		Joins("LEFT JOIN projects ON policies.project_id = projects.id").
 		Joins("LEFT JOIN organisations ON policies.organisation_id = organisations.id")
@@ -148,7 +148,7 @@ func upsertPolicyForOrg(c *gin.Context, policyType string) {
 	organisation := c.Param("organisation")
 
 	org := models.Organisation{}
-	orgResult := models.DB.Where("name = ?", organisation).Take(&org)
+	orgResult := models.DB.GormDB.Where("name = ?", organisation).Take(&org)
 	if orgResult.RowsAffected == 0 {
 		c.String(http.StatusNotFound, "Could not find organisation: "+organisation)
 		return
@@ -164,10 +164,10 @@ func upsertPolicyForOrg(c *gin.Context, policyType string) {
 
 	policy := models.Policy{}
 
-	policyResult := models.DB.Where("organisation_id = ? AND (repo_id IS NULL AND project_id IS NULL) AND type = ?", org.ID, policyType).Take(&policy)
+	policyResult := models.DB.GormDB.Where("organisation_id = ? AND (repo_id IS NULL AND project_id IS NULL) AND type = ?", org.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
-		err := models.DB.Create(&models.Policy{
+		err := models.DB.GormDB.Create(&models.Policy{
 			OrganisationID: org.ID,
 			Type:           policyType,
 			Policy:         string(policyData),
@@ -222,13 +222,13 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 	repo := c.Param("repo")
 	projectName := c.Param("projectName")
 	repoModel := models.Repo{}
-	repoResult := models.DB.Where("name = ?", repo).Take(&repoModel)
+	repoResult := models.DB.GormDB.Where("name = ?", repo).Take(&repoModel)
 	if repoResult.RowsAffected == 0 {
 		repoModel = models.Repo{
 			OrganisationID: orgID.(uint),
 			Name:           repo,
 		}
-		result := models.DB.Create(&repoModel)
+		result := models.DB.GormDB.Create(&repoModel)
 		if result.Error != nil {
 			log.Printf("Error creating repo: %v", err)
 			c.String(http.StatusInternalServerError, "Error creating missing repo")
@@ -237,14 +237,14 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 	}
 
 	projectModel := models.Project{}
-	projectResult := models.DB.Where("name = ?", projectName).Take(&projectModel)
+	projectResult := models.DB.GormDB.Where("name = ?", projectName).Take(&projectModel)
 	if projectResult.RowsAffected == 0 {
 		projectModel = models.Project{
 			OrganisationID: orgID.(uint),
 			RepoID:         repoModel.ID,
 			Name:           projectName,
 		}
-		err := models.DB.Create(&projectModel).Error
+		err := models.DB.GormDB.Create(&projectModel).Error
 		if err != nil {
 			log.Printf("Error creating project: %v", err)
 			c.String(http.StatusInternalServerError, "Error creating missing project")
@@ -254,10 +254,10 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 
 	var policy models.Policy
 
-	policyResult := models.DB.Where("organisation_id = ? AND repo_id = ? AND project_id = ? AND type = ?", orgID, repoModel.ID, projectModel.ID, policyType).Take(&policy)
+	policyResult := models.DB.GormDB.Where("organisation_id = ? AND repo_id = ? AND project_id = ? AND type = ?", orgID, repoModel.ID, projectModel.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
-		err := models.DB.Create(&models.Policy{
+		err := models.DB.GormDB.Create(&models.Policy{
 			OrganisationID: orgID.(uint),
 			RepoID:         &repoModel.ID,
 			ProjectID:      &projectModel.ID,
@@ -290,7 +290,7 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	}
 
 	org := models.Organisation{}
-	orgResult := models.DB.Where("id = ?", organisation_ID).Take(&org)
+	orgResult := models.DB.GormDB.Where("id = ?", organisation_ID).Take(&org)
 	if orgResult.RowsAffected == 0 {
 		log.Printf("Could not find organisation: %v", organisation_ID)
 		c.String(http.StatusInternalServerError, "Unexpected error")
@@ -300,7 +300,7 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	// prefixing token to make easier to retire this type of tokens later
 	token := "t:" + uuid.New().String()
 
-	err := models.DB.Create(&models.Token{
+	err := models.DB.GormDB.Create(&models.Token{
 		Value:          token,
 		OrganisationID: org.ID,
 		Type:           models.AccessPolicyType,
@@ -334,7 +334,7 @@ func GithubWebhookHandler(c *gin.Context) {
 	case *github.InstallationEvent:
 		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
 		if event.GetAction() == "created" {
-			err := models.DB.Create(&models.GithubAppInstallation{
+			err := models.DB.GormDB.Create(&models.GithubAppInstallation{
 				GithubInstallationId: *event.Installation.ID,
 				GithubAppId:          *event.Installation.AppID,
 			}).Error
@@ -346,7 +346,7 @@ func GithubWebhookHandler(c *gin.Context) {
 	case *github.InstallationRepositoriesEvent:
 		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
 		if event.GetAction() == "added" {
-			err := models.DB.Create(&models.GithubAppInstallation{
+			err := models.DB.GormDB.Create(&models.GithubAppInstallation{
 				GithubInstallationId: *event.Installation.ID,
 				GithubAppId:          *event.Installation.AppID,
 			}).Error
@@ -401,14 +401,14 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
 	}
 
 	installation := models.GithubAppInstallation{}
-	err := models.DB.Where("github_installation_id = ?", installationId).Take(&installation).Error
+	err := models.DB.GormDB.Where("github_installation_id = ?", installationId).Take(&installation).Error
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting installation")
 		return
 	}
 	ghApp := models.GithubApp{}
-	err = models.DB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
+	err = models.DB.GormDB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
 	if err != nil {
 		log.Printf("Error getting app: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting app")
@@ -451,7 +451,7 @@ func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
 
 	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", strings.ReplaceAll(repoFullName, "/", "-"), ghApp.OrganisationId).Take(&repo).Error
+	err = models.DB.GormDB.Where("name = ? AND organisation_id = ?", strings.ReplaceAll(repoFullName, "/", "-"), ghApp.OrganisationId).Take(&repo).Error
 
 	if err != nil {
 		log.Printf("Error getting repo: %v", err)
