@@ -24,7 +24,7 @@ func CreateFronteggOrgFromWebhook(c *gin.Context) {
 		ExternalSource: source,
 		ExternalId:     json.TenantId,
 	}
-	err := models.DB.Create(&org).Error
+	err := models.DB.GormDB.Create(&org).Error
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

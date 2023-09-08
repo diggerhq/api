@@ -8,7 +8,12 @@ import (
 	"os"
 )
 
-var DB *gorm.DB
+type Database struct {
+	GormDB *gorm.DB
+}
+
+// var DB *gorm.DB
+var DB *Database
 
 func ConnectDatabase() {
 
@@ -91,5 +96,5 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `DiggerJob`!")
 	}
 
-	DB = database
+	DB.GormDB = database
 }

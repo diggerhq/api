@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
+func (db *Database) GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
 	fmt.Printf("getProjectsFromContext, org id: %v\n", loggedInOrganisationId)
@@ -22,7 +22,7 @@ func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
 
 	var projects []Project
 
-	err := DB.Preload("Organisation").Preload("Repo").
+	err := db.GormDB.Preload("Organisation").Preload("Repo").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&projects).Error
@@ -36,7 +36,7 @@ func GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
 	return projects, true
 }
 
-func GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
+func (db *Database) GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
 	fmt.Printf("getPoliciesFromContext, org id: %v\n", loggedInOrganisationId)
@@ -48,7 +48,7 @@ func GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 
 	var policies []Policy
 
-	err := DB.Preload("Organisation").Preload("Repo").Preload("Project").
+	err := db.GormDB.Preload("Organisation").Preload("Repo").Preload("Project").
 		Joins("LEFT JOIN projects ON projects.id = policies.project_id").
 		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
@@ -63,7 +63,7 @@ func GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 	return policies, true
 }
 
-func GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, bool) {
+func (db *Database) GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
 	fmt.Printf("getProjectRunsFromContext, org id: %v\n", loggedInOrganisationId)
@@ -75,7 +75,7 @@ func GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, b
 
 	var runs []ProjectRun
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
+	err := db.GormDB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
@@ -90,7 +90,7 @@ func GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, b
 	return runs, true
 }
 
-func GetProjectByRunId(c *gin.Context, runId uint, orgIdKey string) (*ProjectRun, bool) {
+func (db *Database) GetProjectByRunId(c *gin.Context, runId uint, orgIdKey string) (*ProjectRun, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -100,7 +100,7 @@ func GetProjectByRunId(c *gin.Context, runId uint, orgIdKey string) (*ProjectRun
 	fmt.Printf("GetProjectByRunId, org id: %v\n", loggedInOrganisationId)
 	var projectRun ProjectRun
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
+	err := db.GormDB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
@@ -115,7 +115,7 @@ func GetProjectByRunId(c *gin.Context, runId uint, orgIdKey string) (*ProjectRun
 	return &projectRun, true
 }
 
-func GetProjectByProjectId(c *gin.Context, projectId uint, orgIdKey string) (*Project, bool) {
+func (db *Database) GetProjectByProjectId(c *gin.Context, projectId uint, orgIdKey string) (*Project, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -125,7 +125,7 @@ func GetProjectByProjectId(c *gin.Context, projectId uint, orgIdKey string) (*Pr
 	fmt.Printf("GetProjectByProjectId, org id: %v\n", loggedInOrganisationId)
 	var project Project
 
-	err := DB.Preload("Organisation").Preload("Repo").
+	err := db.GormDB.Preload("Organisation").Preload("Repo").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", loggedInOrganisationId).
@@ -139,7 +139,7 @@ func GetProjectByProjectId(c *gin.Context, projectId uint, orgIdKey string) (*Pr
 	return &project, true
 }
 
-func GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Policy, bool) {
+func (db *Database) GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Policy, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -149,7 +149,7 @@ func GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Polic
 	fmt.Printf("getPolicyByPolicyId, org id: %v\n", loggedInOrganisationId)
 	var policy Policy
 
-	err := DB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
+	err := db.GormDB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
 		Joins("INNER JOIN projects ON projects.id = policies.project_id").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
@@ -164,7 +164,7 @@ func GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Polic
 	return &policy, true
 }
 
-func GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
+func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		fmt.Print("Not allowed to access this resource")
@@ -174,7 +174,7 @@ func GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
 	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
 	var repo Repo
 
-	err := DB.Preload("Organisation").
+	err := db.GormDB.Preload("Organisation").
 		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
 		Where("organisations.id = ?", loggedInOrganisationId).First(&repo).Error
 
@@ -186,7 +186,7 @@ func GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
 	return &repo, true
 }
 
-func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
+func (db *Database) GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
 		fmt.Print("Not allowed to access this resource")
@@ -196,7 +196,7 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
 	var repo Repo
 
-	err := DB.Preload("Organisation").
+	err := db.GormDB.Preload("Organisation").
 		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
 		Where("organisations.id = ? AND repos.id=?", loggedInOrganisationId, repoId).First(&repo).Error
 
@@ -208,11 +208,11 @@ func GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
 	return &repo, true
 }
 
-func GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+func (db *Database) GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
 
 	// todo: do we need to create a github app here
-	result := DB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
+	result := db.GormDB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to create github app in database. %v", result.Error)
@@ -221,7 +221,7 @@ func GitHubRepoAdded(installationId int64, appId int, login string, accountId in
 
 	// check if item exist already
 	item := GithubAppInstallation{}
-	result = DB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
+	result = db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
@@ -237,7 +237,7 @@ func GitHubRepoAdded(installationId int64, appId int, login string, accountId in
 			Repo:                 repoFullName,
 			State:                Active,
 		}
-		err := DB.Create(&item).Error
+		err := db.GormDB.Create(&item).Error
 		if err != nil {
 			fmt.Printf("Failed to save github installation item to database. %v\n", err)
 			return fmt.Errorf("failed to save github installation item to database. %v", err)
@@ -246,7 +246,7 @@ func GitHubRepoAdded(installationId int64, appId int, login string, accountId in
 		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
 		item.State = Active
 		item.UpdatedAt = time.Now()
-		err := DB.Save(item).Error
+		err := db.GormDB.Save(item).Error
 		if err != nil {
 			return fmt.Errorf("failed to update github installation in the database. %v", err)
 		}
@@ -254,9 +254,9 @@ func GitHubRepoAdded(installationId int64, appId int, login string, accountId in
 	return nil
 }
 
-func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) error {
+func (db *Database) GitHubRepoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := GithubAppInstallation{}
-	err := DB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
+	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			fmt.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
@@ -266,21 +266,21 @@ func GitHubRepoRemoved(installationId int64, appId int, repoFullName string) err
 	}
 	item.State = Deleted
 	item.UpdatedAt = time.Now()
-	err = DB.Save(item).Error
+	err = db.GormDB.Save(item).Error
 	if err != nil {
 		return fmt.Errorf("failed to update github installation in the database. %v", err)
 	}
 	return nil
 }
 
-func GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
-	link, err := GetGitHubInstallationLinkForOrg(orgId)
+func (db *Database) GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
+	link, err := db.GetGitHubInstallationLinkForOrg(orgId)
 	if err != nil {
 		return nil, err
 	}
 
 	installation := GithubAppInstallation{}
-	result := DB.Where("github_installation_id = ? AND state=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -294,9 +294,9 @@ func GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppIns
 	return &installation, nil
 }
 
-func GetGitHubAppInstallationByIdAndRepo(installationId int64, repo string) (*GithubAppInstallation, error) {
+func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, repo string) (*GithubAppInstallation, error) {
 	installation := GithubAppInstallation{}
-	result := DB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repo).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -310,10 +310,10 @@ func GetGitHubAppInstallationByIdAndRepo(installationId int64, repo string) (*Gi
 	return &installation, nil
 }
 
-func CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
+func (db *Database) CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
-	result := DB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
+	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -329,7 +329,7 @@ func CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppI
 
 	list := []GithubAppInstallationLink{}
 	// if there are other installation for this org, we need to make them inactive
-	result = DB.Where("github_installation_id <> ? AND organisation_id = ? AND status=?", installationId, orgId, GithubAppInstallationLinkActive).Find(&list)
+	result = db.GormDB.Where("github_installation_id <> ? AND organisation_id = ? AND status=?", installationId, orgId, GithubAppInstallationLinkActive).Find(&list)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -337,32 +337,32 @@ func CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppI
 	}
 	for _, item := range list {
 		item.Status = GithubAppInstallationLinkInactive
-		DB.Save(item)
+		db.GormDB.Save(item)
 	}
 
 	link := GithubAppInstallationLink{OrganisationId: orgId, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
-	result = DB.Save(&link)
+	result = db.GormDB.Save(&link)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &link, nil
 }
 
-func GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
+func (db *Database) GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
-	result := DB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)
+	result := db.GormDB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &l, nil
 }
 
-func CreateDiggerJobLink(repoFullName string) (*GithubDiggerJobLink, error) {
+func (db *Database) CreateDiggerJobLink(repoFullName string) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	diggerJobId := uniuri.New()
 	// check if there is already a link to another org, and throw an error in this case
-	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
+	result := db.GormDB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -377,17 +377,17 @@ func CreateDiggerJobLink(repoFullName string) (*GithubDiggerJobLink, error) {
 	}
 
 	link := GithubDiggerJobLink{Status: DiggerJobCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
-	result = DB.Save(&link)
+	result = db.GormDB.Save(&link)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &link, nil
 }
 
-func UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
+func (db *Database) UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	// check if there is already a link to another org, and throw an error in this case
-	result := DB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
+	result := db.GormDB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -395,7 +395,7 @@ func UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId in
 	}
 	if result.RowsAffected == 1 {
 		jobLink.GithubJobId = githubJobId
-		result = DB.Save(&jobLink)
+		result = db.GormDB.Save(&jobLink)
 		if result.Error != nil {
 			return nil, result.Error
 		}
@@ -404,28 +404,28 @@ func UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId in
 	return &jobLink, nil
 }
 
-func GetOrganisationById(orgId any) (*Organisation, error) {
+func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 	fmt.Printf("GetOrganisationById, orgId: %v, type: %T \n", orgId, orgId)
 	org := Organisation{}
-	err := DB.Where("id = ?", orgId).First(&org).Error
+	err := db.GormDB.Where("id = ?", orgId).First(&org).Error
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching organisation: %v\n", err)
 	}
 	return &org, nil
 }
 
-func CreateDiggerJob(jobId string, parentJobId *string) (*DiggerJob, error) {
+func (db *Database) CreateDiggerJob(jobId string, parentJobId *string) (*DiggerJob, error) {
 	job := DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated}
-	result := DB.Save(&job)
+	result := db.GormDB.Save(&job)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &job, nil
 }
 
-func GetPendingDiggerJobs() ([]DiggerJob, error) {
+func (db *Database) GetPendingDiggerJobs() ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
-	result := DB.Where("status = ? AND parent_digger_job_id is NULL ", DiggerJobCreated).Find(&jobs)
+	result := db.GormDB.Where("status = ? AND parent_digger_job_id is NULL ", DiggerJobCreated).Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -434,9 +434,9 @@ func GetPendingDiggerJobs() ([]DiggerJob, error) {
 	return jobs, nil
 }
 
-func GetDiggerJob(jobId string) (*DiggerJob, error) {
-	job := &DiggerJob{}
-	result := DB.Where("digger_job_id=? ", jobId).Find(job)
+func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
+	var job *DiggerJob
+	result := db.GormDB.Where("digger_job_id=? ", jobId).Find(job)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -445,13 +445,39 @@ func GetDiggerJob(jobId string) (*DiggerJob, error) {
 	return job, nil
 }
 
-func GetDiggerJobByParentId(jobId string) (*DiggerJob, error) {
+func (db *Database) GetDiggerJobByParentId(jobId string) (*DiggerJob, error) {
 	job := &DiggerJob{}
-	result := DB.Where("parent_digger_job_id=? ", jobId).Find(job)
+	result := db.GormDB.Where("parent_digger_job_id=? ", jobId).Find(job)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
 	return job, nil
+}
+
+func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
+	var org *Organisation
+	result := db.GormDB.Take(org, "external_id = ?", tenantId)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, result.Error
+		}
+	}
+	return org, nil
+}
+
+func (db *Database) GetToken(tenantId any) (*Token, error) {
+	var org *Token
+	result := db.GormDB.Take(org, "value = ?", tenantId)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, result.Error
+		}
+	}
+	return org, nil
 }

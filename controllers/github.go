@@ -12,7 +12,7 @@ import (
 	"github.com/dchest/uniuri"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/v54/github"
+	"github.com/google/go-github/v55/github"
 	"golang.org/x/oauth2"
 	"log"
 	"net/http"
@@ -64,7 +64,7 @@ func GitHubAppWebHook(c *gin.Context) {
 			accountId := installationRepos.Installation.Account.ID
 			appId := installationRepos.Installation.AppID
 			for _, repo := range installationRepos.RepositoriesAdded {
-				err := models.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+				err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to store item.")
 					return
@@ -75,7 +75,7 @@ func GitHubAppWebHook(c *gin.Context) {
 			installationId := installationRepos.Installation.ID
 			appId := installationRepos.Installation.AppID
 			for _, repo := range installationRepos.RepositoriesRemoved {
-				err := models.GitHubRepoRemoved(installationId, appId, repo.FullName)
+				err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to remove item.")
 					return
@@ -123,7 +123,7 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 
 	for _, repo := range installation.Repositories {
 		fmt.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
-		err := models.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	appId := installation.Installation.AppID
 	for _, repo := range installation.Repositories {
 		fmt.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
-		err := models.GitHubRepoRemoved(installationId, appId, repo.FullName)
+		err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		repoFullName := payload.Repository.FullName
 		installationId := payload.Installation.ID
 
-		installation, err := models.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
+		installation, err := models.DB.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -176,7 +176,7 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 			if strings.HasPrefix(name, "digger run ") {
 				// digger job id and workflow step name matched
 				jobId = strings.Replace(name, "digger run ", "", 1)
-				_, err := models.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
+				_, err := models.DB.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
 				if err != nil {
 					return err
 				}
@@ -224,14 +224,14 @@ func GitHubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	org, err := models.GetOrganisationById(orgId)
+	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
 		return
 	}
 
-	_, err = models.CreateGitHubInstallationLink(org.ID, installationId64)
+	_, err = models.DB.CreateGitHubInstallationLink(org.ID, installationId64)
 	if err != nil {
 		log.Printf("Error saving CreateGitHubInstallationLink to database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
@@ -250,12 +250,12 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 
 	diggerJobId := uniuri.New()
 	parentJobId := uniuri.New()
-	_, err := models.CreateDiggerJob(parentJobId, nil)
+	_, err := models.DB.CreateDiggerJob(parentJobId, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
 	}
-	_, err = models.CreateDiggerJob(diggerJobId, &parentJobId)
+	_, err = models.DB.CreateDiggerJob(diggerJobId, &parentJobId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
@@ -277,7 +277,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 	workflowFileName := "workflow.yml"
 	repoFullName := owner + "/" + repo
 
-	installation, err := models.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
+	installation, err := models.DB.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating github installation"})
 		return

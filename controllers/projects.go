@@ -22,7 +22,7 @@ func FindProjectsForRepo(c *gin.Context) {
 
 	var projects []models.Project
 
-	err := models.DB.Preload("Organisation").Preload("Repo").
+	err := models.DB.GormDB.Preload("Organisation").Preload("Repo").
 		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("repos.name = ? AND projects.organisation_id = ?", repo, orgId).Find(&projects).Error
@@ -57,7 +57,7 @@ func FindProjectsForOrg(c *gin.Context) {
 	}
 
 	var org models.Organisation
-	err := models.DB.Where("name = ?", requestedOrganisation).First(&org).Error
+	err := models.DB.GormDB.Where("name = ?", requestedOrganisation).First(&org).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.String(http.StatusNotFound, "Could not find organisation: "+requestedOrganisation)
@@ -75,7 +75,7 @@ func FindProjectsForOrg(c *gin.Context) {
 
 	var projects []models.Project
 
-	err = models.DB.Preload("Organisation").Preload("Repo").
+	err = models.DB.GormDB.Preload("Organisation").Preload("Repo").
 		Joins("LEFT JOIN repos ON projects.repo_id = repos.id").
 		Joins("LEFT JOIN organisations ON projects.organisation_id = organisations.id").
 		Where("projects.organisation_id = ?", org.ID).Find(&projects).Error
@@ -121,7 +121,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 		return
 	}
 
-	org, err := models.GetOrganisationById(orgId)
+	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
@@ -130,7 +130,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 
 	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
+	err = models.DB.GormDB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
 
@@ -141,7 +141,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 				Organisation:   org,
 			}
 
-			err = models.DB.Create(&repo).Error
+			err = models.DB.GormDB.Create(&repo).Error
 
 			if err != nil {
 				log.Printf("Error creating repo: %v", err)
@@ -157,7 +157,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND organisation_id = ? AND repo_id = ?", request.Name, org.ID, repo.ID).First(&project).Error
+	err = models.DB.GormDB.Where("name = ? AND organisation_id = ? AND repo_id = ?", request.Name, org.ID, repo.ID).First(&project).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -170,7 +170,7 @@ func ReportProjectsForRepo(c *gin.Context) {
 				Organisation:      org,
 			}
 
-			err = models.DB.Create(&project).Error
+			err = models.DB.GormDB.Create(&project).Error
 
 			if err != nil {
 				log.Printf("Error creating project: %v", err)
@@ -196,7 +196,7 @@ func RunHistoryForProject(c *gin.Context) {
 		return
 	}
 
-	org, err := models.GetOrganisationById(orgId)
+	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
@@ -205,7 +205,7 @@ func RunHistoryForProject(c *gin.Context) {
 
 	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
+	err = models.DB.GormDB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
 		log.Printf("Error fetching repo: %v", err)
@@ -215,7 +215,7 @@ func RunHistoryForProject(c *gin.Context) {
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND repo_id = ? AND organisation_id", projectName, repo.ID, org.ID).First(&project).Error
+	err = models.DB.GormDB.Where("name = ? AND repo_id = ? AND organisation_id", projectName, repo.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
@@ -225,7 +225,7 @@ func RunHistoryForProject(c *gin.Context) {
 
 	var runHistory []models.ProjectRun
 
-	err = models.DB.Where("project_id = ?", project.ID).Find(&runHistory).Error
+	err = models.DB.GormDB.Where("project_id = ?", project.ID).Find(&runHistory).Error
 
 	if err != nil {
 		log.Printf("Error fetching run history: %v", err)
@@ -260,7 +260,7 @@ func CreateRunForProject(c *gin.Context) {
 		return
 	}
 
-	org, err := models.GetOrganisationById(orgId)
+	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
@@ -269,7 +269,7 @@ func CreateRunForProject(c *gin.Context) {
 
 	var repo models.Repo
 
-	err = models.DB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
+	err = models.DB.GormDB.Where("name = ? AND organisation_id = ?", repoName, orgId).First(&repo).Error
 
 	if err != nil {
 		log.Printf("Error fetching repo: %v", err)
@@ -279,7 +279,7 @@ func CreateRunForProject(c *gin.Context) {
 
 	var project models.Project
 
-	err = models.DB.Where("name = ? AND repo_id = ? AND organisation_id = ?", projectName, repo.ID, org.ID).First(&project).Error
+	err = models.DB.GormDB.Where("name = ? AND repo_id = ? AND organisation_id = ?", projectName, repo.ID, org.ID).First(&project).Error
 
 	if err != nil {
 		log.Printf("Error fetching project: %v", err)
@@ -307,7 +307,7 @@ func CreateRunForProject(c *gin.Context) {
 		Project:   &project,
 	}
 
-	err = models.DB.Create(&run).Error
+	err = models.DB.GormDB.Create(&run).Error
 
 	if err != nil {
 		log.Printf("Error creating run: %v", err)
