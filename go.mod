@@ -16,7 +16,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v53 v53.2.0
 	github.com/google/go-github/v54 v54.0.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.3.2
 	golang.org/x/oauth2 v0.11.0
