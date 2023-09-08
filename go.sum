@@ -392,6 +392,8 @@ github.com/diggerhq/lib-digger-config v0.0.4 h1:vqZlszrqHkO3KAQZZOVXHOaVMK5SQffJ
 github.com/diggerhq/lib-digger-config v0.0.4/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d h1:v6D+4TPDLOAIFPFMEqZE+wINWDyXrkK9bpJZ8XAabmQ=
 github.com/diggerhq/lib-orchestrator v0.0.0-20230901115604-65be3864de9d/go.mod h1:JBjRXAr8bJQjIIhwmJwbLSSt8xziGFcWVcvAQArYfzs=
+github.com/diggerhq/lib-orchestrator v0.0.0-20230906154535-5d9c76e70f76 h1:ovUkcIHXQOX34SUUBk/6Fb10gaOAbmRfEHExWQ7t3Is=
+github.com/diggerhq/lib-orchestrator v0.0.0-20230906154535-5d9c76e70f76/go.mod h1:BXJs5ciW2MSkc0hT/It0q3knomQ/0/rXTObIaU162bw=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435 h1:OwD6WZx6c7cvC3+dukrUhnYs1sQB1wUuabMb1lk4YBE=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435/go.mod h1:kTd3tlfUE6CgXRNKbVltegdvDV+/uXiDVhaivWezmnM=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
