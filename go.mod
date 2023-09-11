@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
-	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
 	github.com/dchest/uniuri v1.2.0
 	github.com/diggerhq/lib-digger-config v0.0.4
 	github.com/diggerhq/lib-orchestrator v0.0.1
