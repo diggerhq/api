@@ -204,7 +204,7 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, bool) {
 	return &repo, true
 }
 
-func (db *Database) GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
 
 	// todo: do we need to create a github app here
@@ -241,7 +241,7 @@ func (db *Database) GitHubRepoAdded(installationId int64, appId int, login strin
 	return nil
 }
 
-func (db *Database) GitHubRepoRemoved(installationId int64, appId int, repoFullName string) error {
+func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := GithubAppInstallation{}
 	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
 	if err != nil {
@@ -260,8 +260,8 @@ func (db *Database) GitHubRepoRemoved(installationId int64, appId int, repoFullN
 	return nil
 }
 
-func (db *Database) GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
-	link, err := db.GetGitHubInstallationLinkForOrg(orgId)
+func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
+	link, err := db.GetGithubInstallationLinkForOrg(orgId)
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +281,8 @@ func (db *Database) GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string)
 	return &installation, nil
 }
 
-// GetGitHubAppInstallationByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
-func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallation, error) {
+// GetGithubAppInstallationByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
+func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallation, error) {
 	installation := GithubAppInstallation{}
 	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(&installation)
 	if result.Error != nil {
@@ -298,8 +298,8 @@ func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, re
 	return &installation, nil
 }
 
-// GetGitHubAppInstallationLinkByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
-func (db *Database) GetGitHubAppInstallationLinkByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallationLink, error) {
+// GetGithubAppInstallationLinkByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
+func (db *Database) GetGithubAppInstallationLinkByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallationLink, error) {
 	var link *GithubAppInstallationLink
 	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(link)
 	if result.Error != nil {
@@ -315,8 +315,8 @@ func (db *Database) GetGitHubAppInstallationLinkByIdAndRepo(installationId int64
 	return link, nil
 }
 
-// GetGitHubApp
-func (db *Database) GetGitHubApp(gitHubAppId int64) (*GithubApp, error) {
+// GetGithubApp
+func (db *Database) GetGithubApp(gitHubAppId int64) (*GithubApp, error) {
 	app := GithubApp{}
 	result := db.GormDB.Where("github_id = ?", gitHubAppId).Find(&app)
 	if result.Error != nil {
@@ -325,7 +325,7 @@ func (db *Database) GetGitHubApp(gitHubAppId int64) (*GithubApp, error) {
 	return &app, nil
 }
 
-func (db *Database) CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
+func (db *Database) CreateGithubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
@@ -363,7 +363,7 @@ func (db *Database) CreateGitHubInstallationLink(orgId uint, installationId int6
 	return &link, nil
 }
 
-func (db *Database) GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
+func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)

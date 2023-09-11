@@ -27,9 +27,9 @@ import (
 	"sync"
 )
 
-func GitHubAppWebHook(c *gin.Context) {
+func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	gh := &utils.DiggerGitHubRealClient{}
+	gh := &utils.DiggerGithubRealClient{}
 
 	_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 	if err != nil {
@@ -45,7 +45,7 @@ func GitHubAppWebHook(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, webhooks.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
-			fmt.Println("GitHub event  wasn't found.")
+			fmt.Println("Github event  wasn't found.")
 		}
 		fmt.Printf("Failed to parse Github Event. :%v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
@@ -79,7 +79,7 @@ func GitHubAppWebHook(c *gin.Context) {
 			accountId := installationRepos.Installation.Account.ID
 			appId := installationRepos.Installation.AppID
 			for _, repo := range installationRepos.RepositoriesAdded {
-				err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+				err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to store item.")
 					return
@@ -90,7 +90,7 @@ func GitHubAppWebHook(c *gin.Context) {
 			installationId := installationRepos.Installation.ID
 			appId := installationRepos.Installation.AppID
 			for _, repo := range installationRepos.RepositoriesRemoved {
-				err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
+				err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
 				if err != nil {
 					c.String(http.StatusInternalServerError, "Failed to remove item.")
 					return
@@ -139,7 +139,7 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 
 	for _, repo := range installation.Repositories {
 		fmt.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	appId := installation.Installation.AppID
 	for _, repo := range installation.Repositories {
 		fmt.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
+		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	return nil
 }
 
-func handleWorkflowJobEvent(gh utils.DiggerGitHubClient, payload webhooks.WorkflowJobPayload) error {
+func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.WorkflowJobPayload) error {
 	ctx := context.Background()
 	switch payload.Action {
 	case "completed":
@@ -172,7 +172,7 @@ func handleWorkflowJobEvent(gh utils.DiggerGitHubClient, payload webhooks.Workfl
 		repoFullName := payload.Repository.FullName
 		installationId := payload.Installation.ID
 
-		installation, err := models.DB.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
+		installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func handleWorkflowRunEvent(payload webhooks.WorkflowRunPayload) error {
 	return nil
 }
 
-func handlePullRequestEvent(gh utils.DiggerGitHubClient, payload *webhooks.PullRequestPayload) error {
+func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullRequestPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -235,13 +235,13 @@ func handlePullRequestEvent(gh utils.DiggerGitHubClient, payload *webhooks.PullR
 	cloneURL = payload.Repository.CloneURL
 	actor = payload.Sender.Login
 
-	installation, err := models.DB.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
+	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
 		return fmt.Errorf("error getting github app installation")
 	}
 
-	_, err = models.DB.GetGitHubApp(installation.GithubAppId)
+	_, err = models.DB.GetGithubApp(installation.GithubAppId)
 	if err != nil {
 		log.Printf("Error getting app: %v", err)
 		return fmt.Errorf("error getting github app")
@@ -261,9 +261,9 @@ func handlePullRequestEvent(gh utils.DiggerGitHubClient, payload *webhooks.PullR
 
 	prBranch := payload.PullRequest.Head.Ref
 
-	link, err := models.DB.GetGitHubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
+	link, err := models.DB.GetGithubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
 	if err != nil {
-		log.Printf("Error getting GitHubAppInstallationLink: %v", err)
+		log.Printf("Error getting GithubAppInstallationLink: %v", err)
 		return fmt.Errorf("error getting github app link to installation")
 	}
 
@@ -356,7 +356,7 @@ func handlePullRequestEvent(gh utils.DiggerGitHubClient, payload *webhooks.PullR
 	return nil
 }
 
-func handleIssueCommentEvent(gh utils.DiggerGitHubClient, payload *webhooks.IssueCommentPayload) error {
+func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.IssueCommentPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -371,13 +371,13 @@ func handleIssueCommentEvent(gh utils.DiggerGitHubClient, payload *webhooks.Issu
 	cloneURL = payload.Repository.CloneURL
 	actor = payload.Sender.Login
 
-	installation, err := models.DB.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
+	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
 		return fmt.Errorf("error getting installation")
 	}
 
-	_, err = models.DB.GetGitHubApp(installation.GithubAppId)
+	_, err = models.DB.GetGithubApp(installation.GithubAppId)
 	if err != nil {
 		log.Printf("Error getting app: %v", err)
 		return fmt.Errorf("error getting app")
@@ -402,7 +402,7 @@ func handleIssueCommentEvent(gh utils.DiggerGitHubClient, payload *webhooks.Issu
 		return fmt.Errorf("error getting branch name")
 	}
 
-	link, err := models.DB.GetGitHubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
+	link, err := models.DB.GetGithubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting branch name: %v", err)
 		return fmt.Errorf("error getting branch name")
@@ -497,7 +497,7 @@ func handleIssueCommentEvent(gh utils.DiggerGitHubClient, payload *webhooks.Issu
 	return nil
 }
 
-func GitHubAppCallbackPage(c *gin.Context) {
+func GithubAppCallbackPage(c *gin.Context) {
 	installationId := c.Request.URL.Query()["installation_id"][0]
 	//setupAction := c.Request.URL.Query()["setup_action"][0]
 	code := c.Request.URL.Query()["code"][0]
@@ -517,7 +517,7 @@ func GitHubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	result, err := validateGitHubCallback(clientId, clientSecret, code, installationId64)
+	result, err := validateGithubCallback(clientId, clientSecret, code, installationId64)
 	if !result {
 		fmt.Printf("Failed to validated installation id, %v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to validate installation_id.")
@@ -531,9 +531,9 @@ func GitHubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	_, err = models.DB.CreateGitHubInstallationLink(org.ID, installationId64)
+	_, err = models.DB.CreateGithubInstallationLink(org.ID, installationId64)
 	if err != nil {
-		log.Printf("Error saving CreateGitHubInstallationLink to database: %v", err)
+		log.Printf("Error saving CreateGithubInstallationLink to database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
 		return
 	}
@@ -577,7 +577,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 	workflowFileName := "workflow.yml"
 	repoFullName := owner + "/" + repo
 
-	installation, err := models.DB.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
+	installation, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, repoFullName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating github installation"})
 		return
@@ -590,7 +590,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 			return
 		}
 	*/
-	gh := &utils.DiggerGitHubRealClient{}
+	gh := &utils.DiggerGithubRealClient{}
 	client, _, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
@@ -603,7 +603,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/
 // validation based on https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app , step 3
-func validateGitHubCallback(clientId string, clientSecret string, code string, installationId int64) (bool, error) {
+func validateGithubCallback(clientId string, clientSecret string, code string, installationId int64) (bool, error) {
 	ctx := context.Background()
 	type OAuthAccessResponse struct {
 		AccessToken string `json:"access_token"`

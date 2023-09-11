@@ -70,11 +70,11 @@ func main() {
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
 
-	r.POST("/github-app-webhook", controllers.GitHubAppWebHook)
+	r.POST("/github-app-webhook", controllers.GithubAppWebHook)
 
 	githubGroup := r.Group("/github")
 	githubGroup.Use(middleware.WebAuth(auth))
-	githubGroup.GET("/callback", controllers.GitHubAppCallbackPage)
+	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/test/job", controllers.GihHubCreateTestJobPage)
 
 	projectsGroup := r.Group("/projects")

@@ -343,7 +343,7 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	}, database
 }
 
-func TestGitHubHandleIssueCommentEvent(t *testing.T) {
+func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
 
@@ -377,7 +377,7 @@ func TestGitHubHandleIssueCommentEvent(t *testing.T) {
 		),
 	)
 
-	gh := &utils.DiggerGitHubClientMock{}
+	gh := &utils.DiggerGithubClientMock{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.IssueCommentPayload
