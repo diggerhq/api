@@ -19,13 +19,13 @@ func createTempDir() string {
 
 type action func(string)
 
-func CloneGitRepoAndDoAction(repoUrl string, branch string, accessToken string, action action) error {
+func CloneGitRepoAndDoAction(repoUrl string, branch string, token string, action action) error {
 	dir := createTempDir()
 	_, err := git.PlainClone(dir, false, &git.CloneOptions{
 		URL: repoUrl,
 		Auth: &http.BasicAuth{
 			Username: "x-access-token", // anything except an empty string
-			Password: accessToken,
+			Password: token,
 		},
 		ReferenceName: plumbing.NewBranchReferenceName(branch),
 		Depth:         1,

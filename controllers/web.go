@@ -296,13 +296,19 @@ func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
 }
 
 func (web *WebController) UpdateRepoPage(c *gin.Context) {
-	repoId64, err := strconv.ParseUint(c.Param("repoid"), 10, 32)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to parse repo id")
+	repoName := c.Param("reponame")
+	if repoName == "" {
+		c.String(http.StatusInternalServerError, "Repo name can't be empty")
 		return
 	}
-	repoId := uint(repoId64)
-	repo, ok := models.DB.GetRepo(c, middleware.ORGANISATION_ID_KEY, repoId)
+	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	if !exists {
+		fmt.Printf("Org %v not found in the context\n", middleware.ORGANISATION_ID_KEY)
+		c.String(http.StatusInternalServerError, "Not allowed to access this resource")
+		return
+	}
+
+	repo, ok := models.DB.GetRepo(orgId, repoName)
 	if !ok {
 		c.String(http.StatusForbidden, "Failed to find repo")
 		return

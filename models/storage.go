@@ -186,19 +186,15 @@ func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool
 	return &repo, true
 }
 
-func (db *Database) GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo, bool) {
-	loggedInOrganisationId, exists := c.Get(orgIdKey)
-	if !exists {
-		fmt.Print("Not allowed to access this resource")
-		return nil, false
-	}
+// GetRepo returns digger repo by organisationId and repo name (diggerhq-digger)
+func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, bool) {
 
-	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
+	fmt.Printf("getDefaultRepo, org id: %v\n", orgIdKey)
 	var repo Repo
 
 	err := db.GormDB.Preload("Organisation").
 		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
-		Where("organisations.id = ? AND repos.id=?", loggedInOrganisationId, repoId).First(&repo).Error
+		Where("organisations.id = ? AND repos.name=?", orgIdKey, repoName).First(&repo).Error
 
 	if err != nil {
 		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
@@ -294,9 +290,10 @@ func (db *Database) GetGitHubAppInstallationByOrgAndRepo(orgId any, repo string)
 	return &installation, nil
 }
 
-func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, repo string) (*GithubAppInstallation, error) {
+// GetGitHubAppInstallationByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
+func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallation, error) {
 	installation := GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -308,6 +305,40 @@ func (db *Database) GetGitHubAppInstallationByIdAndRepo(installationId int64, re
 		return nil, nil
 	}
 	return &installation, nil
+}
+
+// GetGitHubAppInstallationLinkByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
+func (db *Database) GetGitHubAppInstallationLinkByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallationLink, error) {
+	var link *GithubAppInstallationLink
+	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(link)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+
+	// If not found, the values will be default values, which means ID will be 0
+	if link.Model.ID == 0 {
+		return nil, nil
+	}
+	return link, nil
+}
+
+// GetGitHubApp
+func (db *Database) GetGitHubApp(gitHubAppId int64) (*GithubApp, error) {
+	app := GithubApp{}
+	result := db.GormDB.Where("github_id = ?").Find(&app)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+
+	// If not found, the values will be default values, which means ID will be 0
+	if app.Model.ID == 0 {
+		return nil, nil
+	}
+	return &app, nil
 }
 
 func (db *Database) CreateGitHubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
