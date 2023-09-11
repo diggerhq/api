@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bradleyfalzon/ghinstallation/v2"
+
 	"github.com/dchest/uniuri"
 	dg_configuration "github.com/diggerhq/lib-digger-config"
 	orchestrator "github.com/diggerhq/lib-orchestrator"
@@ -130,15 +130,6 @@ func GitHubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
-func getGitHubClient(githubAppId int64, installationId int64) (*github.Client, *string, error) {
-	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
-	client, token, err := GetGithubClient(githubAppId, installationId, githubAppPrivateKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	return client, token, nil
-}
-
 func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	login := installation.Installation.Account.Login
@@ -184,7 +175,7 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		if err != nil {
 			return err
 		}
-		client, _, err := getGitHubClient(installation.GithubAppId, installationId)
+		client, _, err := utils.GetGithubClient(installation.GithubAppId, installationId)
 		if err != nil {
 			return err
 		}
@@ -255,7 +246,7 @@ func handlePullRequestEvent(payload *webhooks.PullRequestPayload) error {
 		return fmt.Errorf("error getting github app")
 	}
 
-	ghClient, token, err := getGitHubClient(installation.GithubAppId, installation.GithubInstallationId)
+	ghClient, token, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
 		return fmt.Errorf("error creating github app client")
@@ -391,7 +382,7 @@ func handleIssueCommentEvent(payload *webhooks.IssueCommentPayload) error {
 		return fmt.Errorf("error getting app")
 	}
 
-	ghClient, token, err := getGitHubClient(installation.GithubAppId, installation.GithubInstallationId)
+	ghClient, token, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
 		return fmt.Errorf("error creating github app client")
@@ -591,8 +582,6 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
-
 	/*
 		link, err := models.CreateDiggerJobLink(repoFullName)
 		if err != nil {
@@ -600,7 +589,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 			return
 		}
 	*/
-	client, _, err := GetGithubClient(installation.GithubAppId, installation.GithubInstallationId, githubAppPrivateKey)
+	client, _, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
 		return
@@ -608,21 +597,6 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 
 	services.TriggerTestJob(client, owner, repo, job, workflowFileName)
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
-}
-
-func GetGithubClient(githubAppId int64, installationId int64, githubAppPrivateKey string) (*github.Client, *string, error) {
-	tr := http.DefaultTransport
-	itr, err := ghinstallation.New(tr, githubAppId, installationId, []byte(githubAppPrivateKey))
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initialising github app installation: %v\n", err)
-	}
-
-	token, err := itr.Token(context.Background())
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initialising git app token: %v\n", err)
-	}
-	ghClient := github.NewClient(&http.Client{Transport: itr})
-	return ghClient, &token, nil
 }
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/

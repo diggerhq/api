@@ -225,17 +225,8 @@ func (db *Database) GitHubRepoAdded(installationId int64, appId int, login strin
 	}
 
 	if result.RowsAffected == 0 {
-		item := GithubAppInstallation{
-			GithubInstallationId: installationId,
-			GithubAppId:          int64(appId),
-			Login:                login,
-			AccountId:            int(accountId),
-			Repo:                 repoFullName,
-			State:                Active,
-		}
-		err := db.GormDB.Create(&item).Error
+		_, err := db.CreateGithubAppInstallation(installationId, int64(appId), login, int(accountId), repoFullName)
 		if err != nil {
-			fmt.Printf("Failed to save github installation item to database. %v\n", err)
 			return fmt.Errorf("failed to save github installation item to database. %v", err)
 		}
 	} else {
@@ -327,16 +318,9 @@ func (db *Database) GetGitHubAppInstallationLinkByIdAndRepo(installationId int64
 // GetGitHubApp
 func (db *Database) GetGitHubApp(gitHubAppId int64) (*GithubApp, error) {
 	app := GithubApp{}
-	result := db.GormDB.Where("github_id = ?").Find(&app)
+	result := db.GormDB.Where("github_id = ?", gitHubAppId).Find(&app)
 	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, result.Error
-		}
-	}
-
-	// If not found, the values will be default values, which means ID will be 0
-	if app.Model.ID == 0 {
-		return nil, nil
+		return nil, result.Error
 	}
 	return &app, nil
 }
@@ -544,4 +528,22 @@ func (db *Database) GetToken(tenantId any) (*Token, error) {
 		}
 	}
 	return org, nil
+}
+
+func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppId int64, login string, accountId int, repoFullName string) (*GithubAppInstallation, error) {
+	installation := &GithubAppInstallation{
+		GithubInstallationId: installationId,
+		GithubAppId:          githubAppId,
+		Login:                login,
+		AccountId:            accountId,
+		Repo:                 repoFullName,
+		State:                Active,
+	}
+	result := db.GormDB.Save(installation)
+	if result.Error != nil {
+		fmt.Printf("Failed to create GithubAppInstallation: %v, error: %v\n", installationId, result.Error)
+		return nil, result.Error
+	}
+	fmt.Printf("GithubAppInstallation %v, (id: %v) has been created successfully\n", installationId, installation.ID)
+	return installation, nil
 }
