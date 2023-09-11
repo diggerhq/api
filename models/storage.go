@@ -415,12 +415,12 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 }
 
 func (db *Database) CreateDiggerJob(jobId string, parentJobId *string) (*DiggerJob, error) {
-	job := DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated}
-	result := db.GormDB.Save(&job)
+	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated}
+	result := db.GormDB.Save(job)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return &job, nil
+	return job, nil
 }
 
 func (db *Database) GetPendingDiggerJobs() ([]DiggerJob, error) {
@@ -467,6 +467,33 @@ func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
 		}
 	}
 	return org, nil
+}
+
+func (db *Database) CreateOrganisation(externalSource string, tenantId string) (*Organisation, error) {
+	org := &Organisation{ExternalSource: externalSource, ExternalId: tenantId}
+	result := db.GormDB.Save(org)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return org, nil
+}
+
+func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*Project, error) {
+	project := &Project{Name: name, Organisation: org, Repo: repo}
+	result := db.GormDB.Save(project)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return project, nil
+}
+
+func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig string) (*Repo, error) {
+	repo := &Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
+	result := db.GormDB.Save(repo)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return repo, nil
 }
 
 func (db *Database) GetToken(tenantId any) (*Token, error) {
