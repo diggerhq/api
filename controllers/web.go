@@ -75,20 +75,15 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("repo: %v", repo)
-		//TODO: gorm is trying to insert new repo and organisation on every insert of a new project,
+		//TODO: gorm is trying to insert a new repo and organisation on every insert of a new project,
 		// there should be a way to avoid it
-		project := models.Project{Name: projectName, Organisation: repo.Organisation, Repo: repo}
-
-		err := models.DB.GormDB.Create(&project).Error
+		_, err := models.DB.CreateProject(projectName, repo.Organisation, repo)
 		if err != nil {
-			fmt.Printf("Failed to create a new project, %v\n", err)
 			message := "Failed to create a project"
 			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
 				"Message": message,
 			})
 		}
-
 		c.Redirect(http.StatusFound, "/projects")
 	}
 }

@@ -184,7 +184,14 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		}
 		if jobId != "" {
 			workflowFileName := "workflow.yml"
-			services.DiggerJobCompleted(client, jobId, owner, repo, workflowFileName)
+			job, err := models.DB.GetDiggerJob(jobId)
+			if err != nil {
+				return err
+			}
+			err = services.DiggerJobCompleted(client, job, owner, repo, workflowFileName)
+			if err != nil {
+				return err
+			}
 		}
 
 	case "queued":
@@ -250,7 +257,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 
 	diggerJobId := uniuri.New()
 	parentJobId := uniuri.New()
-	_, err := models.DB.CreateDiggerJob(parentJobId, nil)
+	job, err := models.DB.CreateDiggerJob(parentJobId, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
@@ -298,7 +305,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	services.TriggerTestJob(client, owner, repo, parentJobId, workflowFileName)
+	services.TriggerTestJob(client, owner, repo, job, workflowFileName)
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 

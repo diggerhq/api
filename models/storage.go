@@ -445,15 +445,15 @@ func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
 	return job, nil
 }
 
-func (db *Database) GetDiggerJobByParentId(jobId string) (*DiggerJob, error) {
-	job := &DiggerJob{}
-	result := db.GormDB.Where("parent_digger_job_id=? ", jobId).Find(job)
+func (db *Database) GetDiggerJobsByParentId(jobId string) ([]DiggerJob, error) {
+	var jobs []DiggerJob
+	result := db.GormDB.Where("parent_digger_job_id=? ", jobId).Find(jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
-	return job, nil
+	return jobs, nil
 }
 
 func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
@@ -469,12 +469,14 @@ func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
 	return org, nil
 }
 
-func (db *Database) CreateOrganisation(externalSource string, tenantId string) (*Organisation, error) {
-	org := &Organisation{ExternalSource: externalSource, ExternalId: tenantId}
+func (db *Database) CreateOrganisation(name string, externalSource string, tenantId string) (*Organisation, error) {
+	org := &Organisation{Name: name, ExternalSource: externalSource, ExternalId: tenantId}
 	result := db.GormDB.Save(org)
 	if result.Error != nil {
+		fmt.Printf("Failed to create organisation: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
+	fmt.Printf("Organisation %s, (id: %v) has been created successfully\n", name, org.ID)
 	return org, nil
 }
 
@@ -482,8 +484,10 @@ func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*
 	project := &Project{Name: name, Organisation: org, Repo: repo}
 	result := db.GormDB.Save(project)
 	if result.Error != nil {
+		fmt.Printf("Failed to create project: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
+	fmt.Printf("Project %s, (id: %v) has been created successfully\n", name, project.ID)
 	return project, nil
 }
 
@@ -491,8 +495,10 @@ func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig stri
 	repo := &Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
 	result := db.GormDB.Save(repo)
 	if result.Error != nil {
+		fmt.Printf("Failed to create repo: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
+	fmt.Printf("Repo %s, (id: %v) has been created successfully\n", name, repo.ID)
 	return repo, nil
 }
 

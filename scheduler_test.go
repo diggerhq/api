@@ -7,7 +7,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"log"
-	"os/exec"
+	"os"
 	"testing"
 )
 
@@ -18,7 +18,10 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	dbName := "database_test.db"
 
 	// remove old database
-	exec.Command("rm", "-f", dbName)
+	e := os.Remove(dbName)
+	if e != nil {
+		log.Fatal(e)
+	}
 
 	// open and create a new database
 	gdb, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
@@ -38,7 +41,8 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 
 	orgTenantId := "11111111-1111-1111-1111-111111111111"
 	externalSource := "test"
-	org, err := database.CreateOrganisation(externalSource, orgTenantId)
+	orgName := "testOrg"
+	org, err := database.CreateOrganisation(orgName, externalSource, orgTenantId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,4 +87,33 @@ func TestCreateSingleJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.NotZero(t, job.ID)
+}
+
+func TestFindDiggerJobsByParentJobId(t *testing.T) {
+	teardownSuite, database := setupSuite(t)
+	defer teardownSuite(t)
+
+	parentJobId := uniuri.New()
+	job1Id := uniuri.New()
+	job2Id := uniuri.New()
+	job, err := database.CreateDiggerJob(parentJobId, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, job)
+	assert.NotZero(t, job.ID)
+	job, err = database.CreateDiggerJob(job1Id, &parentJobId)
+	assert.NoError(t, err)
+	assert.NotNil(t, job)
+	assert.Equal(t, parentJobId, job.ParentDiggerJobId)
+	assert.NotZero(t, job.ID)
+	job, err = database.CreateDiggerJob(job2Id, &parentJobId)
+	assert.NoError(t, err)
+	assert.NotNil(t, job)
+	assert.Equal(t, parentJobId, job.ParentDiggerJobId)
+	assert.NotZero(t, job.ID)
+
+	jobs, err := database.GetDiggerJobsByParentId(parentJobId)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(jobs))
+	assert.Equal(t, job1Id, jobs[0].DiggerJobId)
+	assert.Equal(t, job2Id, jobs[1].DiggerJobId)
 }
