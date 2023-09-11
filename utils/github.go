@@ -47,7 +47,19 @@ func CloneGitRepoAndDoAction(repoUrl string, branch string, token string, action
 
 }
 
-func GetGithubClient(githubAppId int64, installationId int64) (*github.Client, *string, error) {
+// just a wrapper around github client to be able to use mocks
+type DiggerGitHubRealClient struct {
+}
+
+type DiggerGitHubClientMock struct {
+	MockedHTTPClient *net.Client
+}
+
+type DiggerGitHubClient interface {
+	GetGithubClient(githubAppId int64, installationId int64) (*github.Client, *string, error)
+}
+
+func (gh *DiggerGitHubRealClient) GetGithubClient(githubAppId int64, installationId int64) (*github.Client, *string, error) {
 	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
 	tr := net.DefaultTransport
 	itr, err := ghinstallation.New(tr, githubAppId, installationId, []byte(githubAppPrivateKey))
@@ -60,5 +72,11 @@ func GetGithubClient(githubAppId int64, installationId int64) (*github.Client, *
 		return nil, nil, fmt.Errorf("error initialising git app token: %v\n", err)
 	}
 	ghClient := github.NewClient(&net.Client{Transport: itr})
+	return ghClient, &token, nil
+}
+
+func (gh *DiggerGitHubClientMock) GetGithubClient(githubAppId int64, installationId int64) (*github.Client, *string, error) {
+	ghClient := github.NewClient(gh.MockedHTTPClient)
+	token := "token"
 	return ghClient, &token, nil
 }

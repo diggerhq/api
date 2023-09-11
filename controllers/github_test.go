@@ -2,12 +2,16 @@ package controllers
 
 import (
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/utils"
 	"encoding/json"
 	webhooks "github.com/diggerhq/webhooks/github"
+	"github.com/google/go-github/v55/github"
+	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -343,9 +347,42 @@ func TestGitHubHandleIssueCommentEvent(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
 
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetUsersByUsername,
+			github.User{
+				Name: github.String("foobar"),
+			},
+		),
+		mock.WithRequestMatch(
+			mock.GetUsersOrgsByUsername,
+			[]github.Organization{
+				{
+					Name: github.String("foobar123thisorgwasmocked"),
+				},
+			},
+		),
+		mock.WithRequestMatchHandler(
+			mock.GetOrgsProjectsByOrg,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Write(mock.MustMarshal([]github.Project{
+					{
+						Name: github.String("mocked-proj-1"),
+					},
+					{
+						Name: github.String("mocked-proj-2"),
+					},
+				}))
+			}),
+		),
+	)
+
+	gh := &utils.DiggerGitHubClientMock{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
 	var payload webhooks.IssueCommentPayload
 	err := json.Unmarshal([]byte(issueCommentPayload), &payload)
 	assert.NoError(t, err)
-	err = handleIssueCommentEvent(&payload)
+	err = handleIssueCommentEvent(gh, &payload)
 	assert.NoError(t, err)
 }

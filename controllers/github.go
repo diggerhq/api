@@ -29,6 +29,7 @@ import (
 
 func GitHubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	gh := &utils.DiggerGitHubRealClient{}
 
 	_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 	if err != nil {
@@ -98,14 +99,14 @@ func GitHubAppWebHook(c *gin.Context) {
 		}
 	case webhooks.IssueCommentPayload:
 		payload := payload.(webhooks.IssueCommentPayload)
-		err := handleIssueCommentEvent(&payload)
+		err := handleIssueCommentEvent(gh, &payload)
 		if err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 	case webhooks.WorkflowJobPayload:
 		payload := payload.(webhooks.WorkflowJobPayload)
-		err := handleWorkflowJobEvent(payload)
+		err := handleWorkflowJobEvent(gh, payload)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowJob event.")
 			return
@@ -120,7 +121,7 @@ func GitHubAppWebHook(c *gin.Context) {
 	case webhooks.PullRequestPayload:
 		payload := payload.(webhooks.PullRequestPayload)
 		log.Printf("Got pull request event for %v", payload.PullRequest.ID)
-		err := handlePullRequestEvent(&payload)
+		err := handlePullRequestEvent(gh, &payload)
 		if err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
@@ -159,7 +160,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	return nil
 }
 
-func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
+func handleWorkflowJobEvent(gh utils.DiggerGitHubClient, payload webhooks.WorkflowJobPayload) error {
 	ctx := context.Background()
 	switch payload.Action {
 	case "completed":
@@ -175,7 +176,7 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		if err != nil {
 			return err
 		}
-		client, _, err := utils.GetGithubClient(installation.GithubAppId, installationId)
+		client, _, err := gh.GetGithubClient(installation.GithubAppId, installationId)
 		if err != nil {
 			return err
 		}
@@ -219,7 +220,7 @@ func handleWorkflowRunEvent(payload webhooks.WorkflowRunPayload) error {
 	return nil
 }
 
-func handlePullRequestEvent(payload *webhooks.PullRequestPayload) error {
+func handlePullRequestEvent(gh utils.DiggerGitHubClient, payload *webhooks.PullRequestPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -246,7 +247,7 @@ func handlePullRequestEvent(payload *webhooks.PullRequestPayload) error {
 		return fmt.Errorf("error getting github app")
 	}
 
-	ghClient, token, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	ghClient, token, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
 		return fmt.Errorf("error creating github app client")
@@ -355,7 +356,7 @@ func handlePullRequestEvent(payload *webhooks.PullRequestPayload) error {
 	return nil
 }
 
-func handleIssueCommentEvent(payload *webhooks.IssueCommentPayload) error {
+func handleIssueCommentEvent(gh utils.DiggerGitHubClient, payload *webhooks.IssueCommentPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -382,7 +383,7 @@ func handleIssueCommentEvent(payload *webhooks.IssueCommentPayload) error {
 		return fmt.Errorf("error getting app")
 	}
 
-	ghClient, token, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	ghClient, token, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
 		return fmt.Errorf("error creating github app client")
@@ -589,7 +590,8 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 			return
 		}
 	*/
-	client, _, err := utils.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	gh := &utils.DiggerGitHubRealClient{}
+	client, _, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
 		return
