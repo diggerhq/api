@@ -308,8 +308,8 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 		return
 	}
 
-	repo, ok := models.DB.GetRepo(orgId, repoName)
-	if !ok {
+	repo, err := models.DB.GetRepo(orgId, repoName)
+	if err != nil {
 		c.String(http.StatusForbidden, "Failed to find repo")
 		return
 	}

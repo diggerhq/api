@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dchest/uniuri"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"net/http"
 	"time"
@@ -187,9 +188,7 @@ func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool
 }
 
 // GetRepo returns digger repo by organisationId and repo name (diggerhq-digger)
-func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, bool) {
-
-	fmt.Printf("getDefaultRepo, org id: %v\n", orgIdKey)
+func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 	var repo Repo
 
 	err := db.GormDB.Preload("Organisation").
@@ -198,10 +197,9 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, bool) {
 
 	if err != nil {
 		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
-		return nil, false
+		return nil, err
 	}
-
-	return &repo, true
+	return &repo, nil
 }
 
 func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
@@ -298,10 +296,10 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 	return &installation, nil
 }
 
-// GetGithubAppInstallationLinkByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
-func (db *Database) GetGithubAppInstallationLinkByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallationLink, error) {
-	var link *GithubAppInstallationLink
-	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(link)
+// GetGithubAppInstallationLink repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
+func (db *Database) GetGithubAppInstallationLink(installationId int64) (*GithubAppInstallationLink, error) {
+	var link GithubAppInstallationLink
+	result := db.GormDB.Preload("Organisation").Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&link)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -312,7 +310,7 @@ func (db *Database) GetGithubAppInstallationLinkByIdAndRepo(installationId int64
 	if link.Model.ID == 0 {
 		return nil, nil
 	}
-	return link, nil
+	return &link, nil
 }
 
 // GetGithubApp
@@ -325,7 +323,7 @@ func (db *Database) GetGithubApp(gitHubAppId int64) (*GithubApp, error) {
 	return &app, nil
 }
 
-func (db *Database) CreateGithubInstallationLink(orgId uint, installationId int64) (*GithubAppInstallationLink, error) {
+func (db *Database) CreateGithubInstallationLink(org *Organisation, installationId int64) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
@@ -335,16 +333,16 @@ func (db *Database) CreateGithubInstallationLink(orgId uint, installationId int6
 		}
 	}
 	if result.RowsAffected > 0 {
-		if l.OrganisationId != orgId {
+		if l.OrganisationId != org.ID {
 			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installationId)
 		}
 		// record already exist, do nothing
 		return &l, nil
 	}
 
-	list := []GithubAppInstallationLink{}
+	var list []GithubAppInstallationLink
 	// if there are other installation for this org, we need to make them inactive
-	result = db.GormDB.Where("github_installation_id <> ? AND organisation_id = ? AND status=?", installationId, orgId, GithubAppInstallationLinkActive).Find(&list)
+	result = db.GormDB.Preload("Organisation").Where("github_installation_id <> ? AND organisation_id = ? AND status=?", installationId, org.ID, GithubAppInstallationLinkActive).Find(&list)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -355,7 +353,7 @@ func (db *Database) CreateGithubInstallationLink(orgId uint, installationId int6
 		db.GormDB.Save(item)
 	}
 
-	link := GithubAppInstallationLink{OrganisationId: orgId, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
+	link := GithubAppInstallationLink{Organisation: org, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
 	result = db.GormDB.Save(&link)
 	if result.Error != nil {
 		return nil, result.Error
@@ -429,12 +427,15 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 	return &org, nil
 }
 
-func (db *Database) CreateDiggerJob(jobId string, parentJobId *string) (*DiggerJob, error) {
-	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated}
+func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serializedJob []byte) (*DiggerJob, error) {
+	jobId := uniuri.New()
+	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated, BatchId: batch, SerializedJob: serializedJob}
 	result := db.GormDB.Save(job)
 	if result.Error != nil {
 		return nil, result.Error
 	}
+
+	fmt.Printf("DiggerJob %v, (id: %v) has been created successfully\n", job.DiggerJobId, job.ID)
 	return job, nil
 }
 
@@ -460,9 +461,20 @@ func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
 	return job, nil
 }
 
-func (db *Database) GetDiggerJobsByParentId(jobId string) ([]DiggerJob, error) {
+func (db *Database) GetDiggerJobsByParentId(jobId *string) ([]DiggerJob, error) {
 	var jobs []DiggerJob
 	result := db.GormDB.Where("parent_digger_job_id=? ", jobId).Find(&jobs)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return jobs, nil
+}
+
+func (db *Database) GetDiggerJobsWithoutParent() ([]DiggerJob, error) {
+	var jobs []DiggerJob
+	result := db.GormDB.Where("parent_digger_job_id is NULL ").Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error

@@ -327,10 +327,10 @@ func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_config
 }
 
 func GetIndependentProjects(depGraph graph.Graph[string, string], projectsToFilter []dg_configuration.Project) ([]dg_configuration.Project, error) {
-	adjecencyMap, _ := depGraph.AdjacencyMap()
+	adjacencyMap, _ := depGraph.AdjacencyMap()
 	res := make([]dg_configuration.Project, 0)
 	for _, project := range projectsToFilter {
-		if len(adjecencyMap[project.Name]) == 0 {
+		if len(adjacencyMap[project.Name]) == 0 {
 			res = append(res, project)
 		}
 	}

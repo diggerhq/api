@@ -2,7 +2,7 @@ package main
 
 import (
 	"digger.dev/cloud/models"
-	"github.com/dchest/uniuri"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -69,8 +69,8 @@ func TestCreateDiggerJob(t *testing.T) {
 	teardownSuite, database := setupSuite(t)
 	defer teardownSuite(t)
 
-	parentJobId := uniuri.New()
-	job, err := database.CreateDiggerJob(parentJobId, nil)
+	batchId, _ := uuid.NewUUID()
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -81,8 +81,8 @@ func TestCreateSingleJob(t *testing.T) {
 	teardownSuite, database := setupSuite(t)
 	defer teardownSuite(t)
 
-	parentJobId := uniuri.New()
-	job, err := database.CreateDiggerJob(parentJobId, nil)
+	batchId, _ := uuid.NewUUID()
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -93,27 +93,24 @@ func TestFindDiggerJobsByParentJobId(t *testing.T) {
 	teardownSuite, database := setupSuite(t)
 	defer teardownSuite(t)
 
-	parentJobId := uniuri.New()
-	job1Id := uniuri.New()
-	job2Id := uniuri.New()
-	job, err := database.CreateDiggerJob(parentJobId, nil)
+	batchId, _ := uuid.NewUUID()
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
+	parentJobId := job.DiggerJobId
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(job1Id, &parentJobId)
+	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(job2Id, &parentJobId)
+	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
 	assert.NotZero(t, job.ID)
 
-	jobs, err := database.GetDiggerJobsByParentId(parentJobId)
+	jobs, err := database.GetDiggerJobsByParentId(&parentJobId)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobs))
-	assert.Equal(t, job1Id, jobs[0].DiggerJobId)
-	assert.Equal(t, job2Id, jobs[1].DiggerJobId)
 }

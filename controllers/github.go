@@ -9,12 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 
-	"github.com/dchest/uniuri"
 	dg_configuration "github.com/diggerhq/lib-digger-config"
 	orchestrator "github.com/diggerhq/lib-orchestrator"
 	dg_github "github.com/diggerhq/lib-orchestrator/github"
-	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v55/github"
@@ -226,14 +225,12 @@ func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullR
 	var repoOwner string
 	var repoFullName string
 	var cloneURL string
-	var actor string
 
 	installationId = payload.Installation.ID
 	repoName = payload.Repository.Name
 	repoOwner = payload.Repository.Owner.Login
 	repoFullName = payload.Repository.FullName
 	cloneURL = payload.Repository.CloneURL
-	actor = payload.Sender.Login
 
 	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
@@ -261,15 +258,15 @@ func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullR
 
 	prBranch := payload.PullRequest.Head.Ref
 
-	link, err := models.DB.GetGithubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
+	link, err := models.DB.GetGithubAppInstallationLink(installationId)
 	if err != nil {
 		log.Printf("Error getting GithubAppInstallationLink: %v", err)
 		return fmt.Errorf("error getting github app link to installation")
 	}
 
 	diggerRepoName := repoOwner + "-" + repoName
-	repo, ok := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
-	if !ok {
+	repo, err := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
+	if err != nil {
 		log.Printf("Error getting repo: %v", err)
 		return fmt.Errorf("error getting repo")
 	}
@@ -298,20 +295,14 @@ func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullR
 		return fmt.Errorf("error loading digger config")
 	}
 
-	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(payload, config, &ghService)
+	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, &ghService)
 
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
 	}
-	eventPackage := dg_github_models.EventPackage{
-		Event:      payload,
-		EventName:  "pull_request",
-		Actor:      actor,
-		Repository: repoFullName,
-	}
 
-	jobs, _, err := dg_github.ConvertGithubEventToJobs(eventPackage, impactedProjects, requestedProject, config.Workflows)
+	jobs, _, err := dg_github.ConvertGithubPullRequestEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
 
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
@@ -362,14 +353,12 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	var repoOwner string
 	var repoFullName string
 	var cloneURL string
-	var actor string
 
 	installationId = payload.Installation.ID
 	repoName = payload.Repository.Name
 	repoOwner = payload.Repository.Owner.Login
 	repoFullName = payload.Repository.FullName
 	cloneURL = payload.Repository.CloneURL
-	actor = payload.Sender.Login
 
 	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
@@ -402,15 +391,15 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		return fmt.Errorf("error getting branch name")
 	}
 
-	link, err := models.DB.GetGithubAppInstallationLinkByIdAndRepo(installationId, repoFullName)
+	link, err := models.DB.GetGithubAppInstallationLink(installationId)
 	if err != nil {
 		log.Printf("Error getting branch name: %v", err)
 		return fmt.Errorf("error getting branch name")
 	}
 
 	diggerRepoName := repoOwner + "-" + repoName
-	repo, ok := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
-	if !ok {
+	repo, err := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
+	if err != nil {
 		log.Printf("Error getting repo: %v", err)
 		return fmt.Errorf("error getting repo")
 	}
@@ -431,69 +420,114 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		}
 	}
 
-	config, _, err := loadDiggerConfig(configYaml)
+	config, graph, err := loadDiggerConfig(configYaml)
 
 	if err != nil {
 		log.Printf("Error loading digger config: %v", err)
 		return fmt.Errorf("error loading digger config")
 	}
 
-	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(payload, config, &ghService)
+	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, &ghService)
 
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
 	}
-	eventPackage := dg_github_models.EventPackage{
-		Event:      payload,
-		EventName:  "pull_request",
-		Actor:      actor,
-		Repository: repoFullName,
-	}
 
-	jobs, _, err := dg_github.ConvertGithubEventToJobs(eventPackage, impactedProjects, requestedProject, config.Workflows)
-
+	jobs, _, err := dg_github.ConvertGithubIssueCommentEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
 		return fmt.Errorf("error converting event to jobs")
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(jobs))
-	successPerJob := make(map[string]bool, len(jobs))
+	/*
+		projects, err := GetIndependentProjects(graph, impactedProjects)
+		if err != nil {
+			return err
+		}*/
 
+	projectJobMap := map[string][]byte{}
 	for _, job := range jobs {
-		go func(job orchestrator.Job) {
-			defer wg.Done()
-
-			marshalled, err := json.Marshal(orchestrator.JobToJson(job))
-
-			if err != nil {
-				successPerJob[job.ProjectName] = false
-				log.Printf("Error marshalling job: %v", err)
-				return
-			}
-
-			_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
-				Ref:    prBranch,
-				Inputs: map[string]interface{}{"job": string(marshalled)},
-			})
-			if err != nil {
-				successPerJob[job.ProjectName] = false
-				log.Printf("Error dispatching workflow: %v", err)
-				return
-			}
-			successPerJob[job.ProjectName] = true
-		}(job)
+		marshalled, _ := json.Marshal(orchestrator.JobToJson(job))
+		projectJobMap[job.ProjectName] = marshalled
 	}
 
-	wg.Wait()
-	for projecName, success := range successPerJob {
-		err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
-		if err != nil {
-			log.Printf("Error publishing comment: %v", err)
+	batchId, _ := uuid.NewUUID()
+	adjacencyMap, _ := graph.AdjacencyMap()
+
+	for parent := range adjacencyMap {
+		for child := range adjacencyMap[parent] {
+
+			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent])
+			if err != nil {
+				return fmt.Errorf("failed to create a job")
+			}
+			childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child])
+			if err != nil {
+				return fmt.Errorf("failed to create a job")
+			}
+			fmt.Println(parent + " -> " + child)
+			fmt.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
 		}
 	}
+
+	/*
+		println("++++++++++++++++++++ impacted projects +++++++++++++++++")
+		for _, p := range impactedProjects {
+
+			fmt.Println(p.Name)
+
+			job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{})
+			if err != nil {
+				return err
+			}
+			print(job)
+		}
+
+	*/
+
+	print(jobs)
+	print(graph)
+	print(prNumber)
+
+	/*
+		var wg sync.WaitGroup
+		wg.Add(len(jobs))
+		successPerJob := make(map[string]bool, len(jobs))
+
+		for _, job := range jobs {
+			go func(job orchestrator.Job) {
+				defer wg.Done()
+
+				marshalled, err := json.Marshal(orchestrator.JobToJson(job))
+
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error marshalling job: %v", err)
+					return
+				}
+
+				_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+					Ref:    prBranch,
+					Inputs: map[string]interface{}{"job": string(marshalled)},
+				})
+				if err != nil {
+					successPerJob[job.ProjectName] = false
+					log.Printf("Error dispatching workflow: %v", err)
+					return
+				}
+				successPerJob[job.ProjectName] = true
+			}(job)
+		}
+
+		wg.Wait()
+		for projecName, success := range successPerJob {
+			err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
+			if err != nil {
+				log.Printf("Error publishing comment: %v", err)
+			}
+		}
+	*/
 	return nil
 }
 
@@ -531,7 +565,7 @@ func GithubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	_, err = models.DB.CreateGithubInstallationLink(org.ID, installationId64)
+	_, err = models.DB.CreateGithubInstallationLink(org, installationId64)
 	if err != nil {
 		log.Printf("Error saving CreateGithubInstallationLink to database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
@@ -548,14 +582,13 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	diggerJobId := uniuri.New()
-	parentJobId := uniuri.New()
-	job, err := models.DB.CreateDiggerJob(parentJobId, nil)
+	batchId, _ := uuid.NewUUID()
+	job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
 	}
-	_, err = models.DB.CreateDiggerJob(diggerJobId, &parentJobId)
+	_, err = models.DB.CreateDiggerJob(batchId, &job.DiggerJobId, []byte{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return

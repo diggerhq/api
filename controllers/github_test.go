@@ -11,7 +11,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -119,7 +118,7 @@ var issueCommentPayload string = `{
     "created_at": "2023-09-11T14:33:42Z",
     "updated_at": "2023-09-11T14:33:42Z",
     "author_association": "CONTRIBUTOR",
-    "body": "test comment",
+    "body": "digger plan",
     "reactions": {
       "url": "https://api.github.com/repos/diggerhq/github-job-scheduler/issues/comments/1714014480/reactions",
       "total_count": 0,
@@ -326,12 +325,40 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 		log.Fatal(err)
 	}
 
-	installationId := int64(41584295)
+	var payload webhooks.IssueCommentPayload
+	err = json.Unmarshal([]byte(issueCommentPayload), &payload)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// read installationID from test payload
+	installationId := payload.Installation.ID
+
+	_, err = database.CreateGithubInstallationLink(org, installationId)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	githubAppId := int64(1)
 	login := "test"
 	accountId := 1
 	repoFullName := "diggerhq/github-job-scheduler"
 	_, err = database.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	diggerConfig := `projects:
+- name: dev
+  dir: dev
+  workflow: default
+- name: prod
+  dir: prod
+  workflow: default
+  depends_on: ["dev"]
+`
+
+	diggerRepoName := strings.Replace(repoFullName, "/", "-", 1)
+	_, err = database.CreateRepo(diggerRepoName, org, diggerConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -347,33 +374,24 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
 
+	files := make([]github.CommitFile, 2)
+	files[0] = github.CommitFile{Filename: github.String("prod/main.tf")}
+	files[1] = github.CommitFile{Filename: github.String("dev/main.tf")}
 	mockedHTTPClient := mock.NewMockedHTTPClient(
 		mock.WithRequestMatch(
-			mock.GetUsersByUsername,
-			github.User{
-				Name: github.String("foobar"),
+			mock.GetReposPullsByOwnerByRepoByPullNumber,
+			github.PullRequest{
+				Number: github.Int(1),
+				Head:   &github.PullRequestBranch{Ref: github.String("main")},
 			},
 		),
 		mock.WithRequestMatch(
-			mock.GetUsersOrgsByUsername,
-			[]github.Organization{
-				{
-					Name: github.String("foobar123thisorgwasmocked"),
-				},
-			},
+			mock.GetReposPullsFilesByOwnerByRepoByPullNumber,
+			files,
 		),
-		mock.WithRequestMatchHandler(
-			mock.GetOrgsProjectsByOrg,
-			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.Write(mock.MustMarshal([]github.Project{
-					{
-						Name: github.String("mocked-proj-1"),
-					},
-					{
-						Name: github.String("mocked-proj-2"),
-					},
-				}))
-			}),
+		mock.WithRequestMatch(
+			mock.PostReposActionsWorkflowsDispatchesByOwnerByRepoByWorkflowId,
+			nil,
 		),
 	)
 
@@ -385,4 +403,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	assert.NoError(t, err)
 	err = handleIssueCommentEvent(gh, &payload)
 	assert.NoError(t, err)
+
+	jobs, err := models.DB.GetDiggerJobsWithoutParent()
+	assert.Equal(t, 1, len(jobs))
 }
