@@ -469,19 +469,24 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	log.Printf("len of adjacencyMap: %v\n", len(adjacencyMap))
 
 	for parent := range adjacencyMap {
-		log.Println("create Digger job")
-		parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
-		if err != nil {
-			return fmt.Errorf("failed to create a job")
-		}
-		for child := range adjacencyMap[parent] {
+		if projectJobMap[parent] != nil {
 			log.Println("create Digger job")
-			childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
+			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
 			if err != nil {
 				return fmt.Errorf("failed to create a job")
 			}
-			log.Println(parent + " -> " + child)
-			log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
+
+			for child := range adjacencyMap[parent] {
+				if projectJobMap[child] != nil {
+					log.Println("create Digger job")
+					childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
+					if err != nil {
+						return fmt.Errorf("failed to create a job")
+					}
+					log.Println(parent + " -> " + child)
+					log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
+				}
+			}
 		}
 	}
 
