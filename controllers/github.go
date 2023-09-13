@@ -166,6 +166,8 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 }
 
 func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.WorkflowJobPayload) error {
+
+	log.Printf("handleWorkflowJobEvent\n")
 	ctx := context.Background()
 	switch payload.Action {
 	case "completed":
@@ -191,12 +193,17 @@ func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.Workfl
 			return err
 		}
 
+		log.Printf("repoFullName: %v\n", repoFullName)
 		var jobId string
 		for _, s := range (*workflowJob).Steps {
+
 			name := *s.Name
+			log.Printf("workflow step: %v\n", name)
 			if strings.HasPrefix(name, "digger run ") {
+
 				// digger job id and workflow step name matched
 				jobId = strings.Replace(name, "digger run ", "", 1)
+				log.Printf("workflow step match, jobId %v\n", jobId)
 				_, err := models.DB.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
 				if err != nil {
 					return err

@@ -413,6 +413,7 @@ func (db *Database) UpdateDiggerJobLink(repoFullName string, diggerJobId string,
 		if result.Error != nil {
 			return nil, result.Error
 		}
+		log.Printf("GithubDiggerJobLink %v, (repo: %v) has been updated successfully\n", diggerJobId, repoFullName)
 		return &jobLink, nil
 	}
 	return &jobLink, nil
