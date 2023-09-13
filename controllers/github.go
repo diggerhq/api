@@ -46,9 +46,9 @@ func GithubAppWebHook(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, webhooks.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
-			fmt.Println("Github event  wasn't found.")
+			log.Println("Github event  wasn't found.")
 		}
-		fmt.Printf("Failed to parse Github Event. :%v\n", err)
+		log.Printf("Failed to parse Github Event. :%v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
 		return
 	}
@@ -139,7 +139,7 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 	appId := installation.Installation.AppID
 
 	for _, repo := range installation.Repositories {
-		fmt.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
+		log.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
 		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 		if err != nil {
 			return err
@@ -152,7 +152,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	installationId := installation.Installation.ID
 	appId := installation.Installation.AppID
 	for _, repo := range installation.Repositories {
-		fmt.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
+		log.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
 		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
 		if err != nil {
 			return err
@@ -412,7 +412,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		return fmt.Errorf("error loading digger config")
 	}
 
-	fmt.Printf("Digger config loadded successfully\n")
+	log.Printf("Digger config loadded successfully\n")
 
 	if configYaml.GenerateProjectsConfig != nil {
 		err = utils.CloneGitRepoAndDoAction(cloneURL, prBranch, *token, func(dir string) {
@@ -430,21 +430,21 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		log.Printf("Error loading digger config: %v", err)
 		return fmt.Errorf("error loading digger config")
 	}
-	fmt.Printf("Digger config parsed successfully\n")
+	log.Printf("Digger config parsed successfully\n")
 
 	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, &ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
 	}
-	fmt.Printf("GitHub IssueComment event processed successfully\n")
+	log.Printf("GitHub IssueComment event processed successfully\n")
 
 	jobs, _, err := dg_github.ConvertGithubIssueCommentEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
 		return fmt.Errorf("error converting event to jobs")
 	}
-	fmt.Printf("GitHub IssueComment event converted to Jobs successfully\n")
+	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
 	/*
 		projects, err := GetIndependentProjects(graph, impactedProjects)
@@ -472,8 +472,8 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 			if err != nil {
 				return fmt.Errorf("failed to create a job")
 			}
-			fmt.Println(parent + " -> " + child)
-			fmt.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
+			log.Println(parent + " -> " + child)
+			log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
 		}
 	}
 
@@ -481,7 +481,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		println("++++++++++++++++++++ impacted projects +++++++++++++++++")
 		for _, p := range impactedProjects {
 
-			fmt.Println(p.Name)
+			log.Println(p.Name)
 
 			job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{})
 			if err != nil {
@@ -562,14 +562,14 @@ func GithubAppCallbackPage(c *gin.Context) {
 
 	installationId64, err := strconv.ParseInt(installationId, 10, 64)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Printf("err: %v", err)
 		c.String(http.StatusInternalServerError, "Failed to parse installation_id.")
 		return
 	}
 
 	result, err := validateGithubCallback(clientId, clientSecret, code, installationId64)
 	if !result {
-		fmt.Printf("Failed to validated installation id, %v\n", err)
+		log.Printf("Failed to validated installation id, %v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to validate installation_id.")
 		return
 	}
@@ -617,7 +617,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		}
 
 		for _, j := range jobs {
-			fmt.Printf("jobId: %v, parentJobId: %v", j.DiggerJobId, j.ParentDiggerJobId)
+			log.Printf("jobId: %v, parentJobId: %v", j.DiggerJobId, j.ParentDiggerJobId)
 		}
 	*/
 
@@ -690,7 +690,7 @@ func validateGithubCallback(clientId string, clientSecret string, code string, i
 	// list all installations for the user
 	installations, _, err := client.Apps.ListUserInstallations(ctx, nil)
 	for _, v := range installations {
-		fmt.Printf("installation id: %v\n", *v.ID)
+		log.Printf("installation id: %v\n", *v.ID)
 		if *v.ID == installationId {
 			installationIdMatch = true
 		}
