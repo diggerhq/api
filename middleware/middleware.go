@@ -31,9 +31,11 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 		if org == nil {
 			c.String(http.StatusNotFound, fmt.Sprintf("Could not find active organisation: %v", tenantId))
 			c.Abort()
+			return nil
 		} else if err != nil {
 			c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
 			c.Abort()
+			return nil
 		}
 
 		c.Set(ORGANISATION_ID_KEY, org.ID)
