@@ -102,6 +102,7 @@ func GithubAppWebHook(c *gin.Context) {
 		payload := payload.(webhooks.IssueCommentPayload)
 		err := handleIssueCommentEvent(gh, &payload)
 		if err != nil {
+			log.Printf("handleIssueCommentEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -109,6 +110,7 @@ func GithubAppWebHook(c *gin.Context) {
 		payload := payload.(webhooks.WorkflowJobPayload)
 		err := handleWorkflowJobEvent(gh, payload)
 		if err != nil {
+			log.Printf("handleWorkflowJobEvent error: %v", err)
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowJob event.")
 			return
 		}
@@ -116,6 +118,7 @@ func GithubAppWebHook(c *gin.Context) {
 		payload := payload.(webhooks.WorkflowRunPayload)
 		err := handleWorkflowRunEvent(payload)
 		if err != nil {
+			log.Printf("handleWorkflowRunEvent error: %v", err)
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowRun event.")
 			return
 		}
@@ -124,6 +127,7 @@ func GithubAppWebHook(c *gin.Context) {
 		log.Printf("Got pull request event for %v", payload.PullRequest.ID)
 		err := handlePullRequestEvent(gh, &payload)
 		if err != nil {
+			log.Printf("handlePullRequestEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -452,6 +456,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 			return err
 		}*/
 
+	log.Printf("Number of Jobs: %v\n", len(jobs))
 	projectJobMap := map[string][]byte{}
 	for _, job := range jobs {
 		marshalled, _ := json.Marshal(orchestrator.JobToJson(job))
