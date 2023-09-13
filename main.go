@@ -11,6 +11,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -20,6 +21,9 @@ import (
 var Version = "dev"
 
 func main() {
+
+	log.SetOutput(os.Stdout)
+
 	cfg := config.New()
 	cfg.AutomaticEnv()
 	web := controllers.WebController{Config: cfg}
