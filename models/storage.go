@@ -373,36 +373,23 @@ func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 }
 
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
-	jobLink := GithubDiggerJobLink{}
-	// check if there is already a link to another org, and throw an error in this case
-	result := db.GormDB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, result.Error
-		}
-	}
-	if result.RowsAffected > 0 {
-		//if jobLink.GithubJobId != org.ID {
-		//	return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installation.ID)
-		//}
-		// record already exist, do nothing
-		return &jobLink, nil
-	}
-
 	link := GithubDiggerJobLink{Status: DiggerJobCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
-	result = db.GormDB.Save(&link)
+	result := db.GormDB.Save(&link)
 	if result.Error != nil {
+		log.Printf("Failed to create GithubDiggerJobLink, %v, repo: %v \n", diggerJobId, repoFullName)
 		return nil, result.Error
 	}
+	log.Printf("GithubDiggerJobLink %v, (repo: %v) has been created successfully\n", diggerJobId, repoFullName)
 	return &link, nil
 }
 
-func (db *Database) UpdateDiggerJobLink(repoFullName string, diggerJobId string, githubJobId int64) (*GithubDiggerJobLink, error) {
+func (db *Database) UpdateDiggerJobLink(diggerJobId string, repoFullName string, githubJobId int64) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			log.Printf("Failed to update GithubDiggerJobLink, %v, repo: %v \n", diggerJobId, repoFullName)
 			return nil, result.Error
 		}
 	}

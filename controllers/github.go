@@ -205,7 +205,7 @@ func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.Workfl
 				// digger job id and workflow step name matched
 				jobId = strings.Replace(name, "digger run ", "", 1)
 				log.Printf("workflow step match, jobId %v\n", jobId)
-				_, err := models.DB.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
+				_, err := models.DB.UpdateDiggerJobLink(jobId, repoFullName, githubJobId)
 				if err != nil {
 					return err
 				}
