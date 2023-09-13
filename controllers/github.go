@@ -412,6 +412,8 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		return fmt.Errorf("error loading digger config")
 	}
 
+	fmt.Printf("Digger config loadded successfully\n")
+
 	if configYaml.GenerateProjectsConfig != nil {
 		err = utils.CloneGitRepoAndDoAction(cloneURL, prBranch, *token, func(dir string) {
 			dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
@@ -428,19 +430,21 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		log.Printf("Error loading digger config: %v", err)
 		return fmt.Errorf("error loading digger config")
 	}
+	fmt.Printf("Digger config parsed successfully\n")
 
 	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, &ghService)
-
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
 	}
+	fmt.Printf("GitHub IssueComment event processed successfully\n")
 
 	jobs, _, err := dg_github.ConvertGithubIssueCommentEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
 		return fmt.Errorf("error converting event to jobs")
 	}
+	fmt.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
 	/*
 		projects, err := GetIndependentProjects(graph, impactedProjects)

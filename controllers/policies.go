@@ -307,13 +307,11 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
 
 	err := dg_configuration.ValidateDiggerConfigYaml(configYaml, "loaded config")
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error validating config: %v", err)
 	}
 
 	config, depGraph, err := dg_configuration.ConvertDiggerYamlToConfig(configYaml)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error converting config: %v", err)
 	}
