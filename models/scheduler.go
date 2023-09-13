@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"time"
 )
 
 type DiggerJob struct {
@@ -13,4 +14,5 @@ type DiggerJob struct {
 	BatchId           uuid.UUID
 	SerializedJob     []byte
 	BranchName        string
+	StatusUpdatedAt   time.Time
 }

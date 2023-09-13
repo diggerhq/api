@@ -22,6 +22,7 @@ const (
 	DiggerJobCreated   DiggerJobStatus = 1
 	DiggerJobSucceeded DiggerJobStatus = 2
 	DiggerJobFailed    DiggerJobStatus = 3
+	DiggerJobStarted   DiggerJobStatus = 4
 )
 
 type GithubAppInstallation struct {

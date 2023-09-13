@@ -126,6 +126,9 @@ func main() {
 
 	authorized.GET("/repos/:repo/projects/:projectName/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:repo/projects/:projectName/runs", controllers.CreateRunForProject)
+
+	authorized.POST("/repos/:repo/projects/:projectName/jobs/:jobId/set-status", controllers.SetJobStatusForProject)
+
 	authorized.GET("/repos/:repo/projects", controllers.FindProjectsForRepo)
 	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
 

@@ -242,6 +242,57 @@ func RunHistoryForProject(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+type SetJobStatusRequest struct {
+	Status    string    `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func SetJobStatusForProject(c *gin.Context) {
+	jobId := c.Param("jobId")
+
+	_, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+
+	if !exists {
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return
+	}
+
+	var request SetJobStatusRequest
+
+	err := c.BindJSON(&request)
+
+	if err != nil {
+		log.Printf("Error binding JSON: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error binding JSON"})
+		return
+	}
+
+	job, err := models.DB.GetDiggerJob(jobId)
+
+	if err != nil {
+		log.Printf("Error fetching job: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching job"})
+		return
+	}
+
+	switch request.Status {
+	case "started":
+		job.Status = models.DiggerJobStarted
+	case "succeeded":
+		job.Status = models.DiggerJobSucceeded
+	case "failed":
+		job.Status = models.DiggerJobFailed
+	}
+	job.StatusUpdatedAt = request.Timestamp
+
+	err = models.DB.GormDB.Save(&job).Error
+	if err != nil {
+		log.Printf("Error saving update job: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving job"})
+		return
+	}
+}
+
 type CreateProjectRunRequest struct {
 	StartedAt time.Time `json:"startedAt"`
 	EndedAt   time.Time `json:"endedAt"`
