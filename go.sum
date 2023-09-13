@@ -380,8 +380,6 @@ github.com/dchest/uniuri v1.2.0/go.mod h1:fSzm4SLHzNZvWLvWJew423PhAzkpNQYq+uNLq4
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/diggerhq/lib-digger-config v0.0.4 h1:vqZlszrqHkO3KAQZZOVXHOaVMK5SQffJpCmcVLJesUg=
 github.com/diggerhq/lib-digger-config v0.0.4/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
-github.com/diggerhq/lib-orchestrator v0.0.3 h1:KSfzHIfV7S8TULTu1nO0eE7h6yReima3ECf4d8PfkwU=
-github.com/diggerhq/lib-orchestrator v0.0.3/go.mod h1:9sUxYw3PuwWj14G02mF99K0RJHHgd7F/sWH3LMh9Tv8=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435 h1:OwD6WZx6c7cvC3+dukrUhnYs1sQB1wUuabMb1lk4YBE=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435/go.mod h1:kTd3tlfUE6CgXRNKbVltegdvDV+/uXiDVhaivWezmnM=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=

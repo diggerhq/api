@@ -427,9 +427,10 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 	return &org, nil
 }
 
-func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serializedJob []byte) (*DiggerJob, error) {
+func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serializedJob []byte, branchName string) (*DiggerJob, error) {
 	jobId := uniuri.New()
-	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated, BatchId: batch, SerializedJob: serializedJob}
+	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated,
+		BatchId: batch, SerializedJob: serializedJob, BranchName: branchName}
 	result := db.GormDB.Save(job)
 	if result.Error != nil {
 		return nil, result.Error

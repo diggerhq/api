@@ -12,4 +12,5 @@ type DiggerJob struct {
 	Status            DiggerJobStatus
 	BatchId           uuid.UUID
 	SerializedJob     []byte
+	BranchName        string
 }

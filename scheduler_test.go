@@ -70,7 +70,7 @@ func TestCreateDiggerJob(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -82,7 +82,7 @@ func TestCreateSingleJob(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -94,17 +94,17 @@ func TestFindDiggerJobsByParentJobId(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{})
+	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
 	parentJobId := job.DiggerJobId
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{})
+	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{})
+	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)

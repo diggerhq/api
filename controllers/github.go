@@ -458,11 +458,11 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	for parent := range adjacencyMap {
 		for child := range adjacencyMap[parent] {
 
-			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent])
+			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
 			if err != nil {
 				return fmt.Errorf("failed to create a job")
 			}
-			childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child])
+			childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
 			if err != nil {
 				return fmt.Errorf("failed to create a job")
 			}
@@ -489,6 +489,16 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	print(jobs)
 	print(graph)
 	print(prNumber)
+
+	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
+
+	for _, job := range diggerJobs {
+		// TODO: make workflow file name configurable
+		_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+			Ref:    job.BranchName,
+			Inputs: map[string]interface{}{"job": string(job.SerializedJob)},
+		})
+	}
 
 	/*
 		var wg sync.WaitGroup
@@ -583,12 +593,12 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 	}
 
 	batchId, _ := uuid.NewUUID()
-	job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{})
+	job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{}, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
 	}
-	_, err = models.DB.CreateDiggerJob(batchId, &job.DiggerJobId, []byte{})
+	_, err = models.DB.CreateDiggerJob(batchId, &job.DiggerJobId, []byte{}, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
 		return
