@@ -466,19 +466,27 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	batchId, _ := uuid.NewUUID()
 	adjacencyMap, _ := graph.AdjacencyMap()
 
-	for parent := range adjacencyMap {
-		for child := range adjacencyMap[parent] {
+	log.Printf("len of adjacencyMap: %v\n", len(adjacencyMap))
 
+	for parent := range adjacencyMap {
+		if projectJobMap[parent] != nil {
+			log.Println("create Digger job")
 			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
 			if err != nil {
 				return fmt.Errorf("failed to create a job")
 			}
-			childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
-			if err != nil {
-				return fmt.Errorf("failed to create a job")
+
+			for child := range adjacencyMap[parent] {
+				if projectJobMap[child] != nil {
+					log.Println("create Digger job")
+					childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
+					if err != nil {
+						return fmt.Errorf("failed to create a job")
+					}
+					log.Println(parent + " -> " + child)
+					log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
+				}
 			}
-			log.Println(parent + " -> " + child)
-			log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
 		}
 	}
 
@@ -497,18 +505,29 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 
 	*/
 
-	print(jobs)
-	print(graph)
-	print(prNumber)
+	log.Printf("jobs:%v\n", jobs)
+	log.Printf("graph:%v\n", graph)
+	log.Printf("prNumber:%v\n", prNumber)
 
 	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
 
+	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
+
 	for _, job := range diggerJobs {
+		if job.SerializedJob == nil {
+			return fmt.Errorf("GitHub job can't me nil")
+		}
+		jobString := string(job.SerializedJob)
+		log.Printf("jobString: %v \n", jobString)
 		// TODO: make workflow file name configurable
 		_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
-			Inputs: map[string]interface{}{"job": string(job.SerializedJob)},
+			Inputs: map[string]interface{}{"job": jobString},
 		})
+		if err != nil {
+			log.Printf("failed to trigger github workflow, %v\n", err)
+			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+		}
 	}
 
 	/*

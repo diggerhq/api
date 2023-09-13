@@ -354,7 +354,6 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 - name: prod
   dir: prod
   workflow: default
-  depends_on: ["dev"]
 `
 
 	diggerRepoName := strings.Replace(repoFullName, "/", "-", 1)
