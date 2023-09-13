@@ -490,21 +490,6 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		}
 	}
 
-	/*
-		println("++++++++++++++++++++ impacted projects +++++++++++++++++")
-		for _, p := range impactedProjects {
-
-			log.Println(p.Name)
-
-			job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{})
-			if err != nil {
-				return err
-			}
-			print(job)
-		}
-
-	*/
-
 	log.Printf("jobs:%v\n", jobs)
 	log.Printf("graph:%v\n", graph)
 	log.Printf("prNumber:%v\n", prNumber)
@@ -522,52 +507,21 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		// TODO: make workflow file name configurable
 		_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
-			Inputs: map[string]interface{}{"job": jobString},
+			Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 		})
 		if err != nil {
 			log.Printf("failed to trigger github workflow, %v\n", err)
 			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+		} else {
+			job.Status = models.DiggerJobSucceeded
+			err := models.DB.UpdateDiggerJob(&job)
+			if err != nil {
+				log.Printf("failed to trigger github workflow, %v\n", err)
+				return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+			}
 		}
 	}
 
-	/*
-		var wg sync.WaitGroup
-		wg.Add(len(jobs))
-		successPerJob := make(map[string]bool, len(jobs))
-
-		for _, job := range jobs {
-			go func(job orchestrator.Job) {
-				defer wg.Done()
-
-				marshalled, err := json.Marshal(orchestrator.JobToJson(job))
-
-				if err != nil {
-					successPerJob[job.ProjectName] = false
-					log.Printf("Error marshalling job: %v", err)
-					return
-				}
-
-				_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
-					Ref:    prBranch,
-					Inputs: map[string]interface{}{"job": string(marshalled)},
-				})
-				if err != nil {
-					successPerJob[job.ProjectName] = false
-					log.Printf("Error dispatching workflow: %v", err)
-					return
-				}
-				successPerJob[job.ProjectName] = true
-			}(job)
-		}
-
-		wg.Wait()
-		for projecName, success := range successPerJob {
-			err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
-			if err != nil {
-				log.Printf("Error publishing comment: %v", err)
-			}
-		}
-	*/
 	return nil
 }
 

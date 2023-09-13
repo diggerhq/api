@@ -354,6 +354,7 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 - name: prod
   dir: prod
   workflow: default
+  depends_on: ["dev"]
 `
 
 	diggerRepoName := strings.Replace(repoFullName, "/", "-", 1)
@@ -406,5 +407,5 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	jobs, err := models.DB.GetDiggerJobsWithoutParent()
-	assert.Equal(t, 1, len(jobs))
+	assert.Equal(t, 0, len(jobs))
 }

@@ -441,6 +441,15 @@ func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serial
 	return job, nil
 }
 
+func (db *Database) UpdateDiggerJob(job *DiggerJob) error {
+	result := db.GormDB.Save(job)
+	if result.Error != nil {
+		return result.Error
+	}
+	log.Printf("DiggerJob %v, (id: %v) has been updated successfully\n", job.DiggerJobId, job.ID)
+	return nil
+}
+
 func (db *Database) GetPendingDiggerJobs() ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
 	result := db.GormDB.Where("status = ? AND parent_digger_job_id is NULL ", DiggerJobCreated).Find(&jobs)
@@ -476,7 +485,7 @@ func (db *Database) GetDiggerJobsByParentId(jobId *string) ([]DiggerJob, error) 
 
 func (db *Database) GetDiggerJobsWithoutParent() ([]DiggerJob, error) {
 	var jobs []DiggerJob
-	result := db.GormDB.Where("parent_digger_job_id is NULL ").Find(&jobs)
+	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=?", DiggerJobCreated).Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
