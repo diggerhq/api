@@ -514,6 +514,9 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 
 	for _, job := range diggerJobs {
+		if job.SerializedJob == nil {
+			return fmt.Errorf("GitHub job can't me nil")
+		}
 		jobString := string(job.SerializedJob)
 		log.Printf("jobString: %v \n", jobString)
 		// TODO: make workflow file name configurable
