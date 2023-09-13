@@ -41,7 +41,7 @@ func CloneGitRepoAndDoAction(repoUrl string, branch string, token string, action
 
 	_, err := git.PlainClone(dir, false, &cloneOptions)
 	if err != nil {
-		fmt.Printf("PlainClone error: %v\n", err)
+		log.Printf("PlainClone error: %v\n", err)
 		return err
 	}
 

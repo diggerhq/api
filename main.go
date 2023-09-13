@@ -22,8 +22,7 @@ var Version = "dev"
 
 func main() {
 
-	log.SetOutput(os.Stdout)
-
+	initLogging()
 	cfg := config.New()
 	cfg.AutomaticEnv()
 	web := controllers.WebController{Config: cfg}
@@ -38,7 +37,7 @@ func main() {
 		Release:          "api@" + Version,
 		Debug:            true,
 	}); err != nil {
-		fmt.Printf("Sentry initialization failed: %v", err)
+		log.Printf("Sentry initialization failed: %v\n", err)
 	}
 
 	//database migrations
@@ -146,4 +145,10 @@ func main() {
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
+}
+
+func initLogging() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.Println("Initialized the logger successfully")
 }

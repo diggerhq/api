@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"digger.dev/cloud/models"
-	"fmt"
 	"github.com/google/go-github/v55/github"
+	"log"
 )
 
 func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repoOwner string, repoName string, workflowFileName string) error {
@@ -25,7 +25,7 @@ func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jo
 	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": job.DiggerJobId}}
 	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
 	if err != nil {
-		fmt.Printf("err: %v\n", err)
+		log.Printf("err: %v\n", err)
 		return
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -60,7 +61,7 @@ func (a *Auth) getAuthToken() (string, error) {
 
 	resp, err := a.HttpClient.Do(req)
 	if err != nil {
-		fmt.Printf("error while sending auth request: %v", err)
+		log.Printf("error while sending auth request: %v\n", err)
 		return "", err
 	}
 	defer resp.Body.Close()

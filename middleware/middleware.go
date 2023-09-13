@@ -25,7 +25,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 			return fmt.Errorf("token is invalid")
 		}
 		tenantId = tenantId.(string)
-		fmt.Printf("tenantId: %s", tenantId)
+		log.Printf("tenantId: %s\n", tenantId)
 
 		org, err := models.DB.GetOrganisation(tenantId)
 		if org == nil {
@@ -40,7 +40,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
-		fmt.Printf("set org id %v\n", org.ID)
+		log.Printf("set org id %v\n", org.ID)
 
 		tokenType := claims["type"].(string)
 
@@ -84,13 +84,13 @@ func WebAuth(auth services.Auth) gin.HandlerFunc {
 		var tokenString string
 		tokenString, err := c.Cookie("token")
 		if err != nil {
-			fmt.Printf("can't get a cookie token, %v\n", err)
+			log.Printf("can't get a cookie token, %v\n", err)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 
 		if tokenString == "" {
-			fmt.Println("auth token is empty")
+			log.Println("auth token is empty")
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
@@ -120,7 +120,7 @@ func WebAuth(auth services.Auth) gin.HandlerFunc {
 			return publicKey, nil
 		})
 		if err != nil {
-			fmt.Printf("can't parse a token, %v\n", err)
+			log.Printf("can't parse a token, %v\n", err)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
@@ -137,14 +137,14 @@ func WebAuth(auth services.Auth) gin.HandlerFunc {
 			return
 		} else if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				fmt.Println("That's not even a token")
+				log.Println("That's not even a token")
 			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
-				fmt.Println("Token is either expired or not active yet")
+				log.Println("Token is either expired or not active yet")
 			} else {
-				fmt.Println("Couldn't handle this token:", err)
+				log.Println("Couldn't handle this token:", err)
 			}
 		} else {
-			fmt.Println("Couldn't handle this token:", err)
+			log.Println("Couldn't handle this token:", err)
 		}
 
 		c.AbortWithStatus(http.StatusForbidden)
