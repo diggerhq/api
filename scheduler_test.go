@@ -11,6 +11,11 @@ import (
 	"testing"
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
 func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	log.Println("setup suite")
 

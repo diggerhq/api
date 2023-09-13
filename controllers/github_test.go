@@ -370,11 +370,14 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	}, database
 }
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
 func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
-
-	log.SetOutput(os.Stdout)
 
 	files := make([]github.CommitFile, 1)
 	files[0] = github.CommitFile{Filename: github.String("prod/main.tf")}
