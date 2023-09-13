@@ -466,8 +466,11 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	batchId, _ := uuid.NewUUID()
 	adjacencyMap, _ := graph.AdjacencyMap()
 
+	log.Printf("len of adjacencyMap: %v\n", len(adjacencyMap))
+
 	for parent := range adjacencyMap {
 		for child := range adjacencyMap[parent] {
+			log.Println("create Digger job")
 
 			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
 			if err != nil {
