@@ -384,6 +384,8 @@ github.com/diggerhq/lib-orchestrator v0.0.5 h1:0EcyV5Jdn77GDOiC9fBxKnXf6w80EVa2y
 github.com/diggerhq/lib-orchestrator v0.0.5/go.mod h1:oOcQSSKxGI9iyOxg+D7ysJwtS2Wqi5hz96bLMFL3S14=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435 h1:OwD6WZx6c7cvC3+dukrUhnYs1sQB1wUuabMb1lk4YBE=
 github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435/go.mod h1:kTd3tlfUE6CgXRNKbVltegdvDV+/uXiDVhaivWezmnM=
+github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185 h1:TCBqVv3NXFXzGl/IUkfx85dNPZ/6yblC2MhQi6wgnrY=
+github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185/go.mod h1:kTd3tlfUE6CgXRNKbVltegdvDV+/uXiDVhaivWezmnM=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
 github.com/dimchansky/utfbom v1.1.1 h1:vV6w1AhK4VMnhBno/TPVCoK9U/LP0PkLCS9tbxHdi/U=
 github.com/dimchansky/utfbom v1.1.1/go.mod h1:SxdoEBH5qIqFocHMyGOXVAybYJdr71b1Q/j0mACtrfE=
