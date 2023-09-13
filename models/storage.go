@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"log"
 	"net/http"
 	"time"
 )
@@ -14,7 +15,7 @@ import (
 func (db *Database) GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]Project, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
-	fmt.Printf("getProjectsFromContext, org id: %v\n", loggedInOrganisationId)
+	log.Printf("getProjectsFromContext, org id: %v\n", loggedInOrganisationId)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -29,18 +30,18 @@ func (db *Database) GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]P
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&projects).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
-	fmt.Printf("getProjectsFromContext, number of projects:%d\n", len(projects))
+	log.Printf("getProjectsFromContext, number of projects:%d\n", len(projects))
 	return projects, true
 }
 
 func (db *Database) GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
-	fmt.Printf("getPoliciesFromContext, org id: %v\n", loggedInOrganisationId)
+	log.Printf("getPoliciesFromContext, org id: %v\n", loggedInOrganisationId)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -56,18 +57,18 @@ func (db *Database) GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]P
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&policies).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
-	fmt.Printf("getPoliciesFromContext, number of policies:%d\n", len(policies))
+	log.Printf("getPoliciesFromContext, number of policies:%d\n", len(policies))
 	return policies, true
 }
 
 func (db *Database) GetProjectRunsFromContext(c *gin.Context, orgIdKey string) ([]ProjectRun, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
-	fmt.Printf("getProjectRunsFromContext, org id: %v\n", loggedInOrganisationId)
+	log.Printf("getProjectRunsFromContext, org id: %v\n", loggedInOrganisationId)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -83,11 +84,11 @@ func (db *Database) GetProjectRunsFromContext(c *gin.Context, orgIdKey string) (
 		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&runs).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
-	fmt.Printf("getProjectRunsFromContext, number of runs:%d\n", len(runs))
+	log.Printf("getProjectRunsFromContext, number of runs:%d\n", len(runs))
 	return runs, true
 }
 
@@ -98,7 +99,7 @@ func (db *Database) GetProjectByRunId(c *gin.Context, runId uint, orgIdKey strin
 		return nil, false
 	}
 
-	fmt.Printf("GetProjectByRunId, org id: %v\n", loggedInOrganisationId)
+	log.Printf("GetProjectByRunId, org id: %v\n", loggedInOrganisationId)
 	var projectRun ProjectRun
 
 	err := db.GormDB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
@@ -109,7 +110,7 @@ func (db *Database) GetProjectByRunId(c *gin.Context, runId uint, orgIdKey strin
 		Where("project_runs.id = ?", runId).First(&projectRun).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
@@ -123,7 +124,7 @@ func (db *Database) GetProjectByProjectId(c *gin.Context, projectId uint, orgIdK
 		return nil, false
 	}
 
-	fmt.Printf("GetProjectByProjectId, org id: %v\n", loggedInOrganisationId)
+	log.Printf("GetProjectByProjectId, org id: %v\n", loggedInOrganisationId)
 	var project Project
 
 	err := db.GormDB.Preload("Organisation").Preload("Repo").
@@ -133,7 +134,7 @@ func (db *Database) GetProjectByProjectId(c *gin.Context, projectId uint, orgIdK
 		Where("projects.id = ?", projectId).First(&project).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
@@ -147,7 +148,7 @@ func (db *Database) GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey 
 		return nil, false
 	}
 
-	fmt.Printf("getPolicyByPolicyId, org id: %v\n", loggedInOrganisationId)
+	log.Printf("getPolicyByPolicyId, org id: %v\n", loggedInOrganisationId)
 	var policy Policy
 
 	err := db.GormDB.Preload("Project").Preload("Project.Organisation").Preload("Project.Repo").
@@ -158,7 +159,7 @@ func (db *Database) GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey 
 		Where("policies.id = ?", policyId).First(&policy).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
@@ -168,11 +169,11 @@ func (db *Database) GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey 
 func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
-		fmt.Print("Not allowed to access this resource")
+		log.Print("Not allowed to access this resource")
 		return nil, false
 	}
 
-	fmt.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
+	log.Printf("getDefaultRepo, org id: %v\n", loggedInOrganisationId)
 	var repo Repo
 
 	err := db.GormDB.Preload("Organisation").
@@ -180,7 +181,7 @@ func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool
 		Where("organisations.id = ?", loggedInOrganisationId).First(&repo).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, false
 	}
 
@@ -196,7 +197,7 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 		Where("organisations.id = ? AND repos.name=?", orgIdKey, repoName).First(&repo).Error
 
 	if err != nil {
-		fmt.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
 		return nil, err
 	}
 	return &repo, nil
@@ -228,7 +229,7 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 			return fmt.Errorf("failed to save github installation item to database. %v", err)
 		}
 	} else {
-		fmt.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
+		log.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
 		item.State = Active
 		item.UpdatedAt = time.Now()
 		err := db.GormDB.Save(item).Error
@@ -244,7 +245,7 @@ func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullN
 	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			fmt.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
+			log.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
 			return nil
 		}
 		return fmt.Errorf("failed to find github installation in database. %v", err)
@@ -418,7 +419,7 @@ func (db *Database) UpdateDiggerJobLink(repoFullName string, diggerJobId string,
 }
 
 func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
-	fmt.Printf("GetOrganisationById, orgId: %v, type: %T \n", orgId, orgId)
+	log.Printf("GetOrganisationById, orgId: %v, type: %T \n", orgId, orgId)
 	org := Organisation{}
 	err := db.GormDB.Where("id = ?", orgId).First(&org).Error
 	if err != nil {
@@ -436,7 +437,7 @@ func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serial
 		return nil, result.Error
 	}
 
-	fmt.Printf("DiggerJob %v, (id: %v) has been created successfully\n", job.DiggerJobId, job.ID)
+	log.Printf("DiggerJob %v, (id: %v) has been created successfully\n", job.DiggerJobId, job.ID)
 	return job, nil
 }
 
@@ -501,10 +502,10 @@ func (db *Database) CreateOrganisation(name string, externalSource string, tenan
 	org := &Organisation{Name: name, ExternalSource: externalSource, ExternalId: tenantId}
 	result := db.GormDB.Save(org)
 	if result.Error != nil {
-		fmt.Printf("Failed to create organisation: %v, error: %v\n", name, result.Error)
+		log.Printf("Failed to create organisation: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("Organisation %s, (id: %v) has been created successfully\n", name, org.ID)
+	log.Printf("Organisation %s, (id: %v) has been created successfully\n", name, org.ID)
 	return org, nil
 }
 
@@ -512,10 +513,10 @@ func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*
 	project := &Project{Name: name, Organisation: org, Repo: repo}
 	result := db.GormDB.Save(project)
 	if result.Error != nil {
-		fmt.Printf("Failed to create project: %v, error: %v\n", name, result.Error)
+		log.Printf("Failed to create project: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("Project %s, (id: %v) has been created successfully\n", name, project.ID)
+	log.Printf("Project %s, (id: %v) has been created successfully\n", name, project.ID)
 	return project, nil
 }
 
@@ -523,10 +524,10 @@ func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig stri
 	repo := &Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
 	result := db.GormDB.Save(repo)
 	if result.Error != nil {
-		fmt.Printf("Failed to create repo: %v, error: %v\n", name, result.Error)
+		log.Printf("Failed to create repo: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("Repo %s, (id: %v) has been created successfully\n", name, repo.ID)
+	log.Printf("Repo %s, (id: %v) has been created successfully\n", name, repo.ID)
 	return repo, nil
 }
 
@@ -554,9 +555,9 @@ func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppI
 	}
 	result := db.GormDB.Save(installation)
 	if result.Error != nil {
-		fmt.Printf("Failed to create GithubAppInstallation: %v, error: %v\n", installationId, result.Error)
+		log.Printf("Failed to create GithubAppInstallation: %v, error: %v\n", installationId, result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("GithubAppInstallation %v, (id: %v) has been created successfully\n", installationId, installation.ID)
+	log.Printf("GithubAppInstallation %v, (id: %v) has been created successfully\n", installationId, installation.ID)
 	return installation, nil
 }
