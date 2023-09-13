@@ -30,12 +30,14 @@ func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	gh := &utils.DiggerGithubRealClient{}
 
-	_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
-	if err != nil {
-		log.Printf("Error validating github app webhook's payload: %v", err)
-		c.String(http.StatusBadRequest, "Error validating github app webhook's payload")
-		return
-	}
+	/*
+		_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
+		if err != nil {
+			log.Printf("Error validating github app webhook's payload: %v", err)
+			c.String(http.StatusBadRequest, "Error validating github app webhook's payload")
+			return
+		}
+	*/
 
 	hook, _ := webhooks.New()
 
