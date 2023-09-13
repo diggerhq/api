@@ -497,11 +497,13 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 
 	*/
 
-	print(jobs)
-	print(graph)
-	print(prNumber)
+	log.Printf("jobs:%v\n", jobs)
+	log.Printf("graph:%v\n", graph)
+	log.Printf("prNumber:%v\n", prNumber)
 
 	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
+
+	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 
 	for _, job := range diggerJobs {
 		// TODO: make workflow file name configurable
@@ -509,6 +511,10 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 			Ref:    job.BranchName,
 			Inputs: map[string]interface{}{"job": string(job.SerializedJob)},
 		})
+		if err != nil {
+			log.Printf("failed to trigger github workflow, %v\n", err)
+			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+		}
 	}
 
 	/*
