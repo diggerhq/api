@@ -509,10 +509,12 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 
 	for _, job := range diggerJobs {
+		jobString := string(job.SerializedJob)
+		log.Printf("jobString: %v \n", jobString)
 		// TODO: make workflow file name configurable
 		_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
-			Inputs: map[string]interface{}{"job": string(job.SerializedJob)},
+			Inputs: map[string]interface{}{"job": jobString},
 		})
 		if err != nil {
 			log.Printf("failed to trigger github workflow, %v\n", err)
