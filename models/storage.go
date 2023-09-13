@@ -372,9 +372,8 @@ func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 	return &l, nil
 }
 
-func (db *Database) CreateDiggerJobLink(repoFullName string) (*GithubDiggerJobLink, error) {
+func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
-	diggerJobId := uniuri.New()
 	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("digger_job_id = ? AND repo_full_name=? ", diggerJobId, repoFullName).Find(&jobLink)
 	if result.Error != nil {

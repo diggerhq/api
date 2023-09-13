@@ -171,6 +171,7 @@ func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.Workfl
 	ctx := context.Background()
 	switch payload.Action {
 	case "completed":
+		log.Printf("handleWorkflowJobEvent completed\n")
 		githubJobId := payload.WorkflowJob.ID
 		//githubJobStatus := payload.WorkflowJob.Status
 
@@ -483,6 +484,11 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 				return fmt.Errorf("failed to create a job")
 			}
 
+			_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
+			if err != nil {
+				return fmt.Errorf("failed to create a digger job link")
+			}
+
 			for child := range adjacencyMap[parent] {
 				if projectJobMap[child] != nil {
 					log.Println("create Digger job")
@@ -490,6 +496,12 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 					if err != nil {
 						return fmt.Errorf("failed to create a job")
 					}
+
+					_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
+					if err != nil {
+						return fmt.Errorf("failed to create a digger job link")
+					}
+
 					log.Println(parent + " -> " + child)
 					log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
 				}
