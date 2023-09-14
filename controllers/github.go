@@ -460,6 +460,18 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
+	impactedProjectsString := "impacted projects:\n"
+	for _, p := range impactedProjects {
+		impactedProjectsString += "name: " + p.Name + "\n"
+	}
+	log.Print(impactedProjectsString)
+
+	jobsString := "jobs:\n"
+	for _, j := range jobs {
+		jobsString += "project name: " + j.ProjectName + ", event name:" + j.EventName + "\n"
+	}
+	log.Print(impactedProjectsString)
+
 	result, err := ConvertJobsToDiggerJobs(jobs, graph, prBranch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
