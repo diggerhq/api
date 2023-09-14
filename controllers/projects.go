@@ -282,6 +282,10 @@ func SetJobStatusForProject(c *gin.Context) {
 		job.Status = models.DiggerJobSucceeded
 	case "failed":
 		job.Status = models.DiggerJobFailed
+	default:
+		log.Printf("Unexpected status %v", request.Status)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving job"})
+		return
 	}
 	job.StatusUpdatedAt = request.Timestamp
 
