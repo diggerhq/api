@@ -459,9 +459,9 @@ func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
 	return &job, nil
 }
 
-func (db *Database) GetDiggerJobsByParentId(jobId *string) ([]DiggerJob, error) {
+func (db *Database) GetDiggerJobsByParentIdAndStatus(jobId *string, status DiggerJobStatus) ([]DiggerJob, error) {
 	var jobs []DiggerJob
-	result := db.GormDB.Where("parent_digger_job_id=? ", jobId).Find(&jobs)
+	result := db.GormDB.Where("parent_digger_job_id=? AND status=?", jobId, status).Find(&jobs)
 	if result.Error != nil {
 		log.Printf("Failed to get DiggerJob by parent job id: %v, error: %v\n", jobId, result.Error)
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {

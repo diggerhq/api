@@ -115,7 +115,7 @@ func TestFindDiggerJobsByParentJobId(t *testing.T) {
 	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
 	assert.NotZero(t, job.ID)
 
-	jobs, err := database.GetDiggerJobsByParentId(&parentJobId)
+	jobs, err := database.GetDiggerJobsByParentIdAndStatus(&parentJobId, models.DiggerJobCreated)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobs))
 }

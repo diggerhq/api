@@ -10,7 +10,7 @@ import (
 func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repoOwner string, repoName string, workflowFileName string) error {
 	log.Printf("DiggerJobCompleted parentJobId: %v", parentJob.DiggerJobId)
 
-	jobs, err := models.DB.GetDiggerJobsByParentId(&parentJob.DiggerJobId)
+	jobs, err := models.DB.GetDiggerJobsByParentIdAndStatus(&parentJob.DiggerJobId, models.DiggerJobCreated)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jo
 	}
 	jobString := string(job.SerializedJob)
 	log.Printf("jobString: %v \n", jobString)
-	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, github.CreateWorkflowDispatchEventRequest{
 		Ref:    job.BranchName,
 		Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 	})
