@@ -24,8 +24,15 @@ func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repo
 func TriggerTestJob(client *github.Client, repoOwner string, repoName string, job *models.DiggerJob, workflowFileName string) {
 	log.Printf("TriggerTestJob jobId: %v", job.DiggerJobId)
 	ctx := context.Background()
-	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": job.DiggerJobId}}
-	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
+	if job.SerializedJob == nil {
+		log.Printf("GitHub job can't me nil")
+	}
+	jobString := string(job.SerializedJob)
+	log.Printf("jobString: %v \n", jobString)
+	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+		Ref:    job.BranchName,
+		Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
+	})
 	if err != nil {
 		log.Printf("TriggerTestJob err: %v\n", err)
 		return
