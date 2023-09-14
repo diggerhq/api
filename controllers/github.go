@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dominikbraun/graph"
 	"github.com/google/uuid"
 
 	dg_configuration "github.com/diggerhq/lib-digger-config"
@@ -30,6 +31,7 @@ func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	gh := &utils.DiggerGithubRealClient{}
 
+	// TODO return validation back
 	/*
 		_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 		if err != nil {
@@ -444,7 +446,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 	log.Printf("Digger config parsed successfully\n")
 
-	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, &ghService)
+	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, &ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
@@ -458,12 +460,22 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
-	/*
-		projects, err := GetIndependentProjects(graph, impactedProjects)
-		if err != nil {
-			return err
-		}*/
+	result, err := ConvertJobsToDiggerJobs(jobs, graph, prBranch, repoFullName)
+	if err != nil {
+		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
+		return fmt.Errorf("error convertingjobs")
+	}
+	print(result)
+	err = TriggerDiggerJobs(ghClient, repoOwner, repoName)
+	if err != nil {
+		log.Printf("TriggerDiggerJobs error: %v", err)
+		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
+	}
+	return nil
+}
 
+func ConvertJobsToDiggerJobs(jobs []orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) ([]*models.DiggerJob, error) {
+	var result []*models.DiggerJob
 	log.Printf("Number of Jobs: %v\n", len(jobs))
 	projectJobMap := map[string][]byte{}
 	for _, job := range jobs {
@@ -472,34 +484,36 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 
 	batchId, _ := uuid.NewUUID()
-	adjacencyMap, _ := graph.AdjacencyMap()
+	adjacencyMap, _ := projectsGraph.AdjacencyMap()
 
 	log.Printf("len of adjacencyMap: %v\n", len(adjacencyMap))
 
 	for parent := range adjacencyMap {
 		if projectJobMap[parent] != nil {
 			log.Println("create Digger job")
-			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], prBranch)
+			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], branch)
 			if err != nil {
-				return fmt.Errorf("failed to create a job")
+				return nil, fmt.Errorf("failed to create a job")
 			}
+			result = append(result, parentJob)
 
 			_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
 			if err != nil {
-				return fmt.Errorf("failed to create a digger job link")
+				return nil, fmt.Errorf("failed to create a digger job link")
 			}
 
 			for child := range adjacencyMap[parent] {
 				if projectJobMap[child] != nil {
 					log.Println("create Digger job")
-					childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], prBranch)
+					childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], branch)
 					if err != nil {
-						return fmt.Errorf("failed to create a job")
+						return nil, fmt.Errorf("failed to create a job")
 					}
+					result = append(result, parentJob)
 
 					_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
 					if err != nil {
-						return fmt.Errorf("failed to create a digger job link")
+						return nil, fmt.Errorf("failed to create a digger job link")
 					}
 
 					log.Println(parent + " -> " + child)
@@ -508,11 +522,10 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 			}
 		}
 	}
+	return result, nil
+}
 
-	log.Printf("jobs:%v\n", jobs)
-	log.Printf("graph:%v\n", graph)
-	log.Printf("prNumber:%v\n", prNumber)
-
+func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string) error {
 	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
 
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
@@ -524,7 +537,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 		jobString := string(job.SerializedJob)
 		log.Printf("jobString: %v \n", jobString)
 		// TODO: make workflow file name configurable
-		_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+		_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
 			Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 		})
@@ -540,7 +553,6 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 			}
 		}
 	}
-
 	return nil
 }
 

@@ -379,9 +379,9 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
 
-	files := make([]github.CommitFile, 1)
+	files := make([]github.CommitFile, 2)
 	files[0] = github.CommitFile{Filename: github.String("prod/main.tf")}
-	//files[1] = github.CommitFile{Filename: github.String("dev/main.tf")}
+	files[1] = github.CommitFile{Filename: github.String("dev/main.tf")}
 	mockedHTTPClient := mock.NewMockedHTTPClient(
 		mock.WithRequestMatch(
 			mock.GetReposPullsByOwnerByRepoByPullNumber,
