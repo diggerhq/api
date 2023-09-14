@@ -8,6 +8,8 @@ import (
 )
 
 func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repoOwner string, repoName string, workflowFileName string) error {
+	log.Printf("DiggerJobCompleted parentJobId: %v", parentJob.DiggerJobId)
+
 	jobs, err := models.DB.GetDiggerJobsByParentId(&parentJob.DiggerJobId)
 	if err != nil {
 		return err
@@ -20,12 +22,12 @@ func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repo
 }
 
 func TriggerTestJob(client *github.Client, repoOwner string, repoName string, job *models.DiggerJob, workflowFileName string) {
-	//_, _, _ := client.Repositories.Get(ctx, owner, repo_name)
+	log.Printf("TriggerTestJob jobId: %v", job.DiggerJobId)
 	ctx := context.Background()
 	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": job.DiggerJobId}}
 	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
 	if err != nil {
-		log.Printf("err: %v\n", err)
+		log.Printf("TriggerTestJob err: %v\n", err)
 		return
 	}
 }
