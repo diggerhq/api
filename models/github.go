@@ -9,20 +9,11 @@ type GithubApp struct {
 	PrivateKey     string
 }
 
-type GithubAppInstallState int
+type GithubAppInstallStatus int
 
 const (
-	Active  GithubAppInstallState = 1
-	Deleted GithubAppInstallState = 2
-)
-
-type DiggerJobStatus int8
-
-const (
-	DiggerJobCreated   DiggerJobStatus = 1
-	DiggerJobSucceeded DiggerJobStatus = 2
-	DiggerJobFailed    DiggerJobStatus = 3
-	DiggerJobStarted   DiggerJobStatus = 4
+	GithubAppInstallActive  GithubAppInstallStatus = 1
+	GithubAppInstallDeleted GithubAppInstallStatus = 2
 )
 
 type GithubAppInstallation struct {
@@ -32,7 +23,7 @@ type GithubAppInstallation struct {
 	AccountId            int
 	Login                string
 	Repo                 string
-	State                GithubAppInstallState
+	Status               GithubAppInstallStatus
 }
 
 type GithubAppInstallationLinkStatus int8
@@ -50,6 +41,15 @@ type GithubAppInstallationLink struct {
 	Organisation         *Organisation
 	Status               GithubAppInstallationLinkStatus
 }
+
+type DiggerJobStatus int8
+
+const (
+	DiggerJobCreated   DiggerJobStatus = 1
+	DiggerJobSucceeded DiggerJobStatus = 2
+	DiggerJobFailed    DiggerJobStatus = 3
+	DiggerJobStarted   DiggerJobStatus = 4
+)
 
 // GithubDiggerJobLink links GitHub Workflow Job id to Digger's Job Id
 type GithubDiggerJobLink struct {

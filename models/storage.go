@@ -230,7 +230,7 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 		}
 	} else {
 		log.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
-		item.State = Active
+		item.Status = GithubAppInstallActive
 		item.UpdatedAt = time.Now()
 		err := db.GormDB.Save(item).Error
 		if err != nil {
@@ -242,7 +242,7 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 
 func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := GithubAppInstallation{}
-	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, Active, appId, repoFullName).First(&item).Error
+	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, GithubAppInstallActive, appId, repoFullName).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
@@ -250,7 +250,7 @@ func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullN
 		}
 		return fmt.Errorf("failed to find github installation in database. %v", err)
 	}
-	item.State = Deleted
+	item.Status = GithubAppInstallDeleted
 	item.UpdatedAt = time.Now()
 	err = db.GormDB.Save(item).Error
 	if err != nil {
@@ -549,7 +549,7 @@ func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppI
 		Login:                login,
 		AccountId:            accountId,
 		Repo:                 repoFullName,
-		State:                Active,
+		Status:               GithubAppInstallActive,
 	}
 	result := db.GormDB.Save(installation)
 	if result.Error != nil {
