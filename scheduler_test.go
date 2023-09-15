@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -25,7 +26,9 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	// remove old database
 	e := os.Remove(dbName)
 	if e != nil {
-		log.Fatal(e)
+		if !strings.Contains(e.Error(), "no such file or directory") {
+			log.Fatal(e)
+		}
 	}
 
 	// open and create a new database
