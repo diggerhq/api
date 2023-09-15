@@ -415,7 +415,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	assert.Equal(t, 0, len(jobs))
 }
 
-func TestJobsTreeTraversal(t *testing.T) {
+func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
 
@@ -436,6 +436,33 @@ func TestJobsTreeTraversal(t *testing.T) {
 
 	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
-	assert.NotEqual(t, 0, len(result))
+	assert.Equal(t, 2, len(result))
+	assert.Nil(t, result["dev"].ParentDiggerJobId)
+	assert.Equal(t, result["dev"].DiggerJobId, *result["prod"].ParentDiggerJobId)
+}
 
+func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	jobs := make(map[string]orchestrator.Job)
+	job1 := orchestrator.Job{ProjectName: "dev"}
+	job2 := orchestrator.Job{ProjectName: "prod"}
+	jobs["dev"] = job1
+	jobs["prod"] = job2
+
+	var projects []configuration.Project
+	project1 := configuration.Project{Name: "dev"}
+	project2 := configuration.Project{Name: "prod"}
+	projects = append(projects, project1)
+	projects = append(projects, project2)
+
+	graph, err := configuration.CreateProjectDependencyGraph(projects)
+	assert.NoError(t, err)
+
+	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(result))
+	assert.Nil(t, result["dev"].ParentDiggerJobId)
+	assert.Nil(t, result["prod"].ParentDiggerJobId)
 }
