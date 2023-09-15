@@ -355,7 +355,7 @@ func getDiggerConfig(gh utils.DiggerGithubClient, installationId int64, repoFull
 		return nil, nil, nil, nil, fmt.Errorf("error loading digger config")
 	}
 	log.Printf("Digger config parsed successfully\n")
-	return &ghService, config, graph, branch, nil
+	return &ghService, config, graph, &prBranch, nil
 }
 
 func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.IssueCommentPayload) error {

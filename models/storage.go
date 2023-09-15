@@ -292,7 +292,7 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 
 	// If not found, the values will be default values, which means ID will be 0
 	if installation.Model.ID == 0 {
-		return nil, fmt.Errorf("GithubAppInstallation with id=%v doesn't exist.")
+		return nil, fmt.Errorf("GithubAppInstallation with id=%v doesn't exist.", installationId)
 	}
 	return &installation, nil
 }
