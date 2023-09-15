@@ -420,16 +420,13 @@ func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	defer teardownSuite(t)
 
 	jobs := make(map[string]orchestrator.Job)
-	job1 := orchestrator.Job{ProjectName: "dev"}
-	job2 := orchestrator.Job{ProjectName: "prod"}
-	jobs["dev"] = job1
-	jobs["prod"] = job2
+	jobs["dev"] = orchestrator.Job{ProjectName: "dev"}
+	jobs["prod"] = orchestrator.Job{ProjectName: "prod"}
 
 	var projects []configuration.Project
 	project1 := configuration.Project{Name: "dev"}
 	project2 := configuration.Project{Name: "prod", DependencyProjects: []string{"dev"}}
-	projects = append(projects, project1)
-	projects = append(projects, project2)
+	projects = append(projects, project1, project2)
 
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
@@ -446,16 +443,13 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	defer teardownSuite(t)
 
 	jobs := make(map[string]orchestrator.Job)
-	job1 := orchestrator.Job{ProjectName: "dev"}
-	job2 := orchestrator.Job{ProjectName: "prod"}
-	jobs["dev"] = job1
-	jobs["prod"] = job2
+	jobs["dev"] = orchestrator.Job{ProjectName: "dev"}
+	jobs["prod"] = orchestrator.Job{ProjectName: "prod"}
 
 	var projects []configuration.Project
 	project1 := configuration.Project{Name: "dev"}
 	project2 := configuration.Project{Name: "prod"}
-	projects = append(projects, project1)
-	projects = append(projects, project2)
+	projects = append(projects, project1, project2)
 
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
@@ -465,4 +459,39 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
 	assert.Nil(t, result["prod"].ParentDiggerJobId)
+}
+
+func TestJobsTreeWithThreeLevels(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	jobs := make(map[string]orchestrator.Job)
+	jobs["111"] = orchestrator.Job{ProjectName: "111"}
+	jobs["222"] = orchestrator.Job{ProjectName: "222"}
+	jobs["333"] = orchestrator.Job{ProjectName: "333"}
+	jobs["444"] = orchestrator.Job{ProjectName: "444"}
+	jobs["555"] = orchestrator.Job{ProjectName: "555"}
+	jobs["666"] = orchestrator.Job{ProjectName: "666"}
+
+	var projects []configuration.Project
+	project1 := configuration.Project{Name: "111"}
+	project2 := configuration.Project{Name: "222", DependencyProjects: []string{"111"}}
+	project3 := configuration.Project{Name: "333", DependencyProjects: []string{"111"}}
+	project4 := configuration.Project{Name: "444", DependencyProjects: []string{"222"}}
+	project5 := configuration.Project{Name: "555", DependencyProjects: []string{"222"}}
+	project6 := configuration.Project{Name: "666", DependencyProjects: []string{"333"}}
+	projects = append(projects, project1, project2, project3, project4, project5, project6)
+
+	graph, err := configuration.CreateProjectDependencyGraph(projects)
+	assert.NoError(t, err)
+
+	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 6, len(result))
+	assert.Nil(t, result["111"].ParentDiggerJobId)
+	assert.Equal(t, result["111"].DiggerJobId, *result["222"].ParentDiggerJobId)
+	assert.Equal(t, result["222"].DiggerJobId, *result["444"].ParentDiggerJobId)
+	assert.Equal(t, result["222"].DiggerJobId, *result["555"].ParentDiggerJobId)
+	assert.Equal(t, result["111"].DiggerJobId, *result["333"].ParentDiggerJobId)
+	assert.Equal(t, result["333"].DiggerJobId, *result["666"].ParentDiggerJobId)
 }
