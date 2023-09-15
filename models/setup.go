@@ -96,5 +96,5 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `DiggerJob`!")
 	}
 
-	DB.GormDB = database
+	DB = &Database{GormDB: database}
 }
