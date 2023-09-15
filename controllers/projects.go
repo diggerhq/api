@@ -279,7 +279,7 @@ func SetJobStatusForProject(c *gin.Context) {
 	case "started":
 		job.Status = models.DiggerJobStarted
 	case "succeeded":
-		job.Status = models.DiggerJobSucceeded
+		job.Status = models.DiggerJobTriggered
 	case "failed":
 		job.Status = models.DiggerJobFailed
 	default:

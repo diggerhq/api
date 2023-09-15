@@ -41,22 +41,3 @@ type GithubAppInstallationLink struct {
 	Organisation         *Organisation
 	Status               GithubAppInstallationLinkStatus
 }
-
-type DiggerJobStatus int8
-
-const (
-	DiggerJobCreated   DiggerJobStatus = 1
-	DiggerJobSucceeded DiggerJobStatus = 2
-	DiggerJobFailed    DiggerJobStatus = 3
-	DiggerJobStarted   DiggerJobStatus = 4
-)
-
-// GithubDiggerJobLink links GitHub Workflow Job id to Digger's Job Id
-type GithubDiggerJobLink struct {
-	gorm.Model
-	DiggerJobId         string `gorm:"size:50"`
-	RepoFullName        string
-	GithubJobId         int64
-	GithubWorkflowRunId int64
-	Status              DiggerJobStatus
-}

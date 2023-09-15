@@ -583,7 +583,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string)
 			log.Printf("failed to trigger github workflow, %v\n", err)
 			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
 		} else {
-			job.Status = models.DiggerJobSucceeded
+			job.Status = models.DiggerJobTriggered
 			err := models.DB.UpdateDiggerJob(&job)
 			if err != nil {
 				log.Printf("failed to trigger github workflow, %v\n", err)

@@ -229,7 +229,7 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 			return fmt.Errorf("failed to save github installation item to database. %v", err)
 		}
 	} else {
-		log.Printf("Record for installation_id: %d, repo: %s, with state=active exist already.", installationId, repoFullName)
+		log.Printf("Record for installation_id: %d, repo: %s, with status=active exist already.", installationId, repoFullName)
 		item.Status = GithubAppInstallActive
 		item.UpdatedAt = time.Now()
 		err := db.GormDB.Save(item).Error
@@ -242,10 +242,10 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 
 func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullName string) error {
 	item := GithubAppInstallation{}
-	err := db.GormDB.Where("github_installation_id = ? AND state=? AND github_app_id=? AND repo=?", installationId, GithubAppInstallActive, appId, repoFullName).First(&item).Error
+	err := db.GormDB.Where("github_installation_id = ? AND status=? AND github_app_id=? AND repo=?", installationId, GithubAppInstallActive, appId, repoFullName).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Printf("Record not found for installationId: %d, state=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
+			log.Printf("Record not found for installationId: %d, status=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
 			return nil
 		}
 		return fmt.Errorf("failed to find github installation in database. %v", err)
@@ -266,7 +266,7 @@ func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string)
 	}
 
 	installation := GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND status=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -283,7 +283,7 @@ func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string)
 // GetGithubAppInstallationByIdAndRepo repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
 func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, repoFullName string) (*GithubAppInstallation, error) {
 	installation := GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND state=? AND repo=?", installationId, GithubAppInstallationLinkActive, repoFullName).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND status=? AND repo=?", installationId, GithubAppInstallActive, repoFullName).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -373,7 +373,7 @@ func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 }
 
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
-	link := GithubDiggerJobLink{Status: DiggerJobCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
+	link := GithubDiggerJobLink{Status: DiggerJobLinkCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
 	result := db.GormDB.Save(&link)
 	if result.Error != nil {
 		log.Printf("Failed to create GithubDiggerJobLink, %v, repo: %v \n", diggerJobId, repoFullName)
