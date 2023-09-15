@@ -460,8 +460,14 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
+	jobsMap := make(map[string]orchestrator.Job)
 	impactedProjectsString := "impacted projects:\n"
 	for _, p := range impactedProjects {
+		for _, j := range jobs {
+			if j.ProjectName == p.Name {
+				jobsMap[p.Name] = j
+			}
+		}
 		impactedProjectsString += "name: " + p.Name + "\n"
 	}
 	log.Print(impactedProjectsString)
@@ -472,7 +478,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	}
 	log.Print(impactedProjectsString)
 
-	result, err := ConvertJobsToDiggerJobs(jobs, graph, prBranch, repoFullName)
+	result, err := ConvertJobsToDiggerJobs(jobsMap, graph, prBranch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
 		return fmt.Errorf("error convertingjobs")
@@ -486,51 +492,71 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	return nil
 }
 
-func ConvertJobsToDiggerJobs(jobs []orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) ([]*models.DiggerJob, error) {
-	var result []*models.DiggerJob
-	log.Printf("Number of Jobs: %v\n", len(jobs))
-	projectJobMap := map[string][]byte{}
-	for _, job := range jobs {
+// ConvertJobsToDiggerJobs jobs is map with project name as a key and a Job as a value
+func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (map[string]*models.DiggerJob, error) {
+	result := make(map[string]*models.DiggerJob)
+
+	log.Printf("Number of Jobs: %v\n", len(jobsMap))
+	marshalledJobsMap := map[string][]byte{}
+	for _, job := range jobsMap {
 		marshalled, _ := json.Marshal(orchestrator.JobToJson(job))
-		projectJobMap[job.ProjectName] = marshalled
+		marshalledJobsMap[job.ProjectName] = marshalled
 	}
 
 	batchId, _ := uuid.NewUUID()
-	adjacencyMap, _ := projectsGraph.AdjacencyMap()
+	predecessorMap, _ := projectsGraph.PredecessorMap()
 
-	log.Printf("len of adjacencyMap: %v\n", len(adjacencyMap))
+	visit := func(value string) bool {
+		// value is project name
 
-	for parent := range adjacencyMap {
-		if projectJobMap[parent] != nil {
-			log.Println("create Digger job")
-			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, projectJobMap[parent], branch)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create a job")
-			}
-			result = append(result, parentJob)
-
-			_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create a digger job link")
-			}
-
-			for child := range adjacencyMap[parent] {
-				if projectJobMap[child] != nil {
-					log.Println("create Digger job")
-					childJob, _ := models.DB.CreateDiggerJob(batchId, &parentJob.DiggerJobId, projectJobMap[child], branch)
-					if err != nil {
-						return nil, fmt.Errorf("failed to create a job")
-					}
-					result = append(result, parentJob)
-
-					_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
-					if err != nil {
-						return nil, fmt.Errorf("failed to create a digger job link")
-					}
-
-					log.Println(parent + " -> " + child)
-					log.Println(parentJob.DiggerJobId + " -> " + childJob.DiggerJobId)
+		// does it have a parent?
+		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
+			fmt.Printf("no parent for %v\n", value)
+			if result[value] == nil {
+				fmt.Printf("no diggerjob has been created for %v\n", value)
+				// we found a node without parent, we can create a digger job
+				parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
+				if err != nil {
+					log.Printf("failed to create a job")
+					return false
 				}
+				_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
+				if err != nil {
+					log.Printf("failed to create a digger job link")
+					return false
+				}
+				result[value] = parentJob
+			}
+		} else {
+			// we found a node with parent(s), parent should be in results already
+			parents := predecessorMap[value]
+			for _, edge := range parents {
+				parent := edge.Source
+				fmt.Printf("parent: %v\n", parent)
+				parentDiggerJob := result[parent]
+				childJob, err := models.DB.CreateDiggerJob(batchId, &parentDiggerJob.DiggerJobId, marshalledJobsMap[value], branch)
+				if err != nil {
+					log.Printf("failed to create a job")
+					return false
+				}
+				_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
+				if err != nil {
+					log.Printf("failed to create a digger job link")
+					return false
+				}
+				result[value] = childJob
+			}
+		}
+		return false
+	}
+
+	log.Printf("len of predecessorMap: %v\n", len(predecessorMap))
+
+	for node := range predecessorMap {
+		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
+			err := graph.DFS(projectsGraph, node, visit)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}

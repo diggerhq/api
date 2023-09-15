@@ -4,6 +4,8 @@ import (
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/utils"
 	"encoding/json"
+	configuration "github.com/diggerhq/lib-digger-config"
+	orchestrator "github.com/diggerhq/lib-orchestrator"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/google/go-github/v55/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -411,4 +413,29 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 
 	jobs, err := models.DB.GetDiggerJobsWithoutParent()
 	assert.Equal(t, 0, len(jobs))
+}
+
+func TestJobsTreeTraversal(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	jobs := make(map[string]orchestrator.Job)
+	job1 := orchestrator.Job{ProjectName: "dev"}
+	job2 := orchestrator.Job{ProjectName: "prod"}
+	jobs["dev"] = job1
+	jobs["prod"] = job2
+
+	var projects []configuration.Project
+	project1 := configuration.Project{Name: "dev"}
+	project2 := configuration.Project{Name: "prod", DependencyProjects: []string{"dev"}}
+	projects = append(projects, project1)
+	projects = append(projects, project2)
+
+	graph, err := configuration.CreateProjectDependencyGraph(projects)
+	assert.NoError(t, err)
+
+	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, len(result))
+
 }
