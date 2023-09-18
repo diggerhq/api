@@ -203,6 +203,21 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 	return &repo, nil
 }
 
+// GetRepoById returns digger repo by organisationId and repo name (diggerhq-digger)
+func (db *Database) GetRepoById(orgIdKey any, repoId any) (*Repo, error) {
+	var repo Repo
+
+	err := db.GormDB.Preload("Organisation").
+		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
+		Where("organisations.id = ? AND repos.ID=?", orgIdKey, repoId).First(&repo).Error
+
+	if err != nil {
+		log.Printf("Failed to find digger repo for orgId: %v, and repoId: %v, error: %v\n", orgIdKey, repoId, err)
+		return nil, err
+	}
+	return &repo, nil
+}
+
 func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
 

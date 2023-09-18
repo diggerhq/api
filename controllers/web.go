@@ -297,9 +297,9 @@ func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
 }
 
 func (web *WebController) UpdateRepoPage(c *gin.Context) {
-	repoName := c.Param("reponame")
-	if repoName == "" {
-		c.String(http.StatusInternalServerError, "Repo name can't be empty")
+	repoId := c.Param("repoid")
+	if repoId == "" {
+		c.String(http.StatusInternalServerError, "Repo ID can't be empty")
 		return
 	}
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
@@ -309,7 +309,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 		return
 	}
 
-	repo, err := models.DB.GetRepo(orgId, repoName)
+	repo, err := models.DB.GetRepoById(orgId, repoId)
 	if err != nil {
 		c.String(http.StatusForbidden, "Failed to find repo")
 		return
