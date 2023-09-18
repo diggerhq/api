@@ -9,19 +9,11 @@ type GithubApp struct {
 	PrivateKey     string
 }
 
-type GithubAppInstallState int
+type GithubAppInstallStatus int
 
 const (
-	Active  GithubAppInstallState = 1
-	Deleted GithubAppInstallState = 2
-)
-
-type DiggerJobStatus int8
-
-const (
-	DiggerJobCreated   DiggerJobStatus = 1
-	DiggerJobSucceeded DiggerJobStatus = 2
-	DiggerJobFailed    DiggerJobStatus = 3
+	GithubAppInstallActive  GithubAppInstallStatus = 1
+	GithubAppInstallDeleted GithubAppInstallStatus = 2
 )
 
 type GithubAppInstallation struct {
@@ -31,7 +23,7 @@ type GithubAppInstallation struct {
 	AccountId            int
 	Login                string
 	Repo                 string
-	State                GithubAppInstallState
+	Status               GithubAppInstallStatus
 }
 
 type GithubAppInstallationLinkStatus int8
@@ -48,14 +40,4 @@ type GithubAppInstallationLink struct {
 	OrganisationId       uint  `gorm:"index:idx_github_installation_org,unique"`
 	Organisation         *Organisation
 	Status               GithubAppInstallationLinkStatus
-}
-
-// GithubDiggerJobLink links GitHub Workflow Job id to Digger's Job Id
-type GithubDiggerJobLink struct {
-	gorm.Model
-	DiggerJobId         string `gorm:"size:50"`
-	RepoFullName        string
-	GithubJobId         int64
-	GithubWorkflowRunId int64
-	Status              DiggerJobStatus
 }

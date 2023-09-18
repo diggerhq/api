@@ -19,15 +19,10 @@ func CreateFronteggOrgFromWebhook(c *gin.Context) {
 		return
 	}
 	source := c.GetHeader("x-tenant-source")
-	org := models.Organisation{
-		Name:           json.Name,
-		ExternalSource: source,
-		ExternalId:     json.TenantId,
-	}
-	err := models.DB.GormDB.Create(&org).Error
 
+	_, err := models.DB.CreateOrganisation(json.Name, source, json.TenantId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create organisation"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
