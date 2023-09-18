@@ -569,7 +569,7 @@ func GithubAppCallbackPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 
-func GihHubCreateTestJobPage(c *gin.Context) {
+func GithubReposPage(c *gin.Context) {
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 	if !exists {
 		log.Printf("Organisation ID not found in context")
@@ -577,56 +577,41 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	batchId, _ := uuid.NewUUID()
-	job, err := models.DB.CreateDiggerJob(batchId, nil, []byte{}, "")
+	link, err := models.DB.GetGithubInstallationLinkForOrg(orgId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-		return
-	}
-	_, err = models.DB.CreateDiggerJob(batchId, &job.DiggerJobId, []byte{}, "")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-		return
-	}
-	/*
-		jobs, err := models.GetPendingDiggerJobs()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-			return
-		}
-
-		for _, j := range jobs {
-			log.Printf("jobId: %v, parentJobId: %v", j.DiggerJobId, j.ParentDiggerJobId)
-		}
-	*/
-
-	owner := "diggerhq"
-	repo := "github-job-scheduler"
-	workflowFileName := "workflow.yml"
-	repoFullName := owner + "/" + repo
-
-	installation, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, repoFullName, models.GithubAppInstallActive)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating github installation"})
+		log.Printf("GetGithubInstallationLinkForOrg error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
 		return
 	}
 
-	/*
-		link, err := models.CreateDiggerJobLink(repoFullName)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating a test job"})
-			return
-		}
-	*/
+	installations, err := models.DB.GetGithubAppInstallations(link.GithubInstallationId)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
+	}
+
+	if len(installations) == 0 {
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
+	}
+
 	gh := &utils.DiggerGithubRealClient{}
-	client, _, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	client, _, err := gh.GetGithubClient(installations[0].GithubAppId, installations[0].GithubInstallationId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
 		return
 	}
 
-	services.TriggerTestJob(client, owner, repo, job, workflowFileName)
-	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
+	opts := &github.ListOptions{}
+	repos, _, err := client.Apps.ListRepos(context.Background(), opts)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list GitHub repos."})
+		return
+	}
+	c.HTML(http.StatusOK, "github_repos.tmpl", gin.H{"Repos": repos.Repositories})
 }
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/

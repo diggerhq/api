@@ -312,6 +312,18 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 	return &installation, nil
 }
 
+// GetGithubAppInstallations
+func (db *Database) GetGithubAppInstallations(installationId int64) ([]GithubAppInstallation, error) {
+	var installations []GithubAppInstallation
+	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallActive).Find(&installations)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return installations, nil
+}
+
 // GetGithubAppInstallationLink repoFullName should be in the following format: org/repo_name, for example "diggerhq/github-job-scheduler"
 func (db *Database) GetGithubAppInstallationLink(installationId int64) (*GithubAppInstallationLink, error) {
 	var link GithubAppInstallationLink
