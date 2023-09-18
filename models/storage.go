@@ -468,14 +468,14 @@ func (db *Database) GetPendingDiggerJobs() ([]DiggerJob, error) {
 }
 
 func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
-	var job DiggerJob
-	result := db.GormDB.Where("digger_job_id=? ", jobId).Find(&job)
+	job := &DiggerJob{}
+	result := db.GormDB.Where("digger_job_id=? ", jobId).Find(job)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
-	return &job, nil
+	return job, nil
 }
 
 func (db *Database) GetDiggerJobsByParentIdAndStatus(jobId *string, status DiggerJobStatus) ([]DiggerJob, error) {
@@ -503,8 +503,8 @@ func (db *Database) GetDiggerJobsWithoutParent() ([]DiggerJob, error) {
 }
 
 func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
-	var org Organisation
-	result := db.GormDB.Take(&org, "external_id = ?", tenantId)
+	org := &Organisation{}
+	result := db.GormDB.Take(org, "external_id = ?", tenantId)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -512,7 +512,7 @@ func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
 			return nil, result.Error
 		}
 	}
-	return &org, nil
+	return org, nil
 }
 
 func (db *Database) CreateOrganisation(name string, externalSource string, tenantId string) (*Organisation, error) {
@@ -549,8 +549,8 @@ func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig stri
 }
 
 func (db *Database) GetToken(tenantId any) (*Token, error) {
-	var token Token
-	result := db.GormDB.Take(&token, "value = ?", tenantId)
+	token := &Token{}
+	result := db.GormDB.Take(token, "value = ?", tenantId)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -558,7 +558,7 @@ func (db *Database) GetToken(tenantId any) (*Token, error) {
 			return nil, result.Error
 		}
 	}
-	return &token, nil
+	return token, nil
 }
 
 func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppId int64, login string, accountId int, repoFullName string) (*GithubAppInstallation, error) {
