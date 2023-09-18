@@ -28,12 +28,11 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 		fmt.Printf("tenantId: %s", tenantId)
 
 		org, err := models.DB.GetOrganisation(tenantId)
-		if org == nil {
-			c.String(http.StatusNotFound, fmt.Sprintf("Could not find active organisation: %v", tenantId))
-			c.Abort()
-		} else if err != nil {
-			c.String(http.StatusInternalServerError, "Unknown error occurred while fetching database")
-			c.Abort()
+		if err != nil {
+			return err
+		} else if org == nil {
+			log.Printf("No organisation found for tenantId %s", tenantId)
+			return fmt.Errorf("token is invalid")
 		}
 
 		c.Set(ORGANISATION_ID_KEY, org.ID)
@@ -65,6 +64,8 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 				c.Set(ACCESS_LEVEL_KEY, models.AdminPolicyType)
 				return nil
 			}
+		}
+		for _, permission := range permissions {
 			if permission == "digger.all.read.*" {
 				c.Set(ACCESS_LEVEL_KEY, models.AccessPolicyType)
 				return nil
