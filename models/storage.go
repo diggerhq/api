@@ -208,6 +208,15 @@ func (db *Database) GetRepo(c *gin.Context, orgIdKey string, repoId uint) (*Repo
 	return &repo, true
 }
 
+func (db *Database) CreateRepo(orgId uint, repoName string, diggerConfig string) (*Repo, error) {
+	repo := Repo{Name: repoName, OrganisationID: orgId, DiggerConfig: diggerConfig}
+	result := db.GormDB.Create(&repo)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &repo, nil
+}
+
 func (db *Database) GitHubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
 	app := GithubApp{}
 
@@ -350,8 +359,16 @@ func (db *Database) CreateGitHubInstallationLink(orgId uint, installationId int6
 
 func (db *Database) GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
-	// check if there is already a link to another org, and throw an error in this case
 	result := db.GormDB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &l, nil
+}
+
+func (db *Database) GetGithubInstallationLinkForInstallationId(installationId any) (*GithubAppInstallationLink, error) {
+	l := GithubAppInstallationLink{}
+	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {
 		return nil, result.Error
 	}
