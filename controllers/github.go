@@ -69,6 +69,11 @@ func GitHubAppWebHook(c *gin.Context) {
 					c.String(http.StatusInternalServerError, "Failed to store item.")
 					return
 				}
+				err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
+				if err != nil {
+					c.String(http.StatusInternalServerError, "Failed to create digger repo.")
+					return
+				}
 			}
 		}
 		if installationRepos.Action == "removed" {
@@ -127,7 +132,32 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 		if err != nil {
 			return err
 		}
+		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
+	link, err := models.DB.GetGitHubInstallationLinkForInstallationId(installationId)
+	if err != nil {
+		log.Printf("Error fetching installation link: %v", err)
+		return err
+	}
+	orgId := link.OrganisationId
+
+	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
+	repo, err := models.DB.CreateRepo(orgId, diggerRepoName, `
+generate_projects:
+ include: "."
+`)
+	if err != nil {
+		log.Printf("Error creating digger repo: %v", err)
+		return err
+	}
+	log.Printf("Created digger repo: %v", repo)
 	return nil
 }
 
