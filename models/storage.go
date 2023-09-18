@@ -81,7 +81,7 @@ func (db *Database) GetProjectRunsFromContext(c *gin.Context, orgIdKey string) (
 		Joins("INNER JOIN projects ON projects.id = project_runs.project_id").
 		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
 		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
-		Where("projects.organisation_id = ?", loggedInOrganisationId).Find(&runs).Error
+		Where("projects.organisation_id = ?", loggedInOrganisationId).Order("created_at desc").Find(&runs).Error
 
 	if err != nil {
 		log.Printf("Unknown error occurred while fetching database, %v\n", err)
