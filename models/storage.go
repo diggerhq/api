@@ -366,7 +366,7 @@ func (db *Database) GetGitHubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 	return &l, nil
 }
 
-func (db *Database) GetGitHubInstallationLinkForInstallationId(installationId any) (*GithubAppInstallationLink, error) {
+func (db *Database) GetGithubInstallationLinkForInstallationId(installationId any) (*GithubAppInstallationLink, error) {
 	l := GithubAppInstallationLink{}
 	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {

@@ -141,7 +141,7 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 }
 
 func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
-	link, err := models.DB.GetGitHubInstallationLinkForInstallationId(installationId)
+	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
 		log.Printf("Error fetching installation link: %v", err)
 		return err
