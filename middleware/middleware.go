@@ -25,10 +25,11 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 			return fmt.Errorf("token is invalid")
 		}
 		tenantId = tenantId.(string)
-		fmt.Printf("tenantId: %s", tenantId)
+		log.Printf("tenantId: %s", tenantId)
 
 		org, err := models.DB.GetOrganisation(tenantId)
 		if err != nil {
+			log.Printf("Error while fetching organisation: %v", err)
 			return err
 		} else if org == nil {
 			log.Printf("No organisation found for tenantId %s", tenantId)
@@ -37,7 +38,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
-		fmt.Printf("set org id %v\n", org.ID)
+		log.Printf("set org id %v\n", org.ID)
 
 		tokenType := claims["type"].(string)
 
@@ -45,7 +46,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 		if tokenType == "tenantAccessToken" {
 			permission, err := auth.FetchTokenPermissions(claims["sub"].(string))
 			if err != nil {
-				log.Printf("Error while fetching permissions: %v", err.Error())
+				log.Printf("Error while fetching permissions: %v", err)
 				return fmt.Errorf("token is invalid")
 			}
 			permissions = permission
@@ -127,7 +128,8 @@ func WebAuth(auth services.Auth) gin.HandlerFunc {
 		if token.Valid {
 			err = SetContextParameters(c, auth, token)
 			if err != nil {
-				c.String(http.StatusForbidden, err.Error())
+				log.Printf("Error while setting context parameters: %v", err)
+				c.String(http.StatusForbidden, "Failed to parse token")
 				c.Abort()
 				return
 			}
@@ -250,7 +252,8 @@ func BearerTokenAuth(auth services.Auth) gin.HandlerFunc {
 
 			err = SetContextParameters(c, auth, token)
 			if err != nil {
-				c.String(http.StatusForbidden, err.Error())
+				log.Printf("Error while setting context parameters: %v", err)
+				c.String(http.StatusForbidden, "Failed to parse token")
 				c.Abort()
 				return
 			}

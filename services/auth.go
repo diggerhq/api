@@ -77,7 +77,7 @@ func (a *Auth) getAuthToken() (string, error) {
 	return tokenResponse.Token, nil
 }
 
-func (a Auth) FetchTokenPermissions(tokenId string) ([]string, error) {
+func (a *Auth) FetchTokenPermissions(tokenId string) ([]string, error) {
 
 	accessTokenUrl := a.Host + "/identity/resources/vendor-only/tenants/access-tokens/v1/" + tokenId
 
