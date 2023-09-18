@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-var issueCommentPayload string = `{
+var issueCommentPayload = `{
   "action": "created",
   "issue": {
     "url": "https://api.github.com/repos/diggerhq/github-job-scheduler/issues/2",
@@ -277,6 +277,202 @@ var issueCommentPayload string = `{
   }
 }`
 
+var installationRepositoriesAddedPayload = `{
+  "action": "added",
+  "installation": {
+    "id": 41584295,
+    "account": {
+      "login": "diggerhq",
+      "id": 71334590,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjcxMzM0NTkw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/71334590?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/diggerhq",
+      "html_url": "https://github.com/diggerhq",
+      "followers_url": "https://api.github.com/users/diggerhq/followers",
+      "following_url": "https://api.github.com/users/diggerhq/following{/other_user}",
+      "gists_url": "https://api.github.com/users/diggerhq/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/diggerhq/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/diggerhq/subscriptions",
+      "organizations_url": "https://api.github.com/users/diggerhq/orgs",
+      "repos_url": "https://api.github.com/users/diggerhq/repos",
+      "events_url": "https://api.github.com/users/diggerhq/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/diggerhq/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/41584295/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/organizations/diggerhq/settings/installations/41584295",
+    "app_id": 360162,
+    "app_slug": "digger-cloud-test-app",
+    "target_id": 71334590,
+    "target_type": "Organization",
+    "permissions": {
+      "issues": "write",
+      "actions": "write",
+      "secrets": "read",
+      "metadata": "read",
+      "statuses": "read",
+      "workflows": "write",
+      "pull_requests": "write",
+      "actions_variables": "read"
+    },
+    "events": [
+      "issues",
+      "issue_comment",
+      "pull_request",
+      "pull_request_review",
+      "pull_request_review_comment",
+      "pull_request_review_thread",
+      "status",
+      "workflow_job"
+    ],
+    "created_at": "2023-09-08T11:34:17.000+01:00",
+    "updated_at": "2023-09-18T11:29:18.000+01:00",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [
+
+    ],
+    "suspended_by": null,
+    "suspended_at": null
+  },
+  "repository_selection": "selected",
+  "repositories_added": [
+    {
+      "id": 436580100,
+      "node_id": "R_kgDOGgWvBA",
+      "name": "test-github-action",
+      "full_name": "diggerhq/test-github-action",
+      "private": true
+    }
+  ],
+  "repositories_removed": [
+
+  ],
+  "requester": null,
+  "sender": {
+    "login": "veziak",
+    "id": 2407061,
+    "node_id": "MDQ6VXNlcjI0MDcwNjE=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/2407061?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/veziak",
+    "html_url": "https://github.com/veziak",
+    "followers_url": "https://api.github.com/users/veziak/followers",
+    "following_url": "https://api.github.com/users/veziak/following{/other_user}",
+    "gists_url": "https://api.github.com/users/veziak/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/veziak/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/veziak/subscriptions",
+    "organizations_url": "https://api.github.com/users/veziak/orgs",
+    "repos_url": "https://api.github.com/users/veziak/repos",
+    "events_url": "https://api.github.com/users/veziak/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/veziak/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}`
+
+var installationRepositoriesDeletedPayload = `{
+  "action": "removed",
+  "installation": {
+    "id": 41584295,
+    "account": {
+      "login": "diggerhq",
+      "id": 71334590,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjcxMzM0NTkw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/71334590?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/diggerhq",
+      "html_url": "https://github.com/diggerhq",
+      "followers_url": "https://api.github.com/users/diggerhq/followers",
+      "following_url": "https://api.github.com/users/diggerhq/following{/other_user}",
+      "gists_url": "https://api.github.com/users/diggerhq/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/diggerhq/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/diggerhq/subscriptions",
+      "organizations_url": "https://api.github.com/users/diggerhq/orgs",
+      "repos_url": "https://api.github.com/users/diggerhq/repos",
+      "events_url": "https://api.github.com/users/diggerhq/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/diggerhq/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/41584295/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/organizations/diggerhq/settings/installations/41584295",
+    "app_id": 360162,
+    "app_slug": "digger-cloud-test-app",
+    "target_id": 71334590,
+    "target_type": "Organization",
+    "permissions": {
+      "issues": "write",
+      "actions": "write",
+      "secrets": "read",
+      "metadata": "read",
+      "statuses": "read",
+      "workflows": "write",
+      "pull_requests": "write",
+      "actions_variables": "read"
+    },
+    "events": [
+      "issues",
+      "issue_comment",
+      "pull_request",
+      "pull_request_review",
+      "pull_request_review_comment",
+      "pull_request_review_thread",
+      "status",
+      "workflow_job"
+    ],
+    "created_at": "2023-09-08T10:34:17.000Z",
+    "updated_at": "2023-09-18T11:23:48.000Z",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [
+
+    ],
+    "suspended_by": null,
+    "suspended_at": null
+  },
+  "repository_selection": "selected",
+  "repositories_added": [
+
+  ],
+  "repositories_removed": [
+    {
+      "id": 436580100,
+      "node_id": "R_kgDOGgWvBA",
+      "name": "test-github-action",
+      "full_name": "diggerhq/test-github-action",
+      "private": true
+    }
+  ],
+  "requester": null,
+  "sender": {
+    "login": "veziak",
+    "id": 2407061,
+    "node_id": "MDQ6VXNlcjI0MDcwNjE=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/2407061?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/veziak",
+    "html_url": "https://github.com/veziak",
+    "followers_url": "https://api.github.com/users/veziak/followers",
+    "following_url": "https://api.github.com/users/veziak/following{/other_user}",
+    "gists_url": "https://api.github.com/users/veziak/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/veziak/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/veziak/subscriptions",
+    "organizations_url": "https://api.github.com/users/veziak/orgs",
+    "repos_url": "https://api.github.com/users/veziak/repos",
+    "events_url": "https://api.github.com/users/veziak/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/veziak/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}`
+
 func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	log.Println("setup suite")
 
@@ -306,7 +502,9 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	}
 
 	database := &models.Database{GormDB: gdb}
+	models.DB = database
 
+	// create an org
 	orgTenantId := "11111111-1111-1111-1111-111111111111"
 	externalSource := "test"
 	orgName := "testOrg"
@@ -315,24 +513,26 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 		log.Fatal(err)
 	}
 
+	// create digger repo
 	repoName := "test repo"
 	repo, err := database.CreateRepo(repoName, org, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// create test project
 	projectName := "test project"
 	_, err = database.CreateProject(projectName, org, repo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// create installation for issueComment payload
 	var payload webhooks.IssueCommentPayload
 	err = json.Unmarshal([]byte(issueCommentPayload), &payload)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// read installationID from test payload
 	installationId := payload.Installation.ID
 
 	_, err = database.CreateGithubInstallationLink(org, installationId)
@@ -494,4 +694,66 @@ func TestJobsTreeWithThreeLevels(t *testing.T) {
 	assert.Equal(t, result["222"].DiggerJobId, *result["555"].ParentDiggerJobId)
 	assert.Equal(t, result["111"].DiggerJobId, *result["333"].ParentDiggerJobId)
 	assert.Equal(t, result["333"].DiggerJobId, *result["666"].ParentDiggerJobId)
+}
+
+func TestGithubInstallationRepoAddedEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient()
+
+	gh := &utils.DiggerGithubClientMock{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload webhooks.InstallationRepositoriesPayload
+	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesAddedEvent(&payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
+}
+
+func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient()
+
+	gh := &utils.DiggerGithubClientMock{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload webhooks.InstallationRepositoriesPayload
+	err = json.Unmarshal([]byte(installationRepositoriesDeletedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesDeletedEvent(&payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesRemoved[0].FullName, models.GithubAppInstallDeleted)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
 }

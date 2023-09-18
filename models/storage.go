@@ -197,7 +197,7 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 		Where("organisations.id = ? AND repos.name=?", orgIdKey, repoName).First(&repo).Error
 
 	if err != nil {
-		log.Printf("Unknown error occurred while fetching database, %v\n", err)
+		log.Printf("Failed to find digger repo for orgId: %v, and repoName: %v, error: %v\n", orgIdKey, repoName, err)
 		return nil, err
 	}
 	return &repo, nil
@@ -259,14 +259,14 @@ func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullN
 	return nil
 }
 
-func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string) (*GithubAppInstallation, error) {
+func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string, status GithubAppInstallStatus) (*GithubAppInstallation, error) {
 	link, err := db.GetGithubInstallationLinkForOrg(orgId)
 	if err != nil {
 		return nil, err
 	}
 
 	installation := GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND status=? AND repo=?", link.GithubInstallationId, GithubAppInstallationLinkActive, repo).Find(&installation)
+	result := db.GormDB.Where("github_installation_id = ? AND status=? AND repo=?", link.GithubInstallationId, status, repo).Find(&installation)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -274,7 +274,7 @@ func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string)
 	}
 
 	// If not found, the values will be default values, which means ID will be 0
-	if installation.Model.ID == 0 {
+	if installation.ID == 0 {
 		return nil, nil
 	}
 	return &installation, nil
@@ -292,7 +292,7 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 
 	// If not found, the values will be default values, which means ID will be 0
 	if installation.Model.ID == 0 {
-		return nil, fmt.Errorf("GithubAppInstallation with id=%v doesn't exist.", installationId)
+		return nil, fmt.Errorf("GithubAppInstallation with id=%v doesn't exist", installationId)
 	}
 	return &installation, nil
 }
@@ -359,6 +359,7 @@ func (db *Database) CreateGithubInstallationLink(org *Organisation, installation
 	if result.Error != nil {
 		return nil, result.Error
 	}
+	log.Printf("GithubAppInstallationLink (org: %v, installationId: %v) has been created successfully\n", org.Name, installationId)
 	return &link, nil
 }
 
@@ -368,6 +369,9 @@ func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 	result := db.GormDB.Where("organisation_id = ? AND status=?", orgId, GithubAppInstallationLinkActive).Find(&l)
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if l.ID == 0 {
+		return nil, fmt.Errorf("GithubAppInstallationLink not found for orgId: %v\n", orgId)
 	}
 	return &l, nil
 }
@@ -556,6 +560,6 @@ func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppI
 		log.Printf("Failed to create GithubAppInstallation: %v, error: %v\n", installationId, result.Error)
 		return nil, result.Error
 	}
-	log.Printf("GithubAppInstallation %v, (id: %v) has been created successfully\n", installationId, installation.ID)
+	log.Printf("GithubAppInstallation (installationId: %v, githubAppId: %v, login: %v, accountId: %v, repoFullName: %v) has been created successfully\n", installationId, githubAppId, login, accountId, repoFullName)
 	return installation, nil
 }

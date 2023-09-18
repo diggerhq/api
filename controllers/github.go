@@ -56,17 +56,17 @@ func GithubAppWebHook(c *gin.Context) {
 	switch payload.(type) {
 
 	case webhooks.InstallationPayload:
-		installation := payload.(webhooks.InstallationPayload)
-		if installation.Action == "created" {
-			err := handleInstallationCreatedEvent(installation)
+		payload := payload.(webhooks.InstallationPayload)
+		if payload.Action == "created" {
+			err := handleInstallationCreatedEvent(&payload)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 		}
 
-		if installation.Action == "deleted" {
-			err := handleInstallationDeletedEvent(installation)
+		if payload.Action == "deleted" {
+			err := handleInstallationDeletedEvent(&payload)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
@@ -74,29 +74,17 @@ func GithubAppWebHook(c *gin.Context) {
 
 		}
 	case webhooks.InstallationRepositoriesPayload:
-		installationRepos := payload.(webhooks.InstallationRepositoriesPayload)
-		if installationRepos.Action == "added" {
-			installationId := installationRepos.Installation.ID
-			login := installationRepos.Installation.Account.Login
-			accountId := installationRepos.Installation.Account.ID
-			appId := installationRepos.Installation.AppID
-			for _, repo := range installationRepos.RepositoriesAdded {
-				err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
-				if err != nil {
-					c.String(http.StatusInternalServerError, "Failed to store item.")
-					return
-				}
+		payload := payload.(webhooks.InstallationRepositoriesPayload)
+		if payload.Action == "added" {
+			err := handleInstallationRepositoriesAddedEvent(&payload)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
-		if installationRepos.Action == "removed" {
-			installationId := installationRepos.Installation.ID
-			appId := installationRepos.Installation.AppID
-			for _, repo := range installationRepos.RepositoriesRemoved {
-				err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
-				if err != nil {
-					c.String(http.StatusInternalServerError, "Failed to remove item.")
-					return
-				}
+		if payload.Action == "removed" {
+			err := handleInstallationRepositoriesDeletedEvent(&payload)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
 	case webhooks.IssueCommentPayload:
@@ -109,7 +97,7 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 	case webhooks.WorkflowJobPayload:
 		payload := payload.(webhooks.WorkflowJobPayload)
-		err := handleWorkflowJobEvent(gh, payload)
+		err := handleWorkflowJobEvent(gh, &payload)
 		if err != nil {
 			log.Printf("handleWorkflowJobEvent error: %v", err)
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowJob event.")
@@ -137,7 +125,33 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
-func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) error {
+func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
+	installationId := payload.Installation.ID
+	login := payload.Installation.Account.Login
+	accountId := payload.Installation.Account.ID
+	appId := payload.Installation.AppID
+	for _, repo := range payload.RepositoriesAdded {
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
+	installationId := payload.Installation.ID
+	appId := payload.Installation.AppID
+	for _, repo := range payload.RepositoriesRemoved {
+		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleInstallationCreatedEvent(installation *webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	login := installation.Installation.Account.Login
 	accountId := installation.Installation.Account.ID
@@ -153,7 +167,7 @@ func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) e
 	return nil
 }
 
-func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) error {
+func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	appId := installation.Installation.AppID
 	for _, repo := range installation.Repositories {
@@ -166,7 +180,7 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	return nil
 }
 
-func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload webhooks.WorkflowJobPayload) error {
+func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload *webhooks.WorkflowJobPayload) error {
 
 	log.Printf("handleWorkflowJobEvent\n")
 	ctx := context.Background()
@@ -591,7 +605,7 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 	workflowFileName := "workflow.yml"
 	repoFullName := owner + "/" + repo
 
-	installation, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, repoFullName)
+	installation, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, repoFullName, models.GithubAppInstallActive)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating github installation"})
 		return
