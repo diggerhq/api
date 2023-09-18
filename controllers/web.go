@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/robert-nix/ansihtml"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -75,20 +76,15 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("repo: %v", repo)
-		//TODO: gorm is trying to insert new repo and organisation on every insert of a new project,
+		//TODO: gorm is trying to insert a new repo and organisation on every insert of a new project,
 		// there should be a way to avoid it
-		project := models.Project{Name: projectName, Organisation: repo.Organisation, Repo: repo}
-
-		err := models.DB.GormDB.Create(&project).Error
+		_, err := models.DB.CreateProject(projectName, repo.Organisation, repo)
 		if err != nil {
-			fmt.Printf("Failed to create a new project, %v\n", err)
 			message := "Failed to create a project"
 			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
 				"Message": message,
 			})
 		}
-
 		c.Redirect(http.StatusFound, "/projects")
 	}
 }
@@ -108,7 +104,7 @@ func (web *WebController) PoliciesPage(c *gin.Context) {
 	if !done {
 		return
 	}
-	fmt.Println("policies.tmpl")
+	log.Println("policies.tmpl")
 	c.HTML(http.StatusOK, "policies.tmpl", gin.H{
 		"Policies": policies,
 	})
@@ -127,7 +123,7 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 		policyTypes = append(policyTypes, "terraform")
 		policyTypes = append(policyTypes, "access")
 
-		fmt.Printf("projects: %v", projects)
+		log.Printf("projects: %v\n", projects)
 
 		c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
 			"Message": message, "Projects": projects, "PolicyTypes": policyTypes,
@@ -151,20 +147,20 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 		projectId := uint(projectId64)
 		project, ok := models.DB.GetProjectByProjectId(c, projectId, middleware.ORGANISATION_ID_KEY)
 		if !ok {
-			fmt.Printf("Failed to fetch specified project by id: %v, %v\n", projectIdStr, err)
+			log.Printf("Failed to fetch specified project by id: %v, %v\n", projectIdStr, err)
 			message := "Failed to create a policy"
 			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
 				"Message": message,
 			})
 		}
 
-		fmt.Printf("repo: %v", project.Repo)
+		log.Printf("repo: %v\n", project.Repo)
 
 		policy := models.Policy{Project: project, Policy: policyText, Type: policyType, Organisation: project.Organisation, Repo: project.Repo}
 
 		err = models.DB.GormDB.Create(&policy).Error
 		if err != nil {
-			fmt.Printf("Failed to create a new policy, %v\n", err)
+			log.Printf("Failed to create a new policy, %v\n", err)
 			message := "Failed to create a policy"
 			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
 				"Message": message,
@@ -187,7 +183,7 @@ func (web *WebController) PolicyDetailsPage(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("policy_details.tmpl")
+	log.Println("policy_details.tmpl")
 	c.HTML(http.StatusOK, "policy_details.tmpl", gin.H{
 		"Policy": policy,
 	})
@@ -199,7 +195,7 @@ func (web *WebController) ProjectDetailsPage(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("project_details.tmpl")
+	log.Println("project_details.tmpl")
 	c.HTML(http.StatusOK, "project_details.tmpl", gin.H{
 		"Project": project,
 	})
@@ -252,7 +248,7 @@ func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
 	if projectName != project.Name {
 		project.Name = projectName
 		models.DB.GormDB.Save(project)
-		fmt.Printf("project name has been updated to %s\n", projectName)
+		log.Printf("project name has been updated to %s\n", projectName)
 		message = "Project has been updated successfully"
 	}
 
@@ -276,11 +272,11 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 
 	message := ""
 	policyText := c.PostForm("policy")
-	fmt.Printf("policyText: %v\n", policyText)
+	log.Printf("policyText: %v\n", policyText)
 	if policyText != policy.Policy {
 		policy.Policy = policyText
 		models.DB.GormDB.Save(policy)
-		fmt.Printf("Policy has been updated. policy id: %v", policy.ID)
+		log.Printf("Policy has been updated. policy id: %v\n", policy.ID)
 		message = "Policy has been updated successfully"
 	}
 
@@ -301,14 +297,20 @@ func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
 }
 
 func (web *WebController) UpdateRepoPage(c *gin.Context) {
-	repoId64, err := strconv.ParseUint(c.Param("repoid"), 10, 32)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to parse repo id")
+	repoName := c.Param("reponame")
+	if repoName == "" {
+		c.String(http.StatusInternalServerError, "Repo name can't be empty")
 		return
 	}
-	repoId := uint(repoId64)
-	repo, ok := models.DB.GetRepo(c, middleware.ORGANISATION_ID_KEY, repoId)
-	if !ok {
+	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	if !exists {
+		log.Printf("Org %v not found in the context\n", middleware.ORGANISATION_ID_KEY)
+		c.String(http.StatusInternalServerError, "Not allowed to access this resource")
+		return
+	}
+
+	repo, err := models.DB.GetRepo(orgId, repoName)
+	if err != nil {
 		c.String(http.StatusForbidden, "Failed to find repo")
 		return
 	}
@@ -327,7 +329,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 			})
 		}
 
-		fmt.Printf("repo: %v", repo)
+		log.Printf("repo: %v\n", repo)
 		repo.DiggerConfig = diggerConfigYaml
 		err := validateDiggerConfigYaml(diggerConfigYaml)
 		if err != nil {

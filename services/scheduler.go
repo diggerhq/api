@@ -3,28 +3,38 @@ package services
 import (
 	"context"
 	"digger.dev/cloud/models"
-	"fmt"
 	"github.com/google/go-github/v55/github"
+	"log"
 )
 
-func DiggerJobCompleted(client *github.Client, jobId string, repoOwner string, repoName string, workflowFileName string) error {
-	job, err := models.DB.GetDiggerJobByParentId(jobId)
+func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repoOwner string, repoName string, workflowFileName string) error {
+	log.Printf("DiggerJobCompleted parentJobId: %v", parentJob.DiggerJobId)
+
+	jobs, err := models.DB.GetDiggerJobsByParentIdAndStatus(&parentJob.DiggerJobId, models.DiggerJobCreated)
 	if err != nil {
 		return err
 	}
 
-	diggerJobId := job.DiggerJobId
-	TriggerTestJob(client, repoOwner, repoName, diggerJobId, workflowFileName)
+	for _, job := range jobs {
+		TriggerTestJob(client, repoOwner, repoName, &job, workflowFileName)
+	}
 	return nil
 }
 
-func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jobId string, workflowFileName string) {
-	//_, _, _ := client.Repositories.Get(ctx, owner, repo_name)
+func TriggerTestJob(client *github.Client, repoOwner string, repoName string, job *models.DiggerJob, workflowFileName string) {
+	log.Printf("TriggerTestJob jobId: %v", job.DiggerJobId)
 	ctx := context.Background()
-	event := github.CreateWorkflowDispatchEventRequest{Ref: "main", Inputs: map[string]interface{}{"id": jobId}}
-	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, event)
+	if job.SerializedJob == nil {
+		log.Printf("GitHub job can't me nil")
+	}
+	jobString := string(job.SerializedJob)
+	log.Printf("jobString: %v \n", jobString)
+	_, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowFileName, github.CreateWorkflowDispatchEventRequest{
+		Ref:    job.BranchName,
+		Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
+	})
 	if err != nil {
-		fmt.Printf("err: %v\n", err)
+		log.Printf("TriggerTestJob err: %v\n", err)
 		return
 	}
 }
