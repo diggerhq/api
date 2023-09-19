@@ -27,7 +27,16 @@
                             <tr>
                                 <td>{{ .Name}}</td>
                                 <td>{{.Organisation.Name}}</td>
-                                <td><a href="/repo/{{.ID}}">Details<a></td>
+                                <td>
+                                    <button type="button" class="btn btn-primary position-relative">
+                                          Details
+                                          {{if eq .DiggerConfig "" }}
+                                          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                            config is missing
+                                          </span>
+                                          {{ end }}
+                                        </button>
+                                </td>
                             </tr>
                         {{ end }}
                         </tbody>
