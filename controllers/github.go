@@ -604,7 +604,7 @@ func GithubAppCallbackPage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
 		return
 	}
-	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
+	c.Redirect(http.StatusFound, "/repos")
 }
 
 func GithubReposPage(c *gin.Context) {
