@@ -638,6 +638,28 @@ func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	assert.Equal(t, result["dev"].DiggerJobId, *result["prod"].ParentDiggerJobId)
 }
 
+func TestJobsTreeWithOneJobsAndTwoProjects(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	jobs := make(map[string]orchestrator.Job)
+	jobs["dev"] = orchestrator.Job{ProjectName: "dev"}
+
+	var projects []configuration.Project
+	project1 := configuration.Project{Name: "dev"}
+	project2 := configuration.Project{Name: "prod", DependencyProjects: []string{"dev"}}
+	projects = append(projects, project1, project2)
+
+	graph, err := configuration.CreateProjectDependencyGraph(projects)
+	assert.NoError(t, err)
+
+	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(result))
+	assert.Nil(t, result["dev"].ParentDiggerJobId)
+	assert.NotContains(t, result, "prod")
+}
+
 func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	teardownSuite, _ := setupSuite(t)
 	defer teardownSuite(t)
