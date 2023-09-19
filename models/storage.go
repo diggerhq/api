@@ -38,6 +38,31 @@ func (db *Database) GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]P
 	return projects, true
 }
 
+func (db *Database) GetReposFromContext(c *gin.Context, orgIdKey string) ([]Repo, bool) {
+	loggedInOrganisationId, exists := c.Get(orgIdKey)
+
+	log.Printf("GetReposFromContext, org id: %v\n", loggedInOrganisationId)
+
+	if !exists {
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return nil, false
+	}
+
+	var repos []Repo
+
+	err := db.GormDB.Preload("Organisation").
+		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
+		Where("repos.organisation_id = ?", loggedInOrganisationId).Find(&repos).Error
+
+	if err != nil {
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, false
+	}
+
+	log.Printf("GetReposFromContext, number of repos:%d\n", len(repos))
+	return repos, true
+}
+
 func (db *Database) GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 
@@ -219,19 +244,10 @@ func (db *Database) GetRepoById(orgIdKey any, repoId any) (*Repo, error) {
 }
 
 func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
-	app := GithubApp{}
-
-	// todo: do we need to create a github app here
-	result := db.GormDB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("failed to create github app in database. %v", result.Error)
-		}
-	}
 
 	// check if item exist already
 	item := GithubAppInstallation{}
-	result = db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
+	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
@@ -341,11 +357,12 @@ func (db *Database) GetGithubAppInstallationLink(installationId int64) (*GithubA
 	return &link, nil
 }
 
-// GetGithubApp
-func (db *Database) GetGithubApp(gitHubAppId int64) (*GithubApp, error) {
+// GetGithubApp return GithubApp by Id
+func (db *Database) GetGithubApp(gitHubAppId any) (*GithubApp, error) {
 	app := GithubApp{}
 	result := db.GormDB.Where("github_id = ?", gitHubAppId).Find(&app)
 	if result.Error != nil {
+		log.Printf("Failed to find GitHub App for id: %v, error: %v\n", gitHubAppId, result.Error)
 		return nil, result.Error
 	}
 	return &app, nil

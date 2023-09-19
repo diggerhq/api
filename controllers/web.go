@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -49,6 +50,25 @@ func (web *WebController) ProjectsPage(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
 		"Projects": projects,
+	})
+}
+
+func (web *WebController) ReposPage(c *gin.Context) {
+	repos, done := models.DB.GetReposFromContext(c, middleware.ORGANISATION_ID_KEY)
+	if !done {
+		return
+	}
+
+	githubAppId := os.Getenv("GITHUB_APP_ID")
+	githubApp, err := models.DB.GetGithubApp(githubAppId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to find GitHub app")
+		return
+	}
+
+	c.HTML(http.StatusOK, "repos.tmpl", gin.H{
+		"Repos":     repos,
+		"GithubApp": githubApp,
 	})
 }
 

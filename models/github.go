@@ -4,9 +4,9 @@ import "gorm.io/gorm"
 
 type GithubApp struct {
 	gorm.Model
-	GithubId       int64
-	OrganisationId int
-	PrivateKey     string
+	GithubId     int64
+	Name         string
+	GithubAppUrl string
 }
 
 type GithubAppInstallStatus int

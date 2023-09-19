@@ -80,6 +80,10 @@ func main() {
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/repos", controllers.GithubReposPage)
 
+	webReposGroup := r.Group("/repos")
+	webReposGroup.Use(middleware.WebAuth(auth))
+	webReposGroup.GET("/", web.ReposPage)
+
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
