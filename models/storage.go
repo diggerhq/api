@@ -403,6 +403,15 @@ func (db *Database) GetGithubInstallationLinkForOrg(orgId any) (*GithubAppInstal
 	return &l, nil
 }
 
+func (db *Database) GetGithubInstallationLinkForInstallationId(installationId any) (*GithubAppInstallationLink, error) {
+	l := GithubAppInstallationLink{}
+	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallationLinkActive).Find(&l)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &l, nil
+}
+
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
 	link := GithubDiggerJobLink{Status: DiggerJobLinkCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
 	result := db.GormDB.Save(&link)

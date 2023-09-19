@@ -125,6 +125,32 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
+func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
+	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
+	if err != nil {
+		log.Printf("Error fetching installation link: %v", err)
+		return err
+	}
+	orgId := link.OrganisationId
+	org, err := models.DB.GetOrganisationById(orgId)
+	if err != nil {
+		log.Printf("Error fetching organisation by id: %v, error: %v\n", orgId, err)
+		return err
+	}
+
+	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
+	repo, err := models.DB.CreateRepo(diggerRepoName, org, `
+generate_projects:
+ include: "."
+`)
+	if err != nil {
+		log.Printf("Error creating digger repo: %v", err)
+		return err
+	}
+	log.Printf("Created digger repo: %v", repo)
+	return nil
+}
+
 func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
 	installationId := payload.Installation.ID
 	login := payload.Installation.Account.Login
@@ -132,6 +158,11 @@ func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepo
 	appId := payload.Installation.AppID
 	for _, repo := range payload.RepositoriesAdded {
 		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		if err != nil {
+			return err
+		}
+
+		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
 		if err != nil {
 			return err
 		}
