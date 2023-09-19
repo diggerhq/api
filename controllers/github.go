@@ -178,6 +178,8 @@ func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRe
 		if err != nil {
 			return err
 		}
+
+		// todo: change the status of DiggerRepo to InActive
 	}
 	return nil
 }
@@ -459,6 +461,7 @@ func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.Issu
 	return nil
 }
 
+// todo: move to another package
 // ConvertJobsToDiggerJobs jobs is map with project name as a key and a Job as a value
 func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (map[string]*models.DiggerJob, error) {
 	result := make(map[string]*models.DiggerJob)
