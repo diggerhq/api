@@ -28,14 +28,14 @@
                                 <td>{{ .Name}}</td>
                                 <td>{{.Organisation.Name}}</td>
                                 <td>
-                                    <button type="button" class="btn btn-primary position-relative">
-                                          Details
-                                          {{if eq .DiggerConfig "" }}
-                                          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                            config is missing
-                                          </span>
-                                          {{ end }}
-                                        </button>
+                                    <a href="/repo/{{.ID}}" type="button" class="btn btn-primary position-relative">
+                                      Details
+                                      {{if eq .DiggerConfig "" }}
+                                      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                        config is missing
+                                      </span>
+                                      {{ end }}
+                                    </a>
                                 </td>
                             </tr>
                         {{ end }}
