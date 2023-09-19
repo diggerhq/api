@@ -11,6 +11,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -20,6 +21,8 @@ import (
 var Version = "dev"
 
 func main() {
+
+	initLogging()
 	cfg := config.New()
 	cfg.AutomaticEnv()
 	web := controllers.WebController{Config: cfg}
@@ -34,7 +37,7 @@ func main() {
 		Release:          "api@" + Version,
 		Debug:            true,
 	}); err != nil {
-		fmt.Printf("Sentry initialization failed: %v", err)
+		log.Printf("Sentry initialization failed: %v\n", err)
 	}
 
 	//database migrations
@@ -70,12 +73,12 @@ func main() {
 		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 	}
 
-	r.POST("/github-app-webhook", controllers.GitHubAppWebHook)
+	r.POST("/github-app-webhook", controllers.GithubAppWebHook)
 
 	githubGroup := r.Group("/github")
 	githubGroup.Use(middleware.WebAuth(auth))
-	githubGroup.GET("/callback", controllers.GitHubAppCallbackPage)
-	githubGroup.GET("/test/job", controllers.GihHubCreateTestJobPage)
+	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
+	githubGroup.GET("/repos", controllers.GithubReposPage)
 
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
@@ -103,9 +106,6 @@ func main() {
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
-	github := r.Group("/")
-	github.POST("/github-webhook", controllers.GithubWebhookHandler)
-
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
@@ -126,6 +126,9 @@ func main() {
 
 	authorized.GET("/repos/:repo/projects/:projectName/runs", controllers.RunHistoryForProject)
 	authorized.POST("/repos/:repo/projects/:projectName/runs", controllers.CreateRunForProject)
+
+	authorized.POST("/repos/:repo/projects/:projectName/jobs/:jobId/set-status", controllers.SetJobStatusForProject)
+
 	authorized.GET("/repos/:repo/projects", controllers.FindProjectsForRepo)
 	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
 
@@ -145,4 +148,10 @@ func main() {
 	fronteggWebhookProcessor.POST("/create-org-from-frontegg", controllers.CreateFronteggOrgFromWebhook)
 
 	r.Run(fmt.Sprintf(":%d", cfg.GetInt("port")))
+}
+
+func initLogging() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.Println("Initialized the logger successfully")
 }

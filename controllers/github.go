@@ -5,11 +5,16 @@ import (
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
+	"digger.dev/cloud/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/dchest/uniuri"
+	"github.com/dominikbraun/graph"
+	"github.com/google/uuid"
+
+	dg_configuration "github.com/diggerhq/lib-digger-config"
+	orchestrator "github.com/diggerhq/lib-orchestrator"
+	dg_github "github.com/diggerhq/lib-orchestrator/github"
 	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v55/github"
@@ -21,8 +26,20 @@ import (
 	"strings"
 )
 
-func GitHubAppWebHook(c *gin.Context) {
+func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	gh := &utils.DiggerGithubRealClient{}
+
+	// TODO return validation back
+	/*
+		_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
+		if err != nil {
+			log.Printf("Error validating github app webhook's payload: %v", err)
+			c.String(http.StatusBadRequest, "Error validating github app webhook's payload")
+			return
+		}
+	*/
+
 	hook, _ := webhooks.New()
 
 	payload, err := hook.Parse(c.Request, webhooks.InstallationEvent, webhooks.PullRequestEvent, webhooks.IssueCommentEvent,
@@ -30,114 +47,82 @@ func GitHubAppWebHook(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, webhooks.ErrEventNotFound) {
 			// ok event wasn't one of the ones asked to be parsed
-			fmt.Println("GitHub event  wasn't found.")
+			log.Println("Github event  wasn't found.")
 		}
-		fmt.Printf("Failed to parse Github Event. :%v\n", err)
+		log.Printf("Failed to parse Github Event. :%v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
 		return
 	}
 	switch payload.(type) {
 
 	case webhooks.InstallationPayload:
-		installation := payload.(webhooks.InstallationPayload)
-		if installation.Action == "created" {
-			err := handleInstallationCreatedEvent(installation)
+		payload := payload.(webhooks.InstallationPayload)
+		if payload.Action == "created" {
+			err := handleInstallationCreatedEvent(&payload)
 			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to store item.")
+				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 		}
 
-		if installation.Action == "deleted" {
-			err := handleInstallationDeletedEvent(installation)
+		if payload.Action == "deleted" {
+			err := handleInstallationDeletedEvent(&payload)
 			if err != nil {
-				c.String(http.StatusInternalServerError, "Failed to remove item.")
+				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 
 		}
 	case webhooks.InstallationRepositoriesPayload:
-		installationRepos := payload.(webhooks.InstallationRepositoriesPayload)
-		if installationRepos.Action == "added" {
-			installationId := installationRepos.Installation.ID
-			login := installationRepos.Installation.Account.Login
-			accountId := installationRepos.Installation.Account.ID
-			appId := installationRepos.Installation.AppID
-			for _, repo := range installationRepos.RepositoriesAdded {
-				err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
-				if err != nil {
-					c.String(http.StatusInternalServerError, "Failed to store item.")
-					return
-				}
-				err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
-				if err != nil {
-					c.String(http.StatusInternalServerError, "Failed to create digger repo.")
-					return
-				}
+		payload := payload.(webhooks.InstallationRepositoriesPayload)
+		if payload.Action == "added" {
+			err := handleInstallationRepositoriesAddedEvent(&payload)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
-		if installationRepos.Action == "removed" {
-			installationId := installationRepos.Installation.ID
-			appId := installationRepos.Installation.AppID
-			for _, repo := range installationRepos.RepositoriesRemoved {
-				err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
-				if err != nil {
-					c.String(http.StatusInternalServerError, "Failed to remove item.")
-					return
-				}
+		if payload.Action == "removed" {
+			err := handleInstallationRepositoriesDeletedEvent(&payload)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
-
 	case webhooks.IssueCommentPayload:
-		issueComment := payload.(webhooks.IssueCommentPayload)
-		fmt.Printf("new comment: %+v", issueComment)
+		payload := payload.(webhooks.IssueCommentPayload)
+		err := handleIssueCommentEvent(gh, &payload)
+		if err != nil {
+			log.Printf("handleIssueCommentEvent error: %v", err)
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
 	case webhooks.WorkflowJobPayload:
 		payload := payload.(webhooks.WorkflowJobPayload)
-		err := handleWorkflowJobEvent(payload)
+		err := handleWorkflowJobEvent(gh, &payload)
 		if err != nil {
+			log.Printf("handleWorkflowJobEvent error: %v", err)
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowJob event.")
 			return
 		}
-
 	case webhooks.WorkflowRunPayload:
 		payload := payload.(webhooks.WorkflowRunPayload)
 		err := handleWorkflowRunEvent(payload)
 		if err != nil {
+			log.Printf("handleWorkflowRunEvent error: %v", err)
 			c.String(http.StatusInternalServerError, "Failed to handle WorkflowRun event.")
+			return
+		}
+	case webhooks.PullRequestPayload:
+		payload := payload.(webhooks.PullRequestPayload)
+		log.Printf("Got pull request event for %v", payload.PullRequest.ID)
+		err := handlePullRequestEvent(gh, &payload)
+		if err != nil {
+			log.Printf("handlePullRequestEvent error: %v", err)
+			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
 
 	c.JSON(200, "ok")
-}
-
-func getGitHubClient(githubAppId int64, installationId int64) (*github.Client, error) {
-	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
-	client, err := GetGithubClient(githubAppId, installationId, githubAppPrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func handleInstallationCreatedEvent(installation webhooks.InstallationPayload) error {
-	installationId := installation.Installation.ID
-	login := installation.Installation.Account.Login
-	accountId := installation.Installation.Account.ID
-	appId := installation.Installation.AppID
-
-	for _, repo := range installation.Repositories {
-		fmt.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GitHubRepoAdded(installationId, appId, login, accountId, repo.FullName)
-		if err != nil {
-			return err
-		}
-		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
@@ -147,9 +132,14 @@ func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) 
 		return err
 	}
 	orgId := link.OrganisationId
+	org, err := models.DB.GetOrganisationById(orgId)
+	if err != nil {
+		log.Printf("Error fetching organisation by id: %v, error: %v\n", orgId, err)
+		return err
+	}
 
 	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
-	repo, err := models.DB.CreateRepo(orgId, diggerRepoName, `
+	repo, err := models.DB.CreateRepo(diggerRepoName, org, `
 generate_projects:
  include: "."
 `)
@@ -161,12 +151,18 @@ generate_projects:
 	return nil
 }
 
-func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) error {
-	installationId := installation.Installation.ID
-	appId := installation.Installation.AppID
-	for _, repo := range installation.Repositories {
-		fmt.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GitHubRepoRemoved(installationId, appId, repo.FullName)
+func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
+	installationId := payload.Installation.ID
+	login := payload.Installation.Account.Login
+	accountId := payload.Installation.Account.ID
+	appId := payload.Installation.AppID
+	for _, repo := range payload.RepositoriesAdded {
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		if err != nil {
+			return err
+		}
+
+		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
 		if err != nil {
 			return err
 		}
@@ -174,10 +170,58 @@ func handleInstallationDeletedEvent(installation webhooks.InstallationPayload) e
 	return nil
 }
 
-func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
+func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
+	installationId := payload.Installation.ID
+	appId := payload.Installation.AppID
+	for _, repo := range payload.RepositoriesRemoved {
+		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleInstallationCreatedEvent(installation *webhooks.InstallationPayload) error {
+	installationId := installation.Installation.ID
+	login := installation.Installation.Account.Login
+	accountId := installation.Installation.Account.ID
+	appId := installation.Installation.AppID
+
+	for _, repo := range installation.Repositories {
+		log.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		if err != nil {
+			return err
+		}
+		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) error {
+	installationId := installation.Installation.ID
+	appId := installation.Installation.AppID
+	for _, repo := range installation.Repositories {
+		log.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
+		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload *webhooks.WorkflowJobPayload) error {
+
+	log.Printf("handleWorkflowJobEvent\n")
 	ctx := context.Background()
 	switch payload.Action {
 	case "completed":
+		log.Printf("handleWorkflowJobEvent completed\n")
 		githubJobId := payload.WorkflowJob.ID
 		//githubJobStatus := payload.WorkflowJob.Status
 
@@ -186,11 +230,11 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		repoFullName := payload.Repository.FullName
 		installationId := payload.Installation.ID
 
-		installation, err := models.DB.GetGitHubAppInstallationByIdAndRepo(installationId, repoFullName)
+		installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 		if err != nil {
 			return err
 		}
-		client, err := getGitHubClient(installation.GithubAppId, installationId)
+		client, _, err := gh.GetGithubClient(installation.GithubAppId, installationId)
 		if err != nil {
 			return err
 		}
@@ -200,13 +244,18 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 			return err
 		}
 
+		log.Printf("repoFullName: %v\n", repoFullName)
 		var jobId string
 		for _, s := range (*workflowJob).Steps {
+
 			name := *s.Name
+			log.Printf("workflow step: %v\n", name)
 			if strings.HasPrefix(name, "digger run ") {
+
 				// digger job id and workflow step name matched
 				jobId = strings.Replace(name, "digger run ", "", 1)
-				_, err := models.DB.UpdateDiggerJobLink(repoFullName, jobId, githubJobId)
+				log.Printf("workflow step match, jobId %v\n", jobId)
+				_, err := models.DB.UpdateDiggerJobLink(jobId, repoFullName, githubJobId)
 				if err != nil {
 					return err
 				}
@@ -214,7 +263,14 @@ func handleWorkflowJobEvent(payload webhooks.WorkflowJobPayload) error {
 		}
 		if jobId != "" {
 			workflowFileName := "workflow.yml"
-			services.DiggerJobCompleted(client, jobId, owner, repo, workflowFileName)
+			job, err := models.DB.GetDiggerJob(jobId)
+			if err != nil {
+				return err
+			}
+			err = services.DiggerJobCompleted(client, job, owner, repo, workflowFileName)
+			if err != nil {
+				return err
+			}
 		}
 
 	case "queued":
@@ -227,7 +283,285 @@ func handleWorkflowRunEvent(payload webhooks.WorkflowRunPayload) error {
 	return nil
 }
 
-func GitHubAppCallbackPage(c *gin.Context) {
+func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullRequestPayload) error {
+	var installationId int64
+	var repoName string
+	var repoOwner string
+	var repoFullName string
+	var cloneURL string
+
+	installationId = payload.Installation.ID
+	repoName = payload.Repository.Name
+	repoOwner = payload.Repository.Owner.Login
+	repoFullName = payload.Repository.FullName
+	cloneURL = payload.Repository.CloneURL
+
+	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.PullRequest.Number))
+
+	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, ghService)
+	if err != nil {
+		log.Printf("Error processing event: %v", err)
+		return fmt.Errorf("error processing event")
+	}
+
+	jobs, _, err := dg_github.ConvertGithubPullRequestEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
+	if err != nil {
+		log.Printf("Error converting event to jobs: %v", err)
+		return fmt.Errorf("error converting event to jobs")
+	}
+
+	jobsMap := make(map[string]orchestrator.Job)
+	for _, p := range impactedProjects {
+		for _, j := range jobs {
+			if j.ProjectName == p.Name {
+				jobsMap[p.Name] = j
+			}
+		}
+	}
+
+	_, err = ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	if err != nil {
+		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
+		return fmt.Errorf("error convertingjobs")
+	}
+
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName)
+	if err != nil {
+		log.Printf("TriggerDiggerJobs error: %v", err)
+		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
+	}
+
+	return nil
+}
+
+func getDiggerConfig(gh utils.DiggerGithubClient, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, string], *string, error) {
+	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
+	if err != nil {
+		log.Printf("Error getting installation: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting installation")
+	}
+
+	_, err = models.DB.GetGithubApp(installation.GithubAppId)
+	if err != nil {
+		log.Printf("Error getting app: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting app")
+	}
+
+	ghClient, token, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	if err != nil {
+		log.Printf("Error creating github app client: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error creating github app client")
+	}
+
+	ghService := dg_github.GithubService{
+		Client:   ghClient,
+		RepoName: repoName,
+		Owner:    repoOwner,
+	}
+
+	var prBranch string
+	prBranch, err = ghService.GetBranchName(prNumber)
+	if err != nil {
+		log.Printf("Error getting branch name: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting branch name")
+	}
+
+	link, err := models.DB.GetGithubAppInstallationLink(installationId)
+	if err != nil {
+		log.Printf("Error getting branch name: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting branch name")
+	}
+
+	diggerRepoName := repoOwner + "-" + repoName
+	repo, err := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
+	if err != nil {
+		log.Printf("Error getting repo: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting repo")
+	}
+
+	configYaml, err := dg_configuration.LoadDiggerConfigYamlFromString(repo.DiggerConfig)
+	if err != nil {
+		log.Printf("Error loading digger config: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error loading digger config")
+	}
+
+	log.Printf("Digger config loadded successfully\n")
+
+	if configYaml.GenerateProjectsConfig != nil {
+		err = utils.CloneGitRepoAndDoAction(cloneUrl, prBranch, *token, func(dir string) {
+			dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
+		})
+		if err != nil {
+			log.Printf("Error generating projects: %v", err)
+			return nil, nil, nil, nil, fmt.Errorf("error generating projects")
+		}
+	}
+
+	config, graph, err := loadDiggerConfig(configYaml)
+
+	if err != nil {
+		log.Printf("Error loading digger config: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error loading digger config")
+	}
+	log.Printf("Digger config parsed successfully\n")
+	return &ghService, config, graph, &prBranch, nil
+}
+
+func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.IssueCommentPayload) error {
+	var installationId int64
+	var repoName string
+	var repoOwner string
+	var repoFullName string
+	var cloneURL string
+
+	installationId = payload.Installation.ID
+	repoName = payload.Repository.Name
+	repoOwner = payload.Repository.Owner.Login
+	repoFullName = payload.Repository.FullName
+	cloneURL = payload.Repository.CloneURL
+
+	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.Issue.Number))
+
+	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, ghService)
+	if err != nil {
+		log.Printf("Error processing event: %v", err)
+		return fmt.Errorf("error processing event")
+	}
+	log.Printf("GitHub IssueComment event processed successfully\n")
+
+	jobs, _, err := dg_github.ConvertGithubIssueCommentEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
+	if err != nil {
+		log.Printf("Error converting event to jobs: %v", err)
+		return fmt.Errorf("error converting event to jobs")
+	}
+	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
+
+	jobsMap := make(map[string]orchestrator.Job)
+	for _, p := range impactedProjects {
+		for _, j := range jobs {
+			if j.ProjectName == p.Name {
+				jobsMap[p.Name] = j
+			}
+		}
+	}
+
+	_, err = ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	if err != nil {
+		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
+		return fmt.Errorf("error convertingjobs")
+	}
+
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName)
+	if err != nil {
+		log.Printf("TriggerDiggerJobs error: %v", err)
+		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
+	}
+	return nil
+}
+
+// ConvertJobsToDiggerJobs jobs is map with project name as a key and a Job as a value
+func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (map[string]*models.DiggerJob, error) {
+	result := make(map[string]*models.DiggerJob)
+
+	log.Printf("Number of Jobs: %v\n", len(jobsMap))
+	marshalledJobsMap := map[string][]byte{}
+	for _, job := range jobsMap {
+		marshalled, _ := json.Marshal(orchestrator.JobToJson(job))
+		marshalledJobsMap[job.ProjectName] = marshalled
+	}
+
+	batchId, _ := uuid.NewUUID()
+	predecessorMap, _ := projectsGraph.PredecessorMap()
+
+	visit := func(value string) bool {
+		// value is project name
+
+		// does it have a parent?
+		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
+			fmt.Printf("no parent for %v\n", value)
+			if result[value] == nil {
+				fmt.Printf("no diggerjob has been created for %v\n", value)
+				// we found a node without parent, we can create a digger job
+				parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
+				if err != nil {
+					log.Printf("failed to create a job")
+					return false
+				}
+				_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
+				if err != nil {
+					log.Printf("failed to create a digger job link")
+					return false
+				}
+				result[value] = parentJob
+			}
+		} else {
+			// we found a node with parent(s), parent should be in results already
+			parents := predecessorMap[value]
+			for _, edge := range parents {
+				parent := edge.Source
+				fmt.Printf("parent: %v\n", parent)
+				parentDiggerJob := result[parent]
+				childJob, err := models.DB.CreateDiggerJob(batchId, &parentDiggerJob.DiggerJobId, marshalledJobsMap[value], branch)
+				if err != nil {
+					log.Printf("failed to create a job")
+					return false
+				}
+				_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
+				if err != nil {
+					log.Printf("failed to create a digger job link")
+					return false
+				}
+				result[value] = childJob
+			}
+		}
+		return false
+	}
+
+	log.Printf("len of predecessorMap: %v\n", len(predecessorMap))
+
+	for node := range predecessorMap {
+		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
+			err := graph.DFS(projectsGraph, node, visit)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return result, nil
+}
+
+func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string) error {
+	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
+
+	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
+
+	for _, job := range diggerJobs {
+		if job.SerializedJob == nil {
+			return fmt.Errorf("GitHub job can't me nil")
+		}
+		jobString := string(job.SerializedJob)
+		log.Printf("jobString: %v \n", jobString)
+		// TODO: make workflow file name configurable
+		_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+			Ref:    job.BranchName,
+			Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
+		})
+		if err != nil {
+			log.Printf("failed to trigger github workflow, %v\n", err)
+			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+		} else {
+			job.Status = models.DiggerJobTriggered
+			err := models.DB.UpdateDiggerJob(&job)
+			if err != nil {
+				log.Printf("failed to trigger github workflow, %v\n", err)
+				return fmt.Errorf("failed to trigger github workflow, %v\n", err)
+			}
+		}
+	}
+	return nil
+}
+
+func GithubAppCallbackPage(c *gin.Context) {
 	installationId := c.Request.URL.Query()["installation_id"][0]
 	//setupAction := c.Request.URL.Query()["setup_action"][0]
 	code := c.Request.URL.Query()["code"][0]
@@ -242,14 +576,14 @@ func GitHubAppCallbackPage(c *gin.Context) {
 
 	installationId64, err := strconv.ParseInt(installationId, 10, 64)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Printf("err: %v", err)
 		c.String(http.StatusInternalServerError, "Failed to parse installation_id.")
 		return
 	}
 
-	result, err := validateGitHubCallback(clientId, clientSecret, code, installationId64)
+	result, err := validateGithubCallback(clientId, clientSecret, code, installationId64)
 	if !result {
-		fmt.Printf("Failed to validated installation id, %v\n", err)
+		log.Printf("Failed to validated installation id, %v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to validate installation_id.")
 		return
 	}
@@ -261,16 +595,16 @@ func GitHubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	_, err = models.DB.CreateGitHubInstallationLink(org.ID, installationId64)
+	_, err = models.DB.CreateGithubInstallationLink(org, installationId64)
 	if err != nil {
-		log.Printf("Error saving CreateGitHubInstallationLink to database: %v", err)
+		log.Printf("Error saving CreateGithubInstallationLink to database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
 		return
 	}
 	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
 }
 
-func GihHubCreateTestJobPage(c *gin.Context) {
+func GithubReposPage(c *gin.Context) {
 	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 	if !exists {
 		log.Printf("Organisation ID not found in context")
@@ -278,74 +612,46 @@ func GihHubCreateTestJobPage(c *gin.Context) {
 		return
 	}
 
-	diggerJobId := uniuri.New()
-	parentJobId := uniuri.New()
-	_, err := models.DB.CreateDiggerJob(parentJobId, nil)
+	link, err := models.DB.GetGithubInstallationLinkForOrg(orgId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-		return
-	}
-	_, err = models.DB.CreateDiggerJob(diggerJobId, &parentJobId)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-		return
-	}
-	/*
-		jobs, err := models.GetPendingDiggerJobs()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating digger job"})
-			return
-		}
-
-		for _, j := range jobs {
-			fmt.Printf("jobId: %v, parentJobId: %v", j.DiggerJobId, j.ParentDiggerJobId)
-		}
-	*/
-
-	owner := "diggerhq"
-	repo := "github-job-scheduler"
-	workflowFileName := "workflow.yml"
-	repoFullName := owner + "/" + repo
-
-	installation, err := models.DB.GetGitHubAppInstallationByOrgAndRepo(orgId, repoFullName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating github installation"})
+		log.Printf("GetGithubInstallationLinkForOrg error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
 		return
 	}
 
-	githubAppPrivateKey := os.Getenv("GITHUB_APP_PRIVATE_KEY")
-
-	/*
-		link, err := models.CreateDiggerJobLink(repoFullName)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating a test job"})
-			return
-		}
-	*/
-	client, err := GetGithubClient(installation.GithubAppId, installation.GithubInstallationId, githubAppPrivateKey)
+	installations, err := models.DB.GetGithubAppInstallations(link.GithubInstallationId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating a token"})
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
 		return
 	}
 
-	services.TriggerTestJob(client, owner, repo, parentJobId, workflowFileName)
-	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
-}
-
-func GetGithubClient(githubAppId int64, installationId int64, githubAppPrivateKey string) (*github.Client, error) {
-	tr := http.DefaultTransport
-	itr, err := ghinstallation.New(tr, githubAppId, installationId, []byte(githubAppPrivateKey))
-	if err != nil {
-		return nil, fmt.Errorf("error initialising installation: %v\n", err)
+	if len(installations) == 0 {
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
 	}
 
-	ghClient := github.NewClient(&http.Client{Transport: itr})
-	return ghClient, nil
+	gh := &utils.DiggerGithubRealClient{}
+	client, _, err := gh.GetGithubClient(installations[0].GithubAppId, installations[0].GithubInstallationId)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
+		return
+	}
+
+	opts := &github.ListOptions{}
+	repos, _, err := client.Apps.ListRepos(context.Background(), opts)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list GitHub repos."})
+		return
+	}
+	c.HTML(http.StatusOK, "github_repos.tmpl", gin.H{"Repos": repos.Repositories})
 }
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/
 // validation based on https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app , step 3
-func validateGitHubCallback(clientId string, clientSecret string, code string, installationId int64) (bool, error) {
+func validateGithubCallback(clientId string, clientSecret string, code string, installationId int64) (bool, error) {
 	ctx := context.Background()
 	type OAuthAccessResponse struct {
 		AccessToken string `json:"access_token"`
@@ -383,7 +689,7 @@ func validateGitHubCallback(clientId string, clientSecret string, code string, i
 	// list all installations for the user
 	installations, _, err := client.Apps.ListUserInstallations(ctx, nil)
 	for _, v := range installations {
-		fmt.Printf("installation id: %v\n", *v.ID)
+		log.Printf("installation id: %v\n", *v.ID)
 		if *v.ID == installationId {
 			installationIdMatch = true
 		}

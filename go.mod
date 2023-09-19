@@ -7,8 +7,8 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
 	github.com/dchest/uniuri v1.2.0
 	github.com/diggerhq/lib-digger-config v0.0.4
-	github.com/diggerhq/lib-orchestrator v0.0.1
-	github.com/diggerhq/webhooks v0.0.0-20230905113747-53e04148c435
+	github.com/diggerhq/lib-orchestrator v0.0.5
+	github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.0
 	github.com/gin-gonic/gin v1.9.1
@@ -16,6 +16,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/uuid v1.3.1
+	github.com/migueleliasweb/go-github-mock v0.0.19
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
@@ -85,11 +86,12 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-github/v35 v35.3.0 // indirect
-	github.com/google/go-github/v53 v53.2.0 // indirect
+	github.com/google/go-github/v53 v53.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408 // indirect
 	github.com/gruntwork-io/go-commons v0.17.1 // indirect
 	github.com/gruntwork-io/gruntwork-cli v0.7.0 // indirect

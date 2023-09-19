@@ -1,10 +1,44 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"time"
+)
+
+type DiggerJobStatus int8
+
+const (
+	DiggerJobCreated   DiggerJobStatus = 1
+	DiggerJobTriggered DiggerJobStatus = 2
+	DiggerJobFailed    DiggerJobStatus = 3
+	DiggerJobStarted   DiggerJobStatus = 4
+)
 
 type DiggerJob struct {
 	gorm.Model
 	DiggerJobId       string  `gorm:"size:50,index:idx_digger_job_id"`
 	ParentDiggerJobId *string `gorm:"size:50,index:idx_parent_digger_job_id"`
 	Status            DiggerJobStatus
+	BatchId           uuid.UUID
+	SerializedJob     []byte
+	BranchName        string
+	StatusUpdatedAt   time.Time
+}
+
+type DiggerJobLinkStatus int8
+
+const (
+	DiggerJobLinkCreated   DiggerJobLinkStatus = 1
+	DiggerJobLinkSucceeded DiggerJobLinkStatus = 2
+)
+
+// GithubDiggerJobLink links GitHub Workflow Job id to Digger's Job Id
+type GithubDiggerJobLink struct {
+	gorm.Model
+	DiggerJobId         string `gorm:"size:50"`
+	RepoFullName        string
+	GithubJobId         int64
+	GithubWorkflowRunId int64
+	Status              DiggerJobLinkStatus
 }

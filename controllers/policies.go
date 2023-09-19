@@ -1,29 +1,18 @@
 package controllers
 
 import (
-	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
-	"digger.dev/cloud/utils"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bradleyfalzon/ghinstallation/v2"
 	dg_configuration "github.com/diggerhq/lib-digger-config"
-	orchestrator "github.com/diggerhq/lib-orchestrator"
-	dg_github "github.com/diggerhq/lib-orchestrator/github"
-	dg_github_models "github.com/diggerhq/lib-orchestrator/github/models"
 	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/v55/github"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"strings"
-	"sync"
 )
 
 type CreatePolicyInput struct {
@@ -315,254 +304,14 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func GithubWebhookHandler(c *gin.Context) {
-	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
-	if err != nil {
-		log.Printf("Error validating payload: %v", err)
-		c.String(http.StatusBadRequest, "Error validating payload")
-		return
-	}
-
-	event, err := github.ParseWebHook(github.WebHookType(c.Request), payload)
-	if err != nil {
-		log.Printf("Error parsing webhook: %v", err)
-		c.String(http.StatusBadRequest, "Error parsing webhook")
-		return
-	}
-
-	switch event := event.(type) {
-	case *github.InstallationEvent:
-		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
-		if event.GetAction() == "created" {
-			err := models.DB.GormDB.Create(&models.GithubAppInstallation{
-				GithubInstallationId: *event.Installation.ID,
-				GithubAppId:          *event.Installation.AppID,
-			}).Error
-			if err != nil {
-				log.Printf("Error creating github event: %v", err)
-			}
-			c.String(http.StatusOK, "OK")
-		}
-	case *github.InstallationRepositoriesEvent:
-		log.Printf("Got installation event for %v", event.GetInstallation().GetAccount().GetLogin())
-		if event.GetAction() == "added" {
-			err := models.DB.GormDB.Create(&models.GithubAppInstallation{
-				GithubInstallationId: *event.Installation.ID,
-				GithubAppId:          *event.Installation.AppID,
-			}).Error
-			if err != nil {
-				log.Printf("Error creating github event: %v", err)
-			}
-			c.String(http.StatusOK, "OK")
-		}
-	case *github.PullRequestEvent:
-		log.Printf("Got pull request event for %v", event.GetPullRequest().GetTitle())
-		handlePullRequestRelatedEvent(c, *event)
-	case *github.IssueCommentEvent:
-		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
-			c.String(http.StatusOK, "OK")
-			return
-		}
-		handlePullRequestRelatedEvent(c, *event)
-	default:
-		log.Printf("Unhandled event type: %v", event)
-		c.String(http.StatusBadRequest, "Unhandled event type")
-		return
-	}
-}
-
-func handlePullRequestRelatedEvent(c *gin.Context, event interface{}) {
-	var installationId int64
-	var repoName string
-	var repoOwner string
-	var repoFullName string
-	var cloneURL string
-	var actor string
-
-	switch event := event.(type) {
-	case github.PullRequestEvent:
-		installationId = *event.Installation.ID
-		repoName = *event.Repo.Name
-		repoOwner = *event.Repo.Owner.Login
-		repoFullName = *event.Repo.FullName
-		cloneURL = *event.Repo.CloneURL
-		actor = *event.Sender.Login
-	case github.IssueCommentEvent:
-		installationId = *event.Installation.ID
-		repoName = *event.Repo.Name
-		repoOwner = *event.Repo.Owner.Login
-		repoFullName = *event.Repo.FullName
-		cloneURL = *event.Repo.CloneURL
-		actor = *event.Sender.Login
-	default:
-		log.Printf("Unhandled event type: %T", event)
-		c.String(http.StatusInternalServerError, "Error getting installation")
-		return
-	}
-
-	installation := models.GithubAppInstallation{}
-	err := models.DB.GormDB.Where("github_installation_id = ?", installationId).Take(&installation).Error
-	if err != nil {
-		log.Printf("Error getting installation: %v", err)
-		c.String(http.StatusInternalServerError, "Error getting installation")
-		return
-	}
-	ghApp := models.GithubApp{}
-	err = models.DB.GormDB.Where("github_id = ?", installation.GithubAppId).Take(&ghApp).Error
-	if err != nil {
-		log.Printf("Error getting app: %v", err)
-		c.String(http.StatusInternalServerError, "Error getting app")
-		return
-	}
-	tr := http.DefaultTransport
-
-	itr, err := ghinstallation.New(tr, installation.GithubAppId, installation.GithubInstallationId, []byte(ghApp.PrivateKey))
-	if err != nil {
-		log.Printf("Error initialising installation: %v", err)
-		c.String(http.StatusInternalServerError, "Error getting app")
-		return
-	}
-
-	ghClient := github.NewClient(&http.Client{Transport: itr})
-
-	ghService := dg_github.GithubService{
-		Client:   ghClient,
-		RepoName: repoName,
-		Owner:    repoOwner,
-	}
-
-	var prBranch string
-
-	switch event := event.(type) {
-	case github.PullRequestEvent:
-		prBranch = event.PullRequest.Head.GetRef()
-	case github.IssueCommentEvent:
-		prBranch, err = ghService.GetBranchName(event.Issue.GetNumber())
-		if err != nil {
-			log.Printf("Error getting branch name: %v", err)
-			c.String(http.StatusInternalServerError, "Error getting branch name")
-			return
-		}
-	default:
-		log.Printf("Unhandled event type: %T", event)
-		c.String(http.StatusInternalServerError, "Error getting branch name")
-		return
-	}
-
-	var repo models.Repo
-
-	err = models.DB.GormDB.Where("name = ? AND organisation_id = ?", strings.ReplaceAll(repoFullName, "/", "-"), ghApp.OrganisationId).Take(&repo).Error
-
-	if err != nil {
-		log.Printf("Error getting repo: %v", err)
-		c.String(http.StatusInternalServerError, "Error getting repo")
-		return
-	}
-
-	configYaml, err := dg_configuration.LoadDiggerConfigYamlFromString(repo.DiggerConfig)
-
-	if err != nil {
-		log.Printf("Error loading digger config: %v", err)
-		c.String(http.StatusInternalServerError, "Error loading digger config")
-		return
-	}
-
-	if configYaml.GenerateProjectsConfig != nil {
-		token, err := itr.Token(context.Background())
-		if err != nil {
-			log.Printf("Error getting token: %v", err)
-			c.String(http.StatusInternalServerError, "Error getting token")
-			return
-		}
-		err = utils.CloneGitRepoAndDoAction(cloneURL, prBranch, token, func(dir string) {
-			dg_configuration.HandleYamlProjectGeneration(configYaml, dir)
-		})
-		if err != nil {
-			log.Printf("Error generating projects: %v", err)
-			c.String(http.StatusInternalServerError, "Error generating projects")
-			return
-		}
-	}
-
-	config, _, err := loadDiggerConfig(configYaml)
-
-	if err != nil {
-		log.Printf("Error loading digger config: %v", err)
-		c.String(http.StatusInternalServerError, "Error loading digger config")
-		return
-	}
-
-	impactedProjects, requestedProject, prNumber, err := dg_github.ProcessGitHubEvent(event, config, &ghService)
-
-	if err != nil {
-		log.Printf("Error processing event: %v", err)
-		c.String(http.StatusInternalServerError, "Error processing event")
-		return
-	}
-	eventPackage := dg_github_models.EventPackage{
-		Event:      event,
-		EventName:  "pull_request",
-		Actor:      actor,
-		Repository: repoFullName,
-	}
-
-	jobs, _, err := dg_github.ConvertGithubEventToJobs(eventPackage, impactedProjects, requestedProject, config.Workflows)
-
-	if err != nil {
-		log.Printf("Error converting event to jobs: %v", err)
-		c.String(http.StatusInternalServerError, "Error converting event to jobs")
-		return
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(jobs))
-	successPerJob := make(map[string]bool, len(jobs))
-
-	for _, job := range jobs {
-		go func(job orchestrator.Job) {
-			defer wg.Done()
-
-			marshalled, err := json.Marshal(orchestrator.JobToJson(job))
-
-			if err != nil {
-				successPerJob[job.ProjectName] = false
-				log.Printf("Error marshalling job: %v", err)
-				return
-			}
-
-			_, err = ghClient.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
-				Ref:    prBranch,
-				Inputs: map[string]interface{}{"job": string(marshalled)},
-			})
-			if err != nil {
-				successPerJob[job.ProjectName] = false
-				log.Printf("Error dispatching workflow: %v", err)
-				return
-			}
-			successPerJob[job.ProjectName] = true
-		}(job)
-	}
-	c.String(http.StatusOK, "OK")
-	wg.Wait()
-	for projecName, success := range successPerJob {
-		err := ghService.PublishComment(prNumber, fmt.Sprintf("Digger has %v the %v project", map[bool]string{true: "started", false: "failed to start"}[success], projecName))
-		if err != nil {
-			log.Printf("Error publishing comment: %v", err)
-		}
-	}
-	return
-}
-
 func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
 
 	err := dg_configuration.ValidateDiggerConfigYaml(configYaml, "loaded config")
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error validating config: %v", err)
 	}
 
 	config, depGraph, err := dg_configuration.ConvertDiggerYamlToConfig(configYaml)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error converting config: %v", err)
 	}
@@ -573,4 +322,15 @@ func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_config
 		return nil, nil, fmt.Errorf("error validating config: %v", err)
 	}
 	return config, depGraph, nil
+}
+
+func GetIndependentProjects(depGraph graph.Graph[string, string], projectsToFilter []dg_configuration.Project) ([]dg_configuration.Project, error) {
+	adjacencyMap, _ := depGraph.AdjacencyMap()
+	res := make([]dg_configuration.Project, 0)
+	for _, project := range projectsToFilter {
+		if len(adjacencyMap[project.Name]) == 0 {
+			res = append(res, project)
+		}
+	}
+	return res, nil
 }
