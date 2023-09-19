@@ -202,27 +202,6 @@ func handleInstallationCreatedEvent(installation *webhooks.InstallationPayload) 
 	return nil
 }
 
-func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
-	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
-	if err != nil {
-		log.Printf("Error fetching installation link: %v", err)
-		return err
-	}
-	orgId := link.OrganisationId
-
-	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
-	repo, err := models.DB.CreateRepo(orgId, diggerRepoName, `
-generate_projects:
- include: "."
-`)
-	if err != nil {
-		log.Printf("Error creating digger repo: %v", err)
-		return err
-	}
-	log.Printf("Created digger repo: %v", repo)
-	return nil
-}
-
 func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) error {
 	installationId := installation.Installation.ID
 	appId := installation.Installation.AppID
