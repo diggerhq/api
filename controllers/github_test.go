@@ -602,7 +602,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 		),
 	)
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.IssueCommentPayload
@@ -712,7 +712,7 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 
 	mockedHTTPClient := mock.NewMockedHTTPClient()
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.InstallationRepositoriesPayload
@@ -743,7 +743,7 @@ func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
 
 	mockedHTTPClient := mock.NewMockedHTTPClient()
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.InstallationRepositoriesPayload

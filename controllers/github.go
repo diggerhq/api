@@ -4,7 +4,6 @@ import (
 	"context"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
-	"digger.dev/cloud/services"
 	"digger.dev/cloud/utils"
 	"encoding/json"
 	"errors"
@@ -28,7 +27,7 @@ import (
 
 func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	gh := &utils.DiggerGithubRealClient{}
+	gh := &utils.DiggerGithubRealClientProvider{}
 
 	// TODO return validation back
 	/*
@@ -93,22 +92,6 @@ func GithubAppWebHook(c *gin.Context) {
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
-	case webhooks.WorkflowJobPayload:
-		payload := payload.(webhooks.WorkflowJobPayload)
-		err := handleWorkflowJobEvent(gh, &payload)
-		if err != nil {
-			log.Printf("handleWorkflowJobEvent error: %v", err)
-			c.String(http.StatusInternalServerError, "Failed to handle WorkflowJob event.")
-			return
-		}
-	case webhooks.WorkflowRunPayload:
-		payload := payload.(webhooks.WorkflowRunPayload)
-		err := handleWorkflowRunEvent(payload)
-		if err != nil {
-			log.Printf("handleWorkflowRunEvent error: %v", err)
-			c.String(http.StatusInternalServerError, "Failed to handle WorkflowRun event.")
 			return
 		}
 	case webhooks.PullRequestPayload:
@@ -215,75 +198,7 @@ func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) 
 	return nil
 }
 
-func handleWorkflowJobEvent(gh utils.DiggerGithubClient, payload *webhooks.WorkflowJobPayload) error {
-
-	log.Printf("handleWorkflowJobEvent\n")
-	ctx := context.Background()
-	switch payload.Action {
-	case "completed":
-		log.Printf("handleWorkflowJobEvent completed\n")
-		githubJobId := payload.WorkflowJob.ID
-		//githubJobStatus := payload.WorkflowJob.Status
-
-		repo := payload.Repository.Name
-		owner := payload.Repository.Owner.Login
-		repoFullName := payload.Repository.FullName
-		installationId := payload.Installation.ID
-
-		installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
-		if err != nil {
-			return err
-		}
-		client, _, err := gh.GetGithubClient(installation.GithubAppId, installationId)
-		if err != nil {
-			return err
-		}
-
-		workflowJob, _, err := client.Actions.GetWorkflowJobByID(ctx, owner, repo, githubJobId)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("repoFullName: %v\n", repoFullName)
-		var jobId string
-		for _, s := range (*workflowJob).Steps {
-
-			name := *s.Name
-			log.Printf("workflow step: %v\n", name)
-			if strings.HasPrefix(name, "digger run ") {
-
-				// digger job id and workflow step name matched
-				jobId = strings.Replace(name, "digger run ", "", 1)
-				log.Printf("workflow step match, jobId %v\n", jobId)
-				_, err := models.DB.UpdateDiggerJobLink(jobId, repoFullName, githubJobId)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		if jobId != "" {
-			workflowFileName := "workflow.yml"
-			job, err := models.DB.GetDiggerJob(jobId)
-			if err != nil {
-				return err
-			}
-			err = services.DiggerJobCompleted(client, job, owner, repo, workflowFileName)
-			if err != nil {
-				return err
-			}
-		}
-
-	case "queued":
-	case "in_progress":
-	}
-	return nil
-}
-
-func handleWorkflowRunEvent(payload webhooks.WorkflowRunPayload) error {
-	return nil
-}
-
-func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullRequestPayload) error {
+func handlePullRequestEvent(gh utils.GithubClientProvider, payload *webhooks.PullRequestPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -334,7 +249,7 @@ func handlePullRequestEvent(gh utils.DiggerGithubClient, payload *webhooks.PullR
 	return nil
 }
 
-func getDiggerConfig(gh utils.DiggerGithubClient, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, string], *string, error) {
+func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, string], *string, error) {
 	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
@@ -347,7 +262,7 @@ func getDiggerConfig(gh utils.DiggerGithubClient, installationId int64, repoFull
 		return nil, nil, nil, nil, fmt.Errorf("error getting app")
 	}
 
-	ghClient, token, err := gh.GetGithubClient(installation.GithubAppId, installation.GithubInstallationId)
+	ghClient, token, err := gh.Get(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
 		return nil, nil, nil, nil, fmt.Errorf("error creating github app client")
@@ -407,7 +322,7 @@ func getDiggerConfig(gh utils.DiggerGithubClient, installationId int64, repoFull
 	return &ghService, config, graph, &prBranch, nil
 }
 
-func handleIssueCommentEvent(gh utils.DiggerGithubClient, payload *webhooks.IssueCommentPayload) error {
+func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.IssueCommentPayload) error {
 	var installationId int64
 	var repoName string
 	var repoOwner string
@@ -631,8 +546,8 @@ func GithubReposPage(c *gin.Context) {
 		return
 	}
 
-	gh := &utils.DiggerGithubRealClient{}
-	client, _, err := gh.GetGithubClient(installations[0].GithubAppId, installations[0].GithubInstallationId)
+	gh := &utils.DiggerGithubRealClientProvider{}
+	client, _, err := gh.Get(installations[0].GithubAppId, installations[0].GithubInstallationId)
 	if err != nil {
 		log.Printf("GetGithubAppInstallations error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})

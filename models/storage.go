@@ -312,7 +312,6 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 	return &installation, nil
 }
 
-// GetGithubAppInstallations
 func (db *Database) GetGithubAppInstallations(installationId int64) ([]GithubAppInstallation, error) {
 	var installations []GithubAppInstallation
 	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallActive).Find(&installations)
@@ -419,6 +418,19 @@ func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string)
 		return nil, result.Error
 	}
 	log.Printf("GithubDiggerJobLink %v, (repo: %v) has been created successfully\n", diggerJobId, repoFullName)
+	return &link, nil
+}
+
+func (db *Database) GetDiggerJobLink(diggerJobId string) (*GithubDiggerJobLink, error) {
+	link := GithubDiggerJobLink{}
+	result := db.GormDB.Where("digger_job_id = ?", diggerJobId).Find(&link)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		log.Printf("Failed to get DiggerJobLink, %v", diggerJobId)
+		return nil, result.Error
+	}
 	return &link, nil
 }
 
