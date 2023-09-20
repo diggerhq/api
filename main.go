@@ -80,10 +80,6 @@ func main() {
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/repos", controllers.GithubReposPage)
 
-	webReposGroup := r.Group("/repos")
-	webReposGroup.Use(middleware.WebAuth(auth))
-	webReposGroup.GET("/", web.ReposPage)
-
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
@@ -97,10 +93,15 @@ func main() {
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
-	reposGroup := r.Group("/repo")
+	reposGroup := r.Group("/repos")
 	reposGroup.Use(middleware.WebAuth(auth))
-	reposGroup.GET("/:repoid/", web.UpdateRepoPage)
-	reposGroup.POST("/:repoid/", web.UpdateRepoPage)
+	reposGroup.GET("/", web.ReposPage)
+
+	repoGroup := r.Group("/repo")
+	repoGroup.Use(middleware.WebAuth(auth))
+	repoGroup.GET("/", web.ReposPage)
+	repoGroup.GET("/:repoid/", web.UpdateRepoPage)
+	repoGroup.POST("/:repoid/", web.UpdateRepoPage)
 
 	policiesGroup := r.Group("/policies")
 	policiesGroup.Use(middleware.WebAuth(auth))

@@ -4,8 +4,8 @@ import (
 	"digger.dev/cloud/config"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"errors"
 	"fmt"
-	configuration "github.com/diggerhq/lib-digger-config"
 	"github.com/gin-gonic/gin"
 	"github.com/robert-nix/ansihtml"
 	"html/template"
@@ -340,6 +340,7 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 		c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
 			"Message": message, "Repo": repo,
 		})
+		return
 	} else if c.Request.Method == "POST" {
 		diggerConfigYaml := c.PostForm("diggerconfig")
 		if diggerConfigYaml == "" {
@@ -347,33 +348,26 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
 				"Message": message, "Repo": repo,
 			})
+			return
 		}
 
-		log.Printf("repo: %v\n", repo)
-		repo.DiggerConfig = diggerConfigYaml
-		err := validateDiggerConfigYaml(diggerConfigYaml)
+		messages, err := models.DB.UpdateRepoDiggerConfig(orgId, diggerConfigYaml, repo)
 		if err != nil {
+			if strings.HasPrefix(err.Error(), "validation error, ") {
+				message := errors.Unwrap(err).Error()
+				c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
+					"Message": message, "Repo": repo,
+				})
+				return
+			}
+			log.Printf("failed to updated repo %v, %v", repoId, err)
+			message := "failed to update repo"
 			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-				"Message": "Digger config YAML is not valid, " + err.Error(), "Repo": repo,
+				"Message": message, "Repo": repo,
 			})
 			return
 		}
-		tx := models.DB.GormDB.Save(&repo)
-		if tx.Error != nil {
-			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-				"Message": "Failed to update repo", "Repo": repo,
-			})
-			return
-		}
-
-		c.Redirect(http.StatusFound, "/projects")
+		log.Printf("messages: %v'n", messages)
+		c.Redirect(http.StatusFound, "/repos")
 	}
-}
-
-func validateDiggerConfigYaml(configYaml string) error {
-	_, _, _, err := configuration.LoadDiggerConfigFromString(configYaml, "./")
-	if err != nil {
-		return err
-	}
-	return nil
 }
