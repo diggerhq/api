@@ -386,13 +386,35 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 	}
 
 	batchId, _ := uuid.NewUUID()
+	adjecencyMap, err := projectsGraph.AdjacencyMap()
+	if err != nil {
+		return nil, err
+	}
+	predecessorMap, err := projectsGraph.PredecessorMap()
+	if err != nil {
+		return nil, err
+	}
 
-	graphWithImpactedProjectsOnly, err := CollapseGraph(projectsGraph, jobsMap)
+	graphWithImpactedProjectsOnly := graph.NewLike(projectsGraph)
+
+	for node := range predecessorMap {
+		if _, ok := jobsMap[node]; (predecessorMap[node] == nil || len(predecessorMap[node]) == 0) && ok {
+			err := CollapsedGraph(nil, node, adjecencyMap, graphWithImpactedProjectsOnly, jobsMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if err != nil {
 		log.Printf("Error collapsing graph: %v", err)
 		return nil, fmt.Errorf("error collapsing graph")
 	}
-	predecessorMap, _ := graphWithImpactedProjectsOnly.PredecessorMap()
+
+	predecessorMap, err = graphWithImpactedProjectsOnly.PredecessorMap()
+	if err != nil {
+		return nil, err
+	}
 
 	visit := func(value string) bool {
 		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
@@ -409,7 +431,6 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 			}
 			result[value] = parentJob
 		} else {
-			// we found a node with parent(s), parent should be in results already
 			parents := predecessorMap[value]
 			for _, edge := range parents {
 				parent := edge.Source
@@ -443,50 +464,37 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 	return result, nil
 }
 
-func AddTransitiveEdges(g graph.Graph[string, string], newGraph graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) error {
-	for start := range impactedProjects {
-		visited := make(map[string]bool)
-		err := graph.DFS(g, start, func(v string) bool {
-			if _, ok := visited[v]; !ok {
-				visited[v] = true
-			}
-			return false
-		})
+func CollapsedGraph(impactedParent *string, currentNode string, adjMap map[string]map[string]graph.Edge[string], g graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) error {
+	// add to the resulting graph only if the project has been impacted by changes
+	if _, ok := impactedProjects[currentNode]; ok {
+		err := g.AddVertex(currentNode)
 		if err != nil {
 			return err
 		}
-
-		for end := range visited {
-			if _, ok := impactedProjects[end]; ok && start != end {
-				err := newGraph.AddEdge(start, end)
-				if err != nil {
-					return err
-				}
+		// process all children nodes
+		for child, _ := range adjMap[currentNode] {
+			err := CollapsedGraph(&currentNode, child, adjMap, g, impactedProjects)
+			if err != nil {
+				return err
+			}
+		}
+		// if there is an impacted parent add an edge
+		if impactedParent != nil {
+			err := g.AddEdge(*impactedParent, currentNode)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// if current wasn't impacted, see children of current node and set currently know parent
+		for child, _ := range adjMap[currentNode] {
+			err := CollapsedGraph(impactedParent, child, adjMap, g, impactedProjects)
+			if err != nil {
+				return err
 			}
 		}
 	}
 	return nil
-}
-
-func CollapseGraph(g graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) (graph.Graph[string, string], error) {
-	newGraph := graph.NewLike(g)
-
-	for projectID := range impactedProjects {
-		_, err := g.Vertex(projectID)
-		if err == nil {
-			err := newGraph.AddVertex(projectID)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	err := AddTransitiveEdges(g, newGraph, impactedProjects)
-	if err != nil {
-		return nil, err
-	}
-
-	return newGraph, nil
 }
 
 func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string) error {
