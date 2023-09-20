@@ -234,13 +234,13 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *webhooks.Pul
 		}
 	}
 
-	_, err = ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	batchId, _, err := ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, *batchId)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -360,13 +360,13 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 		}
 	}
 
-	_, err = ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	batchId, _, err := ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, *batchId)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -375,7 +375,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 }
 
 // ConvertJobsToDiggerJobs jobs is map with project name as a key and a Job as a value
-func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (map[string]*models.DiggerJob, error) {
+func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (*uuid.UUID, map[string]*models.DiggerJob, error) {
 	result := make(map[string]*models.DiggerJob)
 
 	log.Printf("Number of Jobs: %v\n", len(jobsMap))
@@ -388,11 +388,11 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 	batchId, _ := uuid.NewUUID()
 	adjecencyMap, err := projectsGraph.AdjacencyMap()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	predecessorMap, err := projectsGraph.PredecessorMap()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	graphWithImpactedProjectsOnly := graph.NewLike(projectsGraph)
@@ -401,19 +401,19 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 		if _, ok := jobsMap[node]; (predecessorMap[node] == nil || len(predecessorMap[node]) == 0) && ok {
 			err := CollapsedGraph(nil, node, adjecencyMap, graphWithImpactedProjectsOnly, jobsMap)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 
 	if err != nil {
 		log.Printf("Error collapsing graph: %v", err)
-		return nil, fmt.Errorf("error collapsing graph")
+		return nil, nil, fmt.Errorf("error collapsing graph")
 	}
 
 	predecessorMap, err = graphWithImpactedProjectsOnly.PredecessorMap()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	visit := func(value string) bool {
@@ -456,12 +456,12 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
 			err := graph.DFS(graphWithImpactedProjectsOnly, node, visit)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 
-	return result, nil
+	return &batchId, result, nil
 }
 
 func CollapsedGraph(impactedParent *string, currentNode string, adjMap map[string]map[string]graph.Edge[string], g graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) error {
@@ -497,8 +497,8 @@ func CollapsedGraph(impactedParent *string, currentNode string, adjMap map[strin
 	return nil
 }
 
-func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string) error {
-	diggerJobs, err := models.DB.GetDiggerJobsWithoutParent()
+func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId uuid.UUID) error {
+	diggerJobs, err := models.DB.GetDiggerJobsWithoutParentForBatch(batchId)
 
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 

@@ -522,6 +522,18 @@ func (db *Database) GetDiggerJobsByParentIdAndStatus(jobId *string, status Digge
 	return jobs, nil
 }
 
+func (db *Database) GetDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
+	var jobs []DiggerJob
+	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=? AND batch_id = ?", DiggerJobCreated, batchId).Find(&jobs)
+	if result.Error != nil {
+		log.Printf("Failed to Get DiggerJobsWithoutParent, error: %v\n", result.Error)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return jobs, nil
+}
+
 func (db *Database) GetDiggerJobsWithoutParent() ([]DiggerJob, error) {
 	var jobs []DiggerJob
 	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=?", DiggerJobCreated).Find(&jobs)
