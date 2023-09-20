@@ -386,29 +386,28 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 	}
 
 	batchId, _ := uuid.NewUUID()
-	predecessorMap, _ := projectsGraph.PredecessorMap()
+
+	graphWithImpactedProjectsOnly, err := CollapseGraph(projectsGraph, jobsMap)
+	if err != nil {
+		log.Printf("Error collapsing graph: %v", err)
+		return nil, fmt.Errorf("error collapsing graph")
+	}
+	predecessorMap, _ := graphWithImpactedProjectsOnly.PredecessorMap()
 
 	visit := func(value string) bool {
-		// value is project name
-
-		// does it have a parent?
 		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
 			fmt.Printf("no parent for %v\n", value)
-			if result[value] == nil {
-				fmt.Printf("no diggerjob has been created for %v\n", value)
-				// we found a node without parent, we can create a digger job
-				parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
-				if err != nil {
-					log.Printf("failed to create a job")
-					return false
-				}
-				_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
-				if err != nil {
-					log.Printf("failed to create a digger job link")
-					return false
-				}
-				result[value] = parentJob
+			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
+			if err != nil {
+				log.Printf("failed to create a job")
+				return false
 			}
+			_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
+			if err != nil {
+				log.Printf("failed to create a digger job link")
+				return false
+			}
+			result[value] = parentJob
 		} else {
 			// we found a node with parent(s), parent should be in results already
 			parents := predecessorMap[value]
@@ -432,17 +431,62 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph 
 		return false
 	}
 
-	log.Printf("len of predecessorMap: %v\n", len(predecessorMap))
-
 	for node := range predecessorMap {
 		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
-			err := graph.DFS(projectsGraph, node, visit)
+			err := graph.DFS(graphWithImpactedProjectsOnly, node, visit)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
+
 	return result, nil
+}
+
+func AddTransitiveEdges(g graph.Graph[string, string], newGraph graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) error {
+	for start := range impactedProjects {
+		visited := make(map[string]bool)
+		err := graph.DFS(g, start, func(v string) bool {
+			if _, ok := visited[v]; !ok {
+				visited[v] = true
+			}
+			return false
+		})
+		if err != nil {
+			return err
+		}
+
+		for end := range visited {
+			if _, ok := impactedProjects[end]; ok && start != end {
+				err := newGraph.AddEdge(start, end)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func CollapseGraph(g graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) (graph.Graph[string, string], error) {
+	newGraph := graph.NewLike(g)
+
+	for projectID := range impactedProjects {
+		_, err := g.Vertex(projectID)
+		if err == nil {
+			err := newGraph.AddVertex(projectID)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	err := AddTransitiveEdges(g, newGraph, impactedProjects)
+	if err != nil {
+		return nil, err
+	}
+
+	return newGraph, nil
 }
 
 func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string) error {
