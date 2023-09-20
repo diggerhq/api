@@ -25,7 +25,7 @@ func TriggerJob(client *github.Client, repoOwner string, repoName string, job *m
 	log.Printf("TriggerJob jobId: %v", job.DiggerJobId)
 	ctx := context.Background()
 	if job.SerializedJob == nil {
-		log.Printf("GitHub job can't me nil")
+		log.Printf("GitHub job can't be nil")
 	}
 	jobString := string(job.SerializedJob)
 	log.Printf("jobString: %v \n", jobString)
