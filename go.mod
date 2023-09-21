@@ -11,6 +11,7 @@ require (
 	github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.1
+	github.com/gin-contrib/sessions v0.0.5
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -92,7 +93,10 @@ require (
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
+	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/securecookie v1.1.1 // indirect
+	github.com/gorilla/sessions v1.2.1 // indirect
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408 // indirect
 	github.com/gruntwork-io/go-commons v0.17.1 // indirect
 	github.com/gruntwork-io/gruntwork-cli v0.7.0 // indirect
@@ -145,7 +149,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mattn/go-sqlite3 v1.14.17 // indirect
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mattn/go-zglob v0.0.3 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -184,6 +188,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.5 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	github.com/wader/gormstore/v2 v2.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/zclconf/go-cty v1.14.0 // indirect
