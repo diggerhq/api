@@ -738,8 +738,8 @@ func GithubTestPage(c *gin.Context) {
 		return
 	}
 
-	gh := &utils.DiggerGithubRealClient{}
-	client, _, err := gh.GetGithubClient(installations[0].GithubAppId, installations[0].GithubInstallationId)
+	gh := &utils.DiggerGithubRealClientProvider{}
+	client, _, err := gh.Get(installations[0].GithubAppId, installations[0].GithubInstallationId)
 	if err != nil {
 		log.Printf("GetGithubAppInstallations error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
