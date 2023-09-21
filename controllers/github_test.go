@@ -631,7 +631,7 @@ func TestJobsTreeWithOneJobsAndTwoProjects(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -654,7 +654,7 @@ func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -677,7 +677,7 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -708,7 +708,7 @@ func TestJobsTreeWithThreeLevels(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(result))
 	assert.Nil(t, result["111"].ParentDiggerJobId)
