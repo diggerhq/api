@@ -70,6 +70,12 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	// Return a function to teardown the test
 	return func(tb testing.TB) {
 		log.Println("teardown suite")
+		e := os.Remove(dbName)
+		if e != nil {
+			if !strings.Contains(e.Error(), "no such file or directory") {
+				log.Fatal(e)
+			}
+		}
 	}, database
 }
 

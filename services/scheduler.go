@@ -16,16 +16,16 @@ func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repo
 	}
 
 	for _, job := range jobs {
-		TriggerTestJob(client, repoOwner, repoName, &job, workflowFileName)
+		TriggerJob(client, repoOwner, repoName, &job, workflowFileName)
 	}
 	return nil
 }
 
-func TriggerTestJob(client *github.Client, repoOwner string, repoName string, job *models.DiggerJob, workflowFileName string) {
-	log.Printf("TriggerTestJob jobId: %v", job.DiggerJobId)
+func TriggerJob(client *github.Client, repoOwner string, repoName string, job *models.DiggerJob, workflowFileName string) {
+	log.Printf("TriggerJob jobId: %v", job.DiggerJobId)
 	ctx := context.Background()
 	if job.SerializedJob == nil {
-		log.Printf("GitHub job can't me nil")
+		log.Printf("GitHub job can't be nil")
 	}
 	jobString := string(job.SerializedJob)
 	log.Printf("jobString: %v \n", jobString)
@@ -34,7 +34,7 @@ func TriggerTestJob(client *github.Client, repoOwner string, repoName string, jo
 		Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 	})
 	if err != nil {
-		log.Printf("TriggerTestJob err: %v\n", err)
+		log.Printf("TriggerJob err: %v\n", err)
 		return
 	}
 }
