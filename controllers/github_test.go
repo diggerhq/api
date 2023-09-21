@@ -569,6 +569,7 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	// Return a function to teardown the test
 	return func(tb testing.TB) {
 		log.Println("teardown suite")
+		os.Remove(dbName)
 	}, database
 }
 
@@ -602,7 +603,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 		),
 	)
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.IssueCommentPayload
@@ -613,6 +614,28 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 
 	jobs, err := models.DB.GetDiggerJobsWithoutParent()
 	assert.Equal(t, 0, len(jobs))
+}
+
+func TestJobsTreeWithOneJobsAndTwoProjects(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	jobs := make(map[string]orchestrator.Job)
+	jobs["dev"] = orchestrator.Job{ProjectName: "dev"}
+
+	var projects []configuration.Project
+	project1 := configuration.Project{Name: "dev"}
+	project2 := configuration.Project{Name: "prod", DependencyProjects: []string{"dev"}}
+	projects = append(projects, project1, project2)
+
+	graph, err := configuration.CreateProjectDependencyGraph(projects)
+	assert.NoError(t, err)
+
+	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(result))
+	assert.Nil(t, result["dev"].ParentDiggerJobId)
+	assert.NotContains(t, result, "prod")
 }
 
 func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
@@ -631,7 +654,7 @@ func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -654,7 +677,7 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -687,7 +710,7 @@ func TestJobsTreeWithThreeLevels(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(result))
 	assert.Nil(t, result["111"].ParentDiggerJobId)
@@ -714,7 +737,7 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 
 	mockedHTTPClient := mock.NewMockedHTTPClient()
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.InstallationRepositoriesPayload
@@ -745,7 +768,7 @@ func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
 
 	mockedHTTPClient := mock.NewMockedHTTPClient()
 
-	gh := &utils.DiggerGithubClientMock{}
+	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
 	var payload webhooks.InstallationRepositoriesPayload

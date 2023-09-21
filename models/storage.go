@@ -376,7 +376,6 @@ func (db *Database) GetGithubAppInstallationByIdAndRepo(installationId int64, re
 	return &installation, nil
 }
 
-// GetGithubAppInstallations
 func (db *Database) GetGithubAppInstallations(installationId int64) ([]GithubAppInstallation, error) {
 	var installations []GithubAppInstallation
 	result := db.GormDB.Where("github_installation_id = ? AND status=?", installationId, GithubAppInstallActive).Find(&installations)
@@ -487,6 +486,19 @@ func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string)
 	return &link, nil
 }
 
+func (db *Database) GetDiggerJobLink(diggerJobId string) (*GithubDiggerJobLink, error) {
+	link := GithubDiggerJobLink{}
+	result := db.GormDB.Where("digger_job_id = ?", diggerJobId).Find(&link)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		log.Printf("Failed to get DiggerJobLink, %v", diggerJobId)
+		return nil, result.Error
+	}
+	return &link, nil
+}
+
 func (db *Database) UpdateDiggerJobLink(diggerJobId string, repoFullName string, githubJobId int64) (*GithubDiggerJobLink, error) {
 	jobLink := GithubDiggerJobLink{}
 	// check if there is already a link to another org, and throw an error in this case
@@ -568,6 +580,18 @@ func (db *Database) GetDiggerJobsByParentIdAndStatus(jobId *string, status Digge
 	result := db.GormDB.Where("parent_digger_job_id=? AND status=?", jobId, status).Find(&jobs)
 	if result.Error != nil {
 		log.Printf("Failed to get DiggerJob by parent job id: %v, error: %v\n", jobId, result.Error)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return jobs, nil
+}
+
+func (db *Database) GetDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
+	var jobs []DiggerJob
+	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=? AND batch_id = ?", DiggerJobCreated, batchId).Find(&jobs)
+	if result.Error != nil {
+		log.Printf("Failed to Get DiggerJobsWithoutParent, error: %v\n", result.Error)
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}

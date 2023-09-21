@@ -3,11 +3,14 @@ package controllers
 import (
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
+	"digger.dev/cloud/utils"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -250,7 +253,7 @@ type SetJobStatusRequest struct {
 func SetJobStatusForProject(c *gin.Context) {
 	jobId := c.Param("jobId")
 
-	_, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
 
 	if !exists {
 		c.String(http.StatusForbidden, "Not allowed to access this resource")
@@ -280,6 +283,38 @@ func SetJobStatusForProject(c *gin.Context) {
 		job.Status = models.DiggerJobStarted
 	case "succeeded":
 		job.Status = models.DiggerJobTriggered
+		go func() {
+			ghClientProvider := &utils.DiggerGithubRealClientProvider{}
+			installationLink, err := models.DB.GetGithubInstallationLinkForOrg(orgId)
+			if err != nil {
+				log.Printf("Error fetching installation link: %v", err)
+				return
+			}
+
+			installations, err := models.DB.GetGithubAppInstallations(installationLink.GithubInstallationId)
+
+			if err != nil {
+				log.Printf("Error fetching installation: %v", err)
+				return
+			}
+
+			jobLink, err := models.DB.GetDiggerJobLink(jobId)
+
+			if err != nil {
+				log.Printf("Error fetching job link: %v", err)
+				return
+			}
+
+			workflowFileName := "workflow.yml"
+			repoFullNameSplit := strings.Split(jobLink.RepoFullName, "/")
+			client, _, err := ghClientProvider.Get(installations[0].GithubAppId, installationLink.GithubInstallationId)
+			err = services.DiggerJobCompleted(client, job, repoFullNameSplit[0], repoFullNameSplit[1], workflowFileName)
+			if err != nil {
+				log.Printf("Error triggering job: %v", err)
+				return
+			}
+		}()
+
 	case "failed":
 		job.Status = models.DiggerJobFailed
 	default:
