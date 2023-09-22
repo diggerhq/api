@@ -40,7 +40,7 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	// migrate tables
 	err = gdb.AutoMigrate(&models.Policy{}, &models.Organisation{}, &models.Repo{}, &models.Project{}, &models.Token{},
 		&models.User{}, &models.ProjectRun{}, &models.GithubAppInstallation{}, &models.GithubApp{}, &models.GithubAppInstallationLink{},
-		&models.GithubDiggerJobLink{}, &models.DiggerJob{})
+		&models.GithubDiggerJobLink{}, &models.DiggerJob{}, &models.DiggerJobParentLink{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestCreateDiggerJob(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
+	job, err := database.CreateDiggerJob(batchId, []byte{}, "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -96,7 +96,7 @@ func TestCreateSingleJob(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
+	job, err := database.CreateDiggerJob(batchId, []byte{}, "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
@@ -108,23 +108,27 @@ func TestFindDiggerJobsByParentJobId(t *testing.T) {
 	defer teardownSuite(t)
 
 	batchId, _ := uuid.NewUUID()
-	job, err := database.CreateDiggerJob(batchId, nil, []byte{}, "")
+	job, err := database.CreateDiggerJob(batchId, []byte{}, "")
 	parentJobId := job.DiggerJobId
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{}, "")
+
+	job, err = database.CreateDiggerJob(batchId, []byte{}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
-	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
 	assert.NotZero(t, job.ID)
-	job, err = database.CreateDiggerJob(batchId, &parentJobId, []byte{}, "")
+	err = database.CreateDiggerJobParentLink(parentJobId, job.DiggerJobId)
+	assert.Nil(t, err)
+
+	job, err = database.CreateDiggerJob(batchId, []byte{}, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
-	assert.Equal(t, parentJobId, *job.ParentDiggerJobId)
+	err = database.CreateDiggerJobParentLink(parentJobId, job.DiggerJobId)
+	assert.Nil(t, err)
 	assert.NotZero(t, job.ID)
 
-	jobs, err := database.GetDiggerJobsByParentIdAndStatus(&parentJobId, models.DiggerJobCreated)
+	jobs, err := database.GetDiggerJobParentLinksByParentId(&parentJobId)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobs))
 }

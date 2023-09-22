@@ -531,9 +531,9 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 	return &org, nil
 }
 
-func (db *Database) CreateDiggerJob(batch uuid.UUID, parentJobId *string, serializedJob []byte, branchName string) (*DiggerJob, error) {
+func (db *Database) CreateDiggerJob(batch uuid.UUID, serializedJob []byte, branchName string) (*DiggerJob, error) {
 	jobId := uniuri.New()
-	job := &DiggerJob{DiggerJobId: jobId, ParentDiggerJobId: parentJobId, Status: DiggerJobCreated,
+	job := &DiggerJob{DiggerJobId: jobId, Status: DiggerJobCreated,
 		BatchId: batch, SerializedJob: serializedJob, BranchName: branchName}
 	result := db.GormDB.Save(job)
 	if result.Error != nil {
@@ -553,15 +553,34 @@ func (db *Database) UpdateDiggerJob(job *DiggerJob) error {
 	return nil
 }
 
-func (db *Database) GetPendingDiggerJobs() ([]DiggerJob, error) {
+func (db *Database) GetPendingParentDiggerJobs() ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
-	result := db.GormDB.Where("status = ? AND parent_digger_job_id is NULL ", DiggerJobCreated).Find(&jobs)
+
+	result := db.GormDB.Where("status = ?", DiggerJobCreated).Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
-	return jobs, nil
+
+	filteredJobsWithNoParents := make([]DiggerJob, 0)
+
+	for _, job := range jobs {
+		parentLinks := make([]DiggerJobParentLink, 0)
+
+		result := db.GormDB.Where("digger_job_id = ?", job.DiggerJobId).Find(&parentLinks)
+
+		if result.Error != nil {
+			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil, result.Error
+			}
+		}
+		if len(parentLinks) == 0 {
+			filteredJobsWithNoParents = append(filteredJobsWithNoParents, job)
+		}
+	}
+
+	return filteredJobsWithNoParents, nil
 }
 
 func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
@@ -575,40 +594,53 @@ func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
 	return job, nil
 }
 
-func (db *Database) GetDiggerJobsByParentIdAndStatus(jobId *string, status DiggerJobStatus) ([]DiggerJob, error) {
-	var jobs []DiggerJob
-	result := db.GormDB.Where("parent_digger_job_id=? AND status=?", jobId, status).Find(&jobs)
+func (db *Database) GetDiggerJobParentLinksByParentId(parentId *string) ([]DiggerJobParentLink, error) {
+	var jobParentLinks []DiggerJobParentLink
+	result := db.GormDB.Where("parent_digger_job_id=?", parentId).Find(&jobParentLinks)
 	if result.Error != nil {
-		log.Printf("Failed to get DiggerJob by parent job id: %v, error: %v\n", jobId, result.Error)
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			log.Printf("Failed to get DiggerJobLink by parent job id: %v, error: %v\n", parentId, result.Error)
 			return nil, result.Error
 		}
 	}
-	return jobs, nil
+	return jobParentLinks, nil
 }
 
-func (db *Database) GetDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
-	var jobs []DiggerJob
-	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=? AND batch_id = ?", DiggerJobCreated, batchId).Find(&jobs)
+func (db *Database) CreateDiggerJobParentLink(parentJobId string, jobId string) error {
+	jobParentLink := DiggerJobParentLink{ParentDiggerJobId: parentJobId, DiggerJobId: jobId}
+	result := db.GormDB.Create(&jobParentLink)
 	if result.Error != nil {
-		log.Printf("Failed to Get DiggerJobsWithoutParent, error: %v\n", result.Error)
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, result.Error
-		}
+		return result.Error
 	}
-	return jobs, nil
+	return nil
 }
 
-func (db *Database) GetDiggerJobsWithoutParent() ([]DiggerJob, error) {
-	var jobs []DiggerJob
-	result := db.GormDB.Where("parent_digger_job_id is NULL AND status=?", DiggerJobCreated).Find(&jobs)
+func (db *Database) GetDiggerJobParentLinksChildId(childId *string) ([]DiggerJobParentLink, error) {
+	var jobParentLinks []DiggerJobParentLink
+	result := db.GormDB.Where("digger_job_id=?", childId).Find(&jobParentLinks)
 	if result.Error != nil {
-		log.Printf("Failed to Get DiggerJobsWithoutParent, error: %v\n", result.Error)
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			log.Printf("Failed to get DiggerJobLink by parent job id: %v, error: %v\n", childId, result.Error)
 			return nil, result.Error
 		}
 	}
-	return jobs, nil
+	return jobParentLinks, nil
+}
+
+func (db *Database) GetPendingDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
+	jobs, err := db.GetPendingParentDiggerJobs()
+
+	if err != nil {
+		return nil, err
+	}
+	//filter jobs with batch id
+	filteredJobs := make([]DiggerJob, 0)
+	for _, job := range jobs {
+		if job.BatchId == batchId {
+			filteredJobs = append(filteredJobs, job)
+		}
+	}
+	return filteredJobs, nil
 }
 
 func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {

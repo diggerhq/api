@@ -382,7 +382,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 }
 
 func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId uuid.UUID) error {
-	diggerJobs, err := models.DB.GetDiggerJobsWithoutParentForBatch(batchId)
+	diggerJobs, err := models.DB.GetPendingDiggerJobsWithoutParentForBatch(batchId)
 
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 
