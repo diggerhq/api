@@ -30,22 +30,12 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 		return nil, nil, err
 	}
 
-	if err != nil {
-		log.Printf("Error collapsing graph: %v", err)
-		return nil, nil, fmt.Errorf("error collapsing graph")
-	}
-
 	predecessorMap, err := graphWithImpactedProjectsOnly.PredecessorMap()
 
 	if err != nil {
 		return nil, nil, err
 	}
-	dummyParent := configuration.Project{Name: "DUMMY_PARENT_PROJECT_FOR_PROCESSING"}
-
 	visit := func(value string) bool {
-		if value == dummyParent.Name {
-			return false
-		}
 		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
 			fmt.Printf("no parent for %v\n", value)
 			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
@@ -59,6 +49,7 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 				return false
 			}
 			result[value] = parentJob
+			return false
 		} else {
 			parents := predecessorMap[value]
 			for _, edge := range parents {
@@ -77,14 +68,10 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 				}
 				result[value] = childJob
 			}
+			return false
 		}
-		return false
 	}
-
-	err = TraverseGraphVisitAllParentsFirst(dummyParent, graphWithImpactedProjectsOnly, visit)
-	if err != nil {
-		return nil, nil, err
-	}
+	err = TraverseGraphVisitAllParentsFirst(graphWithImpactedProjectsOnly, visit)
 
 	if err != nil {
 		return nil, nil, err
@@ -93,24 +80,33 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 	return &batchId, result, nil
 }
 
-func TraverseGraphVisitAllParentsFirst(dummyParentNode configuration.Project, graphWithImpactedProjectsOnly graph.Graph[string, configuration.Project], visit func(value string) bool) error {
-	err := graphWithImpactedProjectsOnly.AddVertex(dummyParentNode)
+func TraverseGraphVisitAllParentsFirst(graphWithImpactedProjectsOnly graph.Graph[string, configuration.Project], visit func(value string) bool) error {
+	dummyParent := configuration.Project{Name: "DUMMY_PARENT_PROJECT_FOR_PROCESSING"}
+	predecessorMap, err := graphWithImpactedProjectsOnly.PredecessorMap()
 	if err != nil {
 		return err
 	}
-	predecessorMap, err := graphWithImpactedProjectsOnly.PredecessorMap()
+
+	visitIgnoringDummyParent := func(value string) bool {
+		if value == dummyParent.Name {
+			return false
+		}
+		return visit(value)
+	}
+
+	err = graphWithImpactedProjectsOnly.AddVertex(dummyParent)
 	if err != nil {
 		return err
 	}
 	for node := range predecessorMap {
 		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
-			err := graphWithImpactedProjectsOnly.AddEdge(dummyParentNode.Name, node)
+			err := graphWithImpactedProjectsOnly.AddEdge(dummyParent.Name, node)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	return graph.BFS(graphWithImpactedProjectsOnly, dummyParentNode.Name, visit)
+	return graph.BFS(graphWithImpactedProjectsOnly, dummyParent.Name, visitIgnoringDummyParent)
 }
 
 func ImpactedProjectsOnlyGraph(projectsGraph graph.Graph[string, configuration.Project], projectMap map[string]configuration.Project) (graph.Graph[string, configuration.Project], error) {

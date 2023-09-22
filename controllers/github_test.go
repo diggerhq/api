@@ -628,10 +628,13 @@ func TestJobsTreeWithOneJobsAndTwoProjects(t *testing.T) {
 	project2 := configuration.Project{Name: "prod", DependencyProjects: []string{"dev"}}
 	projects = append(projects, project1, project2)
 
+	projectMap := make(map[string]configuration.Project)
+	projectMap["dev"] = project1
+
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, projectMap, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -654,7 +657,11 @@ func TestJobsTreeWithTwoDependantJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	projectMap := make(map[string]configuration.Project)
+	projectMap["dev"] = project1
+	projectMap["prod"] = project2
+
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, projectMap, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -677,7 +684,11 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	projectMap := make(map[string]configuration.Project)
+	projectMap["dev"] = project1
+	projectMap["prod"] = project2
+
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, projectMap, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
@@ -708,7 +719,15 @@ func TestJobsTreeWithThreeLevels(t *testing.T) {
 	graph, err := configuration.CreateProjectDependencyGraph(projects)
 	assert.NoError(t, err)
 
-	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, graph, "test", "test")
+	projectMap := make(map[string]configuration.Project)
+	projectMap["111"] = project1
+	projectMap["222"] = project2
+	projectMap["333"] = project3
+	projectMap["444"] = project4
+	projectMap["555"] = project5
+	projectMap["666"] = project6
+
+	_, result, err := utils.ConvertJobsToDiggerJobs(jobs, projectMap, graph, "test", "test")
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(result))
 	assert.Nil(t, result["111"].ParentDiggerJobId)
