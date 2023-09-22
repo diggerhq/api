@@ -3,6 +3,7 @@ package utils
 import (
 	"digger.dev/cloud/models"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/diggerhq/lib-digger-config"
 	"github.com/diggerhq/lib-orchestrator"
@@ -80,9 +81,11 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 	return &batchId, result, nil
 }
 
-func TraverseGraphVisitAllParentsFirst(graphWithImpactedProjectsOnly graph.Graph[string, configuration.Project], visit func(value string) bool) error {
+func TraverseGraphVisitAllParentsFirst(g graph.Graph[string, configuration.Project], visit func(value string) bool) error {
+	// We need a dummy parent node that is ignored during traversal to ensure that all root nodes are visited first,
+	// otherwise when looking back at all parents of a node a parent might not be visited yet and we would miss it.
 	dummyParent := configuration.Project{Name: "DUMMY_PARENT_PROJECT_FOR_PROCESSING"}
-	predecessorMap, err := graphWithImpactedProjectsOnly.PredecessorMap()
+	predecessorMap, err := g.PredecessorMap()
 	if err != nil {
 		return err
 	}
@@ -94,22 +97,22 @@ func TraverseGraphVisitAllParentsFirst(graphWithImpactedProjectsOnly graph.Graph
 		return visit(value)
 	}
 
-	err = graphWithImpactedProjectsOnly.AddVertex(dummyParent)
+	err = g.AddVertex(dummyParent)
 	if err != nil {
 		return err
 	}
 	for node := range predecessorMap {
 		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
-			err := graphWithImpactedProjectsOnly.AddEdge(dummyParent.Name, node)
+			err := g.AddEdge(dummyParent.Name, node)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	return graph.BFS(graphWithImpactedProjectsOnly, dummyParent.Name, visitIgnoringDummyParent)
+	return graph.BFS(g, dummyParent.Name, visitIgnoringDummyParent)
 }
 
-func ImpactedProjectsOnlyGraph(projectsGraph graph.Graph[string, configuration.Project], projectMap map[string]configuration.Project) (graph.Graph[string, configuration.Project], error) {
+func ImpactedProjectsOnlyGraph(projectsGraph graph.Graph[string, configuration.Project], impactedProjectMap map[string]configuration.Project) (graph.Graph[string, configuration.Project], error) {
 	adjacencyMap, err := projectsGraph.AdjacencyMap()
 	if err != nil {
 		return nil, err
@@ -122,8 +125,8 @@ func ImpactedProjectsOnlyGraph(projectsGraph graph.Graph[string, configuration.P
 	graphWithImpactedProjectsOnly := graph.NewLike(projectsGraph)
 
 	for node := range predecessorMap {
-		if _, ok := projectMap[node]; (predecessorMap[node] == nil || len(predecessorMap[node]) == 0) && ok {
-			err := CollapsedGraph(nil, node, adjacencyMap, graphWithImpactedProjectsOnly, projectMap)
+		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
+			err := CollapsedGraph(nil, node, adjacencyMap, graphWithImpactedProjectsOnly, impactedProjectMap)
 			if err != nil {
 				return nil, err
 			}
@@ -139,9 +142,11 @@ func CollapsedGraph(impactedParent *string, currentNode string, adjMap map[strin
 		if !ok {
 			return fmt.Errorf("project %s not found", currentNode)
 		}
-
 		err := g.AddVertex(currentProject)
 		if err != nil {
+			if errors.Is(err, graph.ErrVertexAlreadyExists) {
+				return nil
+			}
 			return err
 		}
 		// process all children nodes
