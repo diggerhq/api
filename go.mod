@@ -21,7 +21,7 @@ require (
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/oauth2 v0.12.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.3
