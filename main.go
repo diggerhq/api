@@ -86,13 +86,10 @@ func main() {
 	githubGroup.Use(middleware.WebAuth(auth))
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/repos", controllers.GithubReposPage)
-	//githubGroup.GET("/test", controllers.GithubTestPage)
 
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
-	//projectsGroup.GET("/add", web.AddProjectPage)
-	//projectsGroup.POST("/add", web.AddProjectPage)
 	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
 	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
 

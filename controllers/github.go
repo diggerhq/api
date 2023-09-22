@@ -568,6 +568,7 @@ func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo strin
 	if err != nil {
 		// if branch already exist, do nothing
 		if strings.Contains(err.Error(), "Reference already exists") {
+			log.Printf("Branch %v already exist, do nothing\n", branchRef)
 			return nil
 		}
 		return fmt.Errorf("failed to create a branch, %w", err)
@@ -610,30 +611,27 @@ jobs:
 	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
 	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, filePath, opts)
 	if err != nil {
-		return err
-	}
-	// workflow file already exist, do nothing
-	if err == nil {
-		return nil
-	}
-
-	if *contents.Content != workflowFileContents {
-		log.Printf("workflow file has been modified")
+		if !strings.Contains(err.Error(), "Not Found") {
+			log.Printf("Branch %v already exist, do nothing\n", branchRef)
+			return fmt.Errorf("Failed to get contents of the file %v", filePath)
+		}
 	}
 
-	_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, filePath, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create digger workflow file, %w", err)
-	}
+	// workflow file doesn't already exist, we can create it
+	if contents == nil {
+		_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, filePath, &req)
+		if err != nil {
+			return fmt.Errorf("failed to create digger workflow file, %w", err)
+		}
 
-	prTitle := "Configure Digger"
-	pullRequest := &github.NewPullRequest{Title: &prTitle,
-		Head: &branch, Base: &defaultBranch}
-	_, _, err = client.PullRequests.Create(ctx, repoOwner, repoName, pullRequest)
-	if err != nil {
-		return fmt.Errorf("failed to create a pull request for digger/configure, %w", err)
+		prTitle := "Configure Digger"
+		pullRequest := &github.NewPullRequest{Title: &prTitle,
+			Head: &branch, Base: &defaultBranch}
+		_, _, err = client.PullRequests.Create(ctx, repoOwner, repoName, pullRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create a pull request for digger/configure, %w", err)
+		}
 	}
-
 	return nil
 }
 
