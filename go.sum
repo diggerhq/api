@@ -386,6 +386,8 @@ github.com/dchest/uniuri v1.2.0/go.mod h1:fSzm4SLHzNZvWLvWJew423PhAzkpNQYq+uNLq4
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/diggerhq/lib-digger-config v0.0.4 h1:vqZlszrqHkO3KAQZZOVXHOaVMK5SQffJpCmcVLJesUg=
 github.com/diggerhq/lib-digger-config v0.0.4/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
+github.com/diggerhq/lib-digger-config v0.0.6 h1:uxfYvhDSkNSUDGKwn/q+B2rYIxJrIHmwHmCUaSeeGNg=
+github.com/diggerhq/lib-digger-config v0.0.6/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
 github.com/diggerhq/lib-orchestrator v0.0.6 h1:SgDrSTI6yPxr3y3SqJ18nh9ZIZKVg0no7jRuVhVbpeY=
 github.com/diggerhq/lib-orchestrator v0.0.6/go.mod h1:oOcQSSKxGI9iyOxg+D7ysJwtS2Wqi5hz96bLMFL3S14=
 github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185 h1:TCBqVv3NXFXzGl/IUkfx85dNPZ/6yblC2MhQi6wgnrY=
@@ -937,6 +939,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/miekg/dns v1.0.8/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/migueleliasweb/go-github-mock v0.0.19 h1:z/88f6wPqZVFnE7s9DbwXMhCtmV/0FofNxc4M7FuSdU=
 github.com/migueleliasweb/go-github-mock v0.0.19/go.mod h1:dBoCB3W9NjzyABhoGkfI0iSlFpzulAXhI7M+9A4ONYI=
+github.com/migueleliasweb/go-github-mock v0.0.20 h1:lD0+ezomm5yjfQjQwQCUYfS0IvnkGm2Whx1NtRtnFEQ=
+github.com/migueleliasweb/go-github-mock v0.0.20/go.mod h1:tZKca2WcxfTR+gclTMCssA4bUNM+F3hW9aW/fkmPeZU=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
 github.com/mitchellh/cli v1.1.2/go.mod h1:6iaV0fGdElS6dPBx0EApTxHrcWvmJphyh2n8YBLPPZ4=
 github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db/go.mod h1:l0dey0ia/Uv7NcFFVbCLtqEBQbrT4OCwCSKTEv6enCw=
@@ -1254,6 +1258,8 @@ golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EH
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
 golang.org/x/exp v0.0.0-20221106115401-f9659909a136 h1:Fq7F/w7MAa1KJ5bt2aJ62ihqp9HDcRuyILskkpIAurw=
 golang.org/x/exp v0.0.0-20221106115401-f9659909a136/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230905200255-921286631fa9 h1:GoHiUyI/Tp2nVkLI2mCxVkOjsbSXD66ic0XW0js0R9g=
+golang.org/x/exp v0.0.0-20230905200255-921286631fa9/go.mod h1:S2oDrQGGwySpoQPVqRShND87VCbxmc6bL1Yd2oYrm6k=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=

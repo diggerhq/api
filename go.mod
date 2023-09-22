@@ -6,7 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
 	github.com/dchest/uniuri v1.2.0
-	github.com/diggerhq/lib-digger-config v0.0.4
+	github.com/diggerhq/lib-digger-config v0.0.6
 	github.com/diggerhq/lib-orchestrator v0.0.6
 	github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185
 	github.com/dominikbraun/graph v0.23.0
@@ -17,11 +17,11 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/uuid v1.3.1
-	github.com/migueleliasweb/go-github-mock v0.0.19
+	github.com/migueleliasweb/go-github-mock v0.0.20
 	github.com/robert-nix/ansihtml v1.0.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/oauth2 v0.12.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.3
