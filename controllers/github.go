@@ -214,28 +214,29 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *webhooks.Pul
 
 	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.PullRequest.Number))
 
-	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, ghService)
+	impactedProjects, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, projectsGraph, ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
 	}
 
-	jobs, _, err := dg_github.ConvertGithubPullRequestEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
+	jobsForImpactedProjects, _, err := dg_github.ConvertGithubPullRequestEventToJobs(payload, impactedProjects, nil, config.Workflows)
 	if err != nil {
-		log.Printf("Error converting event to jobs: %v", err)
-		return fmt.Errorf("error converting event to jobs")
+		log.Printf("Error converting event to jobsForImpactedProjects: %v", err)
+		return fmt.Errorf("error converting event to jobsForImpactedProjects")
 	}
 
-	jobsMap := make(map[string]orchestrator.Job)
+	impactedProjectsMap := make(map[string]dg_configuration.Project)
 	for _, p := range impactedProjects {
-		for _, j := range jobs {
-			if j.ProjectName == p.Name {
-				jobsMap[p.Name] = j
-			}
-		}
+		impactedProjectsMap[p.Name] = p
 	}
 
-	batchId, _, err := ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	impactedJobsMap := make(map[string]orchestrator.Job)
+	for _, j := range jobsForImpactedProjects {
+		impactedJobsMap[j.ProjectName] = j
+	}
+
+	batchId, _, err := utils.ConvertJobsToDiggerJobs(impactedJobsMap, impactedProjectsMap, projectsGraph, *branch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
 		return fmt.Errorf("error convertingjobs")
@@ -250,7 +251,7 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *webhooks.Pul
 	return nil
 }
 
-func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, string], *string, error) {
+func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, dg_configuration.Project], *string, error) {
 	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
@@ -313,14 +314,14 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 		}
 	}
 
-	config, graph, err := loadDiggerConfig(configYaml)
+	config, dependencyGraph, err := loadDiggerConfig(configYaml)
 
 	if err != nil {
 		log.Printf("Error loading digger config: %v", err)
 		return nil, nil, nil, nil, fmt.Errorf("error loading digger config")
 	}
 	log.Printf("Digger config parsed successfully\n")
-	return &ghService, config, graph, &prBranch, nil
+	return &ghService, config, dependencyGraph, &prBranch, nil
 }
 
 func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.IssueCommentPayload) error {
@@ -338,7 +339,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 
 	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.Issue.Number))
 
-	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, ghService)
+	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, projectsGraph, ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
 		return fmt.Errorf("error processing event")
@@ -352,16 +353,21 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
 
-	jobsMap := make(map[string]orchestrator.Job)
+	impactedProjectsMap := make(map[string]dg_configuration.Project)
+	for _, p := range impactedProjects {
+		impactedProjectsMap[p.Name] = p
+	}
+
+	impactedProjectsJobMap := make(map[string]orchestrator.Job)
 	for _, p := range impactedProjects {
 		for _, j := range jobs {
 			if j.ProjectName == p.Name {
-				jobsMap[p.Name] = j
+				impactedProjectsJobMap[p.Name] = j
 			}
 		}
 	}
 
-	batchId, _, err := ConvertJobsToDiggerJobs(jobsMap, projectsGraph, *branch, repoFullName)
+	batchId, _, err := utils.ConvertJobsToDiggerJobs(impactedProjectsJobMap, impactedProjectsMap, projectsGraph, *branch, repoFullName)
 	if err != nil {
 		log.Printf("ConvertJobsToDiggerJobs error: %v", err)
 		return fmt.Errorf("error convertingjobs")
@@ -371,130 +377,6 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.Is
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
-	}
-	return nil
-}
-
-// todo: move to another package
-// ConvertJobsToDiggerJobs jobs is map with project name as a key and a Job as a value
-func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectsGraph graph.Graph[string, string], branch string, repoFullName string) (*uuid.UUID, map[string]*models.DiggerJob, error) {
-	result := make(map[string]*models.DiggerJob)
-
-	log.Printf("Number of Jobs: %v\n", len(jobsMap))
-	marshalledJobsMap := map[string][]byte{}
-	for _, job := range jobsMap {
-		marshalled, _ := json.Marshal(orchestrator.JobToJson(job))
-		marshalledJobsMap[job.ProjectName] = marshalled
-	}
-
-	batchId, _ := uuid.NewUUID()
-	adjecencyMap, err := projectsGraph.AdjacencyMap()
-	if err != nil {
-		return nil, nil, err
-	}
-	predecessorMap, err := projectsGraph.PredecessorMap()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	graphWithImpactedProjectsOnly := graph.NewLike(projectsGraph)
-
-	for node := range predecessorMap {
-		if _, ok := jobsMap[node]; (predecessorMap[node] == nil || len(predecessorMap[node]) == 0) && ok {
-			err := CollapsedGraph(nil, node, adjecencyMap, graphWithImpactedProjectsOnly, jobsMap)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-
-	if err != nil {
-		log.Printf("Error collapsing graph: %v", err)
-		return nil, nil, fmt.Errorf("error collapsing graph")
-	}
-
-	predecessorMap, err = graphWithImpactedProjectsOnly.PredecessorMap()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	visit := func(value string) bool {
-		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
-			fmt.Printf("no parent for %v\n", value)
-			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
-			if err != nil {
-				log.Printf("failed to create a job")
-				return false
-			}
-			_, err = models.DB.CreateDiggerJobLink(parentJob.DiggerJobId, repoFullName)
-			if err != nil {
-				log.Printf("failed to create a digger job link")
-				return false
-			}
-			result[value] = parentJob
-		} else {
-			parents := predecessorMap[value]
-			for _, edge := range parents {
-				parent := edge.Source
-				fmt.Printf("parent: %v\n", parent)
-				parentDiggerJob := result[parent]
-				childJob, err := models.DB.CreateDiggerJob(batchId, &parentDiggerJob.DiggerJobId, marshalledJobsMap[value], branch)
-				if err != nil {
-					log.Printf("failed to create a job")
-					return false
-				}
-				_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
-				if err != nil {
-					log.Printf("failed to create a digger job link")
-					return false
-				}
-				result[value] = childJob
-			}
-		}
-		return false
-	}
-
-	for node := range predecessorMap {
-		if predecessorMap[node] == nil || len(predecessorMap[node]) == 0 {
-			err := graph.DFS(graphWithImpactedProjectsOnly, node, visit)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-
-	return &batchId, result, nil
-}
-
-func CollapsedGraph(impactedParent *string, currentNode string, adjMap map[string]map[string]graph.Edge[string], g graph.Graph[string, string], impactedProjects map[string]orchestrator.Job) error {
-	// add to the resulting graph only if the project has been impacted by changes
-	if _, ok := impactedProjects[currentNode]; ok {
-		err := g.AddVertex(currentNode)
-		if err != nil {
-			return err
-		}
-		// process all children nodes
-		for child, _ := range adjMap[currentNode] {
-			err := CollapsedGraph(&currentNode, child, adjMap, g, impactedProjects)
-			if err != nil {
-				return err
-			}
-		}
-		// if there is an impacted parent add an edge
-		if impactedParent != nil {
-			err := g.AddEdge(*impactedParent, currentNode)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		// if current wasn't impacted, see children of current node and set currently know parent
-		for child, _ := range adjMap[currentNode] {
-			err := CollapsedGraph(impactedParent, child, adjMap, g, impactedProjects)
-			if err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }
