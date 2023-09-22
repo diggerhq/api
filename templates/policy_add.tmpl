@@ -7,11 +7,7 @@
             </div>
             <div class="card-body">
 
-            {{if .Message}}
-               <div class="alert alert-danger" role="alert">
-                 {{.Message}}
-               </div>
-            {{end}}
+            {{template "notifications" . }}
 
                 <form method="POST">
                     <div class="row">

@@ -9,6 +9,8 @@ import (
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-contrib/sessions"
+	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
 	"html/template"
 	"log"
@@ -44,6 +46,11 @@ func main() {
 	models.ConnectDatabase()
 
 	r := gin.Default()
+	// TODO: check "secret"
+	store := gormsessions.NewStore(models.DB.GormDB, true, []byte("secret"))
+
+	r.Use(sessions.Sessions("digger-session", store))
+
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
 	r.Static("/static", "./templates/static")
@@ -79,12 +86,13 @@ func main() {
 	githubGroup.Use(middleware.WebAuth(auth))
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/repos", controllers.GithubReposPage)
+	//githubGroup.GET("/test", controllers.GithubTestPage)
 
 	projectsGroup := r.Group("/projects")
 	projectsGroup.Use(middleware.WebAuth(auth))
 	projectsGroup.GET("/", web.ProjectsPage)
-	projectsGroup.GET("/add", web.AddProjectPage)
-	projectsGroup.POST("/add", web.AddProjectPage)
+	//projectsGroup.GET("/add", web.AddProjectPage)
+	//projectsGroup.POST("/add", web.AddProjectPage)
 	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
 	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
 
@@ -93,10 +101,15 @@ func main() {
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
-	reposGroup := r.Group("/repo")
+	reposGroup := r.Group("/repos")
 	reposGroup.Use(middleware.WebAuth(auth))
-	reposGroup.GET("/:repoid/", web.UpdateRepoPage)
-	reposGroup.POST("/:repoid/", web.UpdateRepoPage)
+	reposGroup.GET("/", web.ReposPage)
+
+	repoGroup := r.Group("/repo")
+	repoGroup.Use(middleware.WebAuth(auth))
+	repoGroup.GET("/", web.ReposPage)
+	repoGroup.GET("/:repoid/", web.UpdateRepoPage)
+	repoGroup.POST("/:repoid/", web.UpdateRepoPage)
 
 	policiesGroup := r.Group("/policies")
 	policiesGroup.Use(middleware.WebAuth(auth))

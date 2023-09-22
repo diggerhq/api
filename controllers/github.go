@@ -8,15 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dominikbraun/graph"
-	"github.com/google/uuid"
-
 	dg_configuration "github.com/diggerhq/lib-digger-config"
 	orchestrator "github.com/diggerhq/lib-orchestrator"
 	dg_github "github.com/diggerhq/lib-orchestrator/github"
 	webhooks "github.com/diggerhq/webhooks/github"
+	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v55/github"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"log"
 	"net/http"
@@ -161,6 +160,8 @@ func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRe
 		if err != nil {
 			return err
 		}
+
+		// todo: change the status of DiggerRepo to InActive
 	}
 	return nil
 }
@@ -387,7 +388,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 
 	for _, job := range diggerJobs {
 		if job.SerializedJob == nil {
-			return fmt.Errorf("GitHub job can't me nil")
+			return fmt.Errorf("GitHub job can't be nil")
 		}
 		jobString := string(job.SerializedJob)
 		log.Printf("jobString: %v \n", jobString)
@@ -408,6 +409,99 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 			}
 		}
 	}
+	return nil
+}
+
+func CreateDiggerWorkflow(client *github.Client, githubRepo string) error {
+	ctx := context.Background()
+	repoOwner := strings.Split(githubRepo, "/")[0]
+	repoName := strings.Split(githubRepo, "/")[1]
+	// create branch 'digger/configure'
+	// Create remote branch from master
+
+	repo, _, _ := client.Repositories.Get(ctx, repoOwner, repoName)
+	defaultBranch := *repo.DefaultBranch
+
+	defaultBranchRef, _, _ := client.Git.GetRef(ctx, repoOwner, repoName, "refs/heads/"+defaultBranch) // or "refs/heads/main"
+	branch := "digger/configure"
+	refName := fmt.Sprintf("refs/heads/%s", branch)
+	branchRef := &github.Reference{
+		Ref: &refName,
+		Object: &github.GitObject{
+			SHA: defaultBranchRef.Object.SHA,
+		},
+	}
+	// trying to create a new branch
+	_, _, err := client.Git.CreateRef(ctx, repoOwner, repoName, branchRef)
+	if err != nil {
+		// if branch already exist, do nothing
+		if strings.Contains(err.Error(), "Reference already exists") {
+			return nil
+		}
+		return fmt.Errorf("failed to create a branch, %w", err)
+	}
+
+	workflowFileContents := `on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'run identifier'
+        required: false
+      job:
+        required: true
+jobs:
+  build:
+    name: Workflow ID Provider
+    runs-on: ubuntu-latest
+    steps:
+      - name: digger run
+        uses: diggerhq/digger@develop
+        with:
+          setup-aws: false
+          disable-locking: true
+          digger-token: ${{ secrets.DIGGER_TOKEN }}
+          digger-hostname: 'https://cloud.uselemon.cloud'
+          digger-organisation: 'digger'
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+`
+
+	// Push file
+	msg := "add Digger GitHub workflow file"
+	var req github.RepositoryContentFileOptions
+	req.Content = []byte(workflowFileContents)
+	req.Message = &msg
+	req.Branch = &branch
+	filePath := ".github/workflows/workflow.yml"
+
+	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
+	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, filePath, opts)
+	if err != nil {
+		return err
+	}
+	// workflow file already exist, do nothing
+	if err == nil {
+		return nil
+	}
+
+	if *contents.Content != workflowFileContents {
+		log.Printf("workflow file has been modified")
+	}
+
+	_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, filePath, &req)
+	if err != nil {
+		return fmt.Errorf("failed to create digger workflow file, %w", err)
+	}
+
+	prTitle := "Configure Digger"
+	pullRequest := &github.NewPullRequest{Title: &prTitle,
+		Head: &branch, Base: &defaultBranch}
+	_, _, err = client.PullRequests.Create(ctx, repoOwner, repoName, pullRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create a pull request for digger/configure, %w", err)
+	}
+
 	return nil
 }
 
@@ -451,7 +545,7 @@ func GithubAppCallbackPage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
 		return
 	}
-	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{})
+	c.Redirect(http.StatusFound, "/repos")
 }
 
 func GithubReposPage(c *gin.Context) {

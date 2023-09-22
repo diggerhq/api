@@ -692,7 +692,9 @@ func TestJobsTreeWithTwoIndependentJobs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result))
 	assert.Nil(t, result["dev"].ParentDiggerJobId)
+	assert.NotNil(t, result["dev"].SerializedJob)
 	assert.Nil(t, result["prod"].ParentDiggerJobId)
+	assert.NotNil(t, result["prod"].SerializedJob)
 }
 
 func TestJobsTreeWithThreeLevels(t *testing.T) {

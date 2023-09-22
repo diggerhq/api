@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dchest/uniuri"
+	configuration "github.com/diggerhq/lib-digger-config"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -36,6 +37,31 @@ func (db *Database) GetProjectsFromContext(c *gin.Context, orgIdKey string) ([]P
 
 	log.Printf("getProjectsFromContext, number of projects:%d\n", len(projects))
 	return projects, true
+}
+
+func (db *Database) GetReposFromContext(c *gin.Context, orgIdKey string) ([]Repo, bool) {
+	loggedInOrganisationId, exists := c.Get(orgIdKey)
+
+	log.Printf("GetReposFromContext, org id: %v\n", loggedInOrganisationId)
+
+	if !exists {
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return nil, false
+	}
+
+	var repos []Repo
+
+	err := db.GormDB.Preload("Organisation").
+		Joins("INNER JOIN organisations ON repos.organisation_id = organisations.id").
+		Where("repos.organisation_id = ?", loggedInOrganisationId).Find(&repos).Error
+
+	if err != nil {
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, false
+	}
+
+	log.Printf("GetReposFromContext, number of repos:%d\n", len(repos))
+	return repos, true
 }
 
 func (db *Database) GetPoliciesFromContext(c *gin.Context, orgIdKey string) ([]Policy, bool) {
@@ -141,6 +167,52 @@ func (db *Database) GetProjectByProjectId(c *gin.Context, projectId uint, orgIdK
 	return &project, true
 }
 
+// GetProjectByName return project for specified org and repo
+// if record doesn't exist return nil
+func (db *Database) GetProjectByName(orgId any, repo *Repo, name string) (*Project, error) {
+	log.Printf("GetProjectByName, org id: %v, project name: %v\n", orgId, name)
+	var project Project
+
+	err := db.GormDB.Preload("Organisation").Preload("Repo").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
+		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
+		Where("projects.organisation_id = ?", orgId).
+		Where("repos.id = ?", repo.ID).
+		Where("projects.name = ?", name).First(&project).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, err
+	}
+
+	return &project, nil
+}
+
+// GetProjectByRepo return projects for specified org and repo
+func (db *Database) GetProjectByRepo(orgId any, repo *Repo) ([]Project, error) {
+	log.Printf("GetProjectByRepo, org id: %v, repo name: %v\n", orgId, repo.Name)
+	projects := make([]Project, 0)
+
+	err := db.GormDB.Preload("Organisation").Preload("Repo").
+		Joins("INNER JOIN repos ON projects.repo_id = repos.id").
+		Joins("INNER JOIN organisations ON projects.organisation_id = organisations.id").
+		Where("projects.organisation_id = ?", orgId).
+		Where("repos.id = ?", repo.ID).Find(&projects).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		log.Printf("Unknown error occurred while fetching database, %v\n", err)
+		return nil, err
+	}
+
+	return projects, nil
+}
+
 func (db *Database) GetPolicyByPolicyId(c *gin.Context, policyId uint, orgIdKey string) (*Policy, bool) {
 	loggedInOrganisationId, exists := c.Get(orgIdKey)
 	if !exists {
@@ -189,6 +261,7 @@ func (db *Database) GetDefaultRepo(c *gin.Context, orgIdKey string) (*Repo, bool
 }
 
 // GetRepo returns digger repo by organisationId and repo name (diggerhq-digger)
+// it will return an empty object if record doesn't exist in database
 func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 	var repo Repo
 
@@ -219,19 +292,10 @@ func (db *Database) GetRepoById(orgIdKey any, repoId any) (*Repo, error) {
 }
 
 func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
-	app := GithubApp{}
-
-	// todo: do we need to create a github app here
-	result := db.GormDB.Where(&app, GithubApp{GithubId: int64(appId)}).FirstOrCreate(&app)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("failed to create github app in database. %v", result.Error)
-		}
-	}
 
 	// check if item exist already
 	item := GithubAppInstallation{}
-	result = db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
+	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
@@ -340,11 +404,12 @@ func (db *Database) GetGithubAppInstallationLink(installationId int64) (*GithubA
 	return &link, nil
 }
 
-// GetGithubApp
-func (db *Database) GetGithubApp(gitHubAppId int64) (*GithubApp, error) {
+// GetGithubApp return GithubApp by Id
+func (db *Database) GetGithubApp(gitHubAppId any) (*GithubApp, error) {
 	app := GithubApp{}
 	result := db.GormDB.Where("github_id = ?", gitHubAppId).Find(&app)
 	if result.Error != nil {
+		log.Printf("Failed to find GitHub App for id: %v, error: %v\n", gitHubAppId, result.Error)
 		return nil, result.Error
 	}
 	return &app, nil
@@ -571,7 +636,7 @@ func (db *Database) CreateOrganisation(name string, externalSource string, tenan
 }
 
 func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*Project, error) {
-	project := &Project{Name: name, Organisation: org, Repo: repo}
+	project := &Project{Name: name, Organisation: org, Repo: repo, Status: ProjectActive}
 	result := db.GormDB.Save(project)
 	if result.Error != nil {
 		log.Printf("Failed to create project: %v, error: %v\n", name, result.Error)
@@ -621,4 +686,77 @@ func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppI
 	}
 	log.Printf("GithubAppInstallation (installationId: %v, githubAppId: %v, login: %v, accountId: %v, repoFullName: %v) has been created successfully\n", installationId, githubAppId, login, accountId, repoFullName)
 	return installation, nil
+}
+
+func validateDiggerConfigYaml(configYaml string) (*configuration.DiggerConfig, error) {
+	diggerConfig, _, _, err := configuration.LoadDiggerConfigFromString(configYaml, "./")
+	if err != nil {
+		return nil, fmt.Errorf("validation error, %w", err)
+	}
+	return diggerConfig, nil
+}
+
+func (db *Database) UpdateRepoDiggerConfig(orgId any, diggerConfigYaml string, repo *Repo) ([]string, error) {
+	messages := make([]string, 0)
+	if diggerConfigYaml == "" {
+		return nil, fmt.Errorf("digger config can't be empty")
+	}
+
+	log.Printf("UpdateRepoDiggerConfig, repo: %v\n", repo)
+
+	org, err := db.GetOrganisationById(orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	diggerConfig, err := validateDiggerConfigYaml(diggerConfigYaml)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.DiggerConfig = diggerConfigYaml
+	tx := db.GormDB.Save(&repo)
+	if tx.Error != nil {
+		return nil, fmt.Errorf("failed to save digger config to database, %v", err)
+	}
+
+	for _, dc := range diggerConfig.Projects {
+		projectName := dc.Name
+		p, err := db.GetProjectByName(orgId, repo, projectName)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			_, err := db.CreateProject(projectName, org, repo)
+			if err != nil {
+				return nil, err
+			}
+			messages = append(messages, fmt.Sprintf("Project %s has been created\n", projectName))
+		} else {
+			messages = append(messages, fmt.Sprintf("Project %s already exist\n", projectName))
+		}
+	}
+
+	// check if there are any projects in this repo that are not in the config anymore,
+	repoProjects, err := db.GetProjectByRepo(orgId, repo)
+	if err != nil {
+		return nil, err
+	}
+	for _, rp := range repoProjects {
+		projectFound := false
+		for _, cp := range diggerConfig.Projects {
+			if cp.Name == rp.Name {
+				projectFound = true
+			}
+		}
+		if !projectFound {
+			log.Printf("Project %v is not in a config anymore\n", rp.Name)
+			rp.Status = ProjectInactive
+			result := db.GormDB.Save(&rp)
+			if result.Error != nil {
+				return nil, result.Error
+			}
+		}
+	}
+	return messages, nil
 }

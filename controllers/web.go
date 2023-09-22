@@ -4,13 +4,16 @@ import (
 	"digger.dev/cloud/config"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
+	"errors"
 	"fmt"
-	configuration "github.com/diggerhq/lib-digger-config"
 	"github.com/gin-gonic/gin"
 	"github.com/robert-nix/ansihtml"
+	"golang.org/x/exp/maps"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -47,18 +50,39 @@ func (web *WebController) ProjectsPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "projects.tmpl", gin.H{
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{
 		"Projects": projects,
 	})
+	c.HTML(http.StatusOK, "projects.tmpl", pageContext)
 }
 
+func (web *WebController) ReposPage(c *gin.Context) {
+	repos, done := models.DB.GetReposFromContext(c, middleware.ORGANISATION_ID_KEY)
+	if !done {
+		return
+	}
+
+	githubAppId := os.Getenv("GITHUB_APP_ID")
+	githubApp, err := models.DB.GetGithubApp(githubAppId)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to find GitHub app")
+		return
+	}
+
+	pageContext := services.GetMessages(c)
+
+	maps.Copy(pageContext, gin.H{
+		"Repos":     repos,
+		"GithubApp": githubApp,
+	})
+	c.HTML(http.StatusOK, "repos.tmpl", pageContext)
+}
+
+/*
 func (web *WebController) AddProjectPage(c *gin.Context) {
 	if c.Request.Method == "GET" {
-		message := ""
-
-		c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
-			"Message": message,
-		})
+		c.HTML(http.StatusOK, "project_add.tmpl", nil)
 	} else if c.Request.Method == "POST" {
 		message := ""
 		repo, ok := models.DB.GetDefaultRepo(c, middleware.ORGANISATION_ID_KEY)
@@ -89,14 +113,19 @@ func (web *WebController) AddProjectPage(c *gin.Context) {
 	}
 }
 
+*/
+
 func (web *WebController) RunsPage(c *gin.Context) {
 	runs, done := models.DB.GetProjectRunsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
 		return
 	}
-	c.HTML(http.StatusOK, "runs.tmpl", gin.H{
+
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{
 		"Runs": runs,
 	})
+	c.HTML(http.StatusOK, "runs.tmpl", pageContext)
 }
 
 func (web *WebController) PoliciesPage(c *gin.Context) {
@@ -104,10 +133,12 @@ func (web *WebController) PoliciesPage(c *gin.Context) {
 	if !done {
 		return
 	}
-	log.Println("policies.tmpl")
-	c.HTML(http.StatusOK, "policies.tmpl", gin.H{
+
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{
 		"Policies": policies,
 	})
+	c.HTML(http.StatusOK, "policies.tmpl", pageContext)
 }
 
 func (web *WebController) AddPolicyPage(c *gin.Context) {
@@ -132,9 +163,9 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 		policyText := c.PostForm("policytext")
 		if policyText == "" {
 			message := "Policy can't be empty"
-			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
-				"Message": message,
-			})
+			services.AddWarning(c, message)
+			pageContext := services.GetMessages(c)
+			c.HTML(http.StatusOK, "policy_add.tmpl", pageContext)
 		}
 
 		policyType := c.PostForm("policytype")
@@ -149,9 +180,9 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 		if !ok {
 			log.Printf("Failed to fetch specified project by id: %v, %v\n", projectIdStr, err)
 			message := "Failed to create a policy"
-			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
-				"Message": message,
-			})
+			services.AddError(c, message)
+			pageContext := services.GetMessages(c)
+			c.HTML(http.StatusOK, "policy_add.tmpl", pageContext)
 		}
 
 		log.Printf("repo: %v\n", project.Repo)
@@ -162,9 +193,9 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 		if err != nil {
 			log.Printf("Failed to create a new policy, %v\n", err)
 			message := "Failed to create a policy"
-			c.HTML(http.StatusOK, "policy_add.tmpl", gin.H{
-				"Message": message,
-			})
+			services.AddError(c, message)
+			pageContext := services.GetMessages(c)
+			c.HTML(http.StatusOK, "policy_add.tmpl", pageContext)
 		}
 
 		c.Redirect(http.StatusFound, "/policies")
@@ -183,10 +214,9 @@ func (web *WebController) PolicyDetailsPage(c *gin.Context) {
 		return
 	}
 
-	log.Println("policy_details.tmpl")
-	c.HTML(http.StatusOK, "policy_details.tmpl", gin.H{
-		"Policy": policy,
-	})
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{"Policy": policy})
+	c.HTML(http.StatusOK, "policy_details.tmpl", pageContext)
 }
 
 func (web *WebController) ProjectDetailsPage(c *gin.Context) {
@@ -195,10 +225,9 @@ func (web *WebController) ProjectDetailsPage(c *gin.Context) {
 		return
 	}
 
-	log.Println("project_details.tmpl")
-	c.HTML(http.StatusOK, "project_details.tmpl", gin.H{
-		"Project": project,
-	})
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{"Project": project})
+	c.HTML(http.StatusOK, "project_details.tmpl", pageContext)
 }
 
 func (web *WebController) RunDetailsPage(c *gin.Context) {
@@ -224,16 +253,20 @@ func (web *WebController) RunDetailsPage(c *gin.Context) {
 		stateSyncOutput = runOutput[:planIndex]
 		terraformPlanOutput = runOutput[planIndex:]
 
-		c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
+		pageContext := services.GetMessages(c)
+		maps.Copy(pageContext, gin.H{
 			"Run":                      run,
 			"TerraformStateSyncOutput": template.HTML(stateSyncOutput),
 			"TerraformPlanOutput":      template.HTML(terraformPlanOutput),
 		})
+		c.HTML(http.StatusOK, "run_details.tmpl", pageContext)
 	} else {
-		c.HTML(http.StatusOK, "run_details.tmpl", gin.H{
+		pageContext := services.GetMessages(c)
+		maps.Copy(pageContext, gin.H{
 			"Run":       run,
 			"RunOutput": template.HTML(runOutput),
 		})
+		c.HTML(http.StatusOK, "run_details.tmpl", pageContext)
 	}
 }
 
@@ -243,19 +276,19 @@ func (web *WebController) ProjectDetailsUpdatePage(c *gin.Context) {
 		return
 	}
 
-	message := ""
 	projectName := c.PostForm("project_name")
 	if projectName != project.Name {
 		project.Name = projectName
 		models.DB.GormDB.Save(project)
 		log.Printf("project name has been updated to %s\n", projectName)
-		message = "Project has been updated successfully"
+		services.AddMessage(c, "Project has been updated successfully")
 	}
 
-	c.HTML(http.StatusOK, "project_details.tmpl", gin.H{
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{
 		"Project": project,
-		"Message": message,
 	})
+	c.HTML(http.StatusOK, "project_details.tmpl", pageContext)
 }
 
 func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
@@ -270,20 +303,27 @@ func (web *WebController) PolicyDetailsUpdatePage(c *gin.Context) {
 		return
 	}
 
-	message := ""
 	policyText := c.PostForm("policy")
 	log.Printf("policyText: %v\n", policyText)
-	if policyText != policy.Policy {
+
+	if policyText == "" {
+		services.AddWarning(c, "Policy can't be empty.")
+	} else if policyText != policy.Policy {
 		policy.Policy = policyText
 		models.DB.GormDB.Save(policy)
 		log.Printf("Policy has been updated. policy id: %v\n", policy.ID)
-		message = "Policy has been updated successfully"
+		services.AddMessage(c, "Policy has been updated successfully")
+		c.Redirect(http.StatusFound, "/policies")
+		return
+	} else {
+		services.AddMessage(c, "No changes to policy")
 	}
 
-	c.HTML(http.StatusOK, "policy_details.tmpl", gin.H{
-		"Policy":  policy,
-		"Message": message,
+	pageContext := services.GetMessages(c)
+	maps.Copy(pageContext, gin.H{
+		"Policy": policy,
 	})
+	c.HTML(http.StatusOK, "policy_details.tmpl", pageContext)
 }
 
 func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
@@ -316,44 +356,50 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 	}
 
 	if c.Request.Method == "GET" {
-		message := ""
-		c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-			"Message": message, "Repo": repo,
+		pageContext := services.GetMessages(c)
+		maps.Copy(pageContext, gin.H{
+			"Repo": repo,
 		})
+		c.HTML(http.StatusOK, "repo_add.tmpl", pageContext)
+		return
 	} else if c.Request.Method == "POST" {
 		diggerConfigYaml := c.PostForm("diggerconfig")
 		if diggerConfigYaml == "" {
-			message := "Digger config can't be empty"
-			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-				"Message": message, "Repo": repo,
+			services.AddWarning(c, "Digger config can't be empty")
+
+			pageContext := services.GetMessages(c)
+			maps.Copy(pageContext, gin.H{
+				"Repo": repo,
 			})
+			c.HTML(http.StatusOK, "repo_add.tmpl", pageContext)
+			return
 		}
 
-		log.Printf("repo: %v\n", repo)
-		repo.DiggerConfig = diggerConfigYaml
-		err := validateDiggerConfigYaml(diggerConfigYaml)
+		messages, err := models.DB.UpdateRepoDiggerConfig(orgId, diggerConfigYaml, repo)
 		if err != nil {
-			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-				"Message": "Digger config YAML is not valid, " + err.Error(), "Repo": repo,
+			if strings.HasPrefix(err.Error(), "validation error, ") {
+				services.AddError(c, errors.Unwrap(err).Error())
+
+				pageContext := services.GetMessages(c)
+				maps.Copy(pageContext, gin.H{
+					"Repo": repo,
+				})
+				c.HTML(http.StatusOK, "repo_add.tmpl", pageContext)
+				return
+			}
+			log.Printf("failed to updated repo %v, %v", repoId, err)
+			services.AddError(c, "failed to update repo")
+
+			pageContext := services.GetMessages(c)
+			maps.Copy(pageContext, gin.H{
+				"Repo": repo,
 			})
+			c.HTML(http.StatusOK, "repo_add.tmpl", pageContext)
 			return
 		}
-		tx := models.DB.GormDB.Save(&repo)
-		if tx.Error != nil {
-			c.HTML(http.StatusOK, "repo_add.tmpl", gin.H{
-				"Message": "Failed to update repo", "Repo": repo,
-			})
-			return
+		for _, m := range messages {
+			services.AddMessage(c, m)
 		}
-
-		c.Redirect(http.StatusFound, "/projects")
+		c.Redirect(http.StatusFound, "/repos")
 	}
-}
-
-func validateDiggerConfigYaml(configYaml string) error {
-	_, _, _, err := configuration.LoadDiggerConfigFromString(configYaml, "./")
-	if err != nil {
-		return err
-	}
-	return nil
 }

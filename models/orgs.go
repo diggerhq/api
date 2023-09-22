@@ -53,6 +53,13 @@ func (p *ProjectRun) MapToJsonStruct() interface{} {
 	}
 }
 
+type ProjectStatus int
+
+const (
+	ProjectActive   ProjectStatus = 1
+	ProjectInactive ProjectStatus = 2
+)
+
 type Project struct {
 	gorm.Model
 	Name              string `gorm:"uniqueIndex:idx_project"`
@@ -60,7 +67,8 @@ type Project struct {
 	Organisation      *Organisation
 	RepoID            uint `gorm:"uniqueIndex:idx_project"`
 	Repo              *Repo
-	ConfigurationYaml string
+	ConfigurationYaml string // TODO: probably needs to be deleted
+	Status            ProjectStatus
 }
 
 func (p *Project) MapToJsonStruct() interface{} {
