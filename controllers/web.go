@@ -79,42 +79,6 @@ func (web *WebController) ReposPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "repos.tmpl", pageContext)
 }
 
-/*
-func (web *WebController) AddProjectPage(c *gin.Context) {
-	if c.Request.Method == "GET" {
-		c.HTML(http.StatusOK, "project_add.tmpl", nil)
-	} else if c.Request.Method == "POST" {
-		message := ""
-		repo, ok := models.DB.GetDefaultRepo(c, middleware.ORGANISATION_ID_KEY)
-		if !ok {
-			message = "failed to create a new project"
-			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
-				"Message": message,
-			})
-		}
-		projectName := c.PostForm("project_name")
-		if projectName == "" {
-			message := "Project's name can't be empty"
-			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
-				"Message": message,
-			})
-		}
-
-		//TODO: gorm is trying to insert a new repo and organisation on every insert of a new project,
-		// there should be a way to avoid it
-		_, err := models.DB.CreateProject(projectName, repo.Organisation, repo)
-		if err != nil {
-			message := "Failed to create a project"
-			c.HTML(http.StatusOK, "project_add.tmpl", gin.H{
-				"Message": message,
-			})
-		}
-		c.Redirect(http.StatusFound, "/projects")
-	}
-}
-
-*/
-
 func (web *WebController) RunsPage(c *gin.Context) {
 	runs, done := models.DB.GetProjectRunsFromContext(c, middleware.ORGANISATION_ID_KEY)
 	if !done {
