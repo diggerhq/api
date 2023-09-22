@@ -735,7 +735,26 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	mockedHTTPClient := mock.NewMockedHTTPClient()
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			github.RepositoryContent{},
+		),
+	)
 
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
@@ -743,7 +762,7 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 	var payload webhooks.InstallationRepositoriesPayload
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
-	err = handleInstallationRepositoriesAddedEvent(&payload)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1

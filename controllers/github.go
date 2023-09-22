@@ -74,7 +74,7 @@ func GithubAppWebHook(c *gin.Context) {
 	case webhooks.InstallationRepositoriesPayload:
 		payload := payload.(webhooks.InstallationRepositoriesPayload)
 		if payload.Action == "added" {
-			err := handleInstallationRepositoriesAddedEvent(&payload)
+			err := handleInstallationRepositoriesAddedEvent(gh, &payload)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
@@ -133,7 +133,7 @@ generate_projects:
 	return nil
 }
 
-func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
+func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClientProvider, payload *webhooks.InstallationRepositoriesPayload) error {
 	installationId := payload.Installation.ID
 	login := payload.Installation.Account.Login
 	accountId := payload.Installation.Account.ID
@@ -151,8 +151,7 @@ func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepo
 			return err
 		}
 
-		gh := &utils.DiggerGithubRealClientProvider{}
-		client, _, err := gh.Get(int64(appId), installationId)
+		client, _, err := ghClientProvider.Get(int64(appId), installationId)
 		if err != nil {
 			log.Printf("GetGithubClient failed, error: %v\n", err)
 			return err
