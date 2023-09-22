@@ -39,7 +39,7 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 	visit := func(value string) bool {
 		if predecessorMap[value] == nil || len(predecessorMap[value]) == 0 {
 			fmt.Printf("no parent for %v\n", value)
-			parentJob, err := models.DB.CreateDiggerJob(batchId, nil, marshalledJobsMap[value], branch)
+			parentJob, err := models.DB.CreateDiggerJob(batchId, marshalledJobsMap[value], branch)
 			if err != nil {
 				log.Printf("failed to create a job")
 				return false
@@ -57,7 +57,7 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 				parent := edge.Source
 				fmt.Printf("parent: %v\n", parent)
 				parentDiggerJob := result[parent]
-				childJob, err := models.DB.CreateDiggerJob(batchId, &parentDiggerJob.DiggerJobId, marshalledJobsMap[value], branch)
+				childJob, err := models.DB.CreateDiggerJob(batchId, marshalledJobsMap[value], branch)
 				if err != nil {
 					log.Printf("failed to create a job")
 					return false
@@ -65,6 +65,11 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 				_, err = models.DB.CreateDiggerJobLink(childJob.DiggerJobId, repoFullName)
 				if err != nil {
 					log.Printf("failed to create a digger job link")
+					return false
+				}
+				err = models.DB.CreateDiggerJobParentLink(parentDiggerJob.DiggerJobId, childJob.DiggerJobId)
+				if err != nil {
+					log.Printf("failed to create a digger job parent link")
 					return false
 				}
 				result[value] = childJob
