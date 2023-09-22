@@ -304,7 +304,7 @@ func IssueAccessTokenForOrg(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, string], error) {
+func loadDiggerConfig(configYaml *dg_configuration.DiggerConfigYaml) (*dg_configuration.DiggerConfig, graph.Graph[string, dg_configuration.Project], error) {
 
 	err := dg_configuration.ValidateDiggerConfigYaml(configYaml, "loaded config")
 	if err != nil {

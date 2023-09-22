@@ -96,5 +96,11 @@ func ConnectDatabase() {
 		panic("Failed to perform migration for `DiggerJob`!")
 	}
 
+	err = database.AutoMigrate(&DiggerJobParentLink{})
+
+	if err != nil {
+		panic("Failed to perform migration for `DiggerJobParentLink`!")
+	}
+
 	DB = &Database{GormDB: database}
 }
