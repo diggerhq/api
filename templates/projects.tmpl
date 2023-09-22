@@ -33,6 +33,7 @@
                                 <th>Name</th>
                                 <th>Repo</th>
                                 <th>Organisation</th>
+                                <th>Status</th>
                                 <th>Details</th>
                             </tr>
                         </thead>
@@ -42,6 +43,7 @@
                                 <td>{{ .Name }}</td>
                                 <td><a href="/repo/{{.Repo.ID}}/">{{ .Repo.Name }}<a></td>
                                 <td>{{ .Organisation.Name }}</td>
+                                <td>{{ .Status }}</td>
                                 <td><a href="/projects/{{.ID}}/details">Details<a></td>
                             </tr>
                         {{ end }}
