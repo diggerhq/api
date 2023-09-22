@@ -6,6 +6,8 @@ import (
 	"log"
 )
 
+/// Messages are stored to the session and displayed only once
+
 func addMessage(c *gin.Context, message string, key string) {
 	session := sessions.Default(c)
 	var messages []string

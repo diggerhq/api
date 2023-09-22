@@ -141,11 +141,26 @@ func handleInstallationRepositoriesAddedEvent(payload *webhooks.InstallationRepo
 	for _, repo := range payload.RepositoriesAdded {
 		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
 		if err != nil {
+			log.Printf("GithubRepoAdded failed, error: %v\n", err)
 			return err
 		}
 
 		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
 		if err != nil {
+			log.Printf("createDiggerRepoForGithubRepo failed, error: %v\n", err)
+			return err
+		}
+
+		gh := &utils.DiggerGithubRealClientProvider{}
+		client, _, err := gh.Get(int64(appId), installationId)
+		if err != nil {
+			log.Printf("GetGithubClient failed, error: %v\n", err)
+			return err
+		}
+
+		err = CreateDiggerWorkflowWithPullRequest(client, repo.FullName)
+		if err != nil {
+			log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
 			return err
 		}
 	}
@@ -530,7 +545,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 	return nil
 }
 
-func CreateDiggerWorkflow(client *github.Client, githubRepo string) error {
+func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo string) error {
 	ctx := context.Background()
 	repoOwner := strings.Split(githubRepo, "/")[0]
 	repoName := strings.Split(githubRepo, "/")[1]
@@ -696,7 +711,7 @@ func GithubReposPage(c *gin.Context) {
 	gh := &utils.DiggerGithubRealClientProvider{}
 	client, _, err := gh.Get(installations[0].GithubAppId, installations[0].GithubInstallationId)
 	if err != nil {
-		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		log.Printf("failed to create github client, %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
 		return
 	}
@@ -710,6 +725,51 @@ func GithubReposPage(c *gin.Context) {
 	}
 	c.HTML(http.StatusOK, "github_repos.tmpl", gin.H{"Repos": repos.Repositories})
 }
+
+/*
+func GithubTestPage(c *gin.Context) {
+	orgId, exists := c.Get(middleware.ORGANISATION_ID_KEY)
+	if !exists {
+		log.Printf("Organisation ID not found in context")
+		c.String(http.StatusForbidden, "Not allowed to access this resource")
+		return
+	}
+
+	link, err := models.DB.GetGithubInstallationLinkForOrg(orgId)
+	if err != nil {
+		log.Printf("GetGithubInstallationLinkForOrg error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
+	}
+
+	installations, err := models.DB.GetGithubAppInstallations(link.GithubInstallationId)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
+	}
+
+	if len(installations) == 0 {
+		c.String(http.StatusForbidden, "Failed to find any GitHub installations for this org")
+		return
+	}
+
+	gh := &utils.DiggerGithubRealClient{}
+	client, _, err := gh.GetGithubClient(installations[0].GithubAppId, installations[0].GithubInstallationId)
+	if err != nil {
+		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
+		return
+	}
+
+	err = CreateDiggerWorkflowWithPullRequest(client, "diggerhq/github-job-scheduler")
+	if err != nil {
+		log.Printf("CreateDiggerWorkflowWithPullRequest error: %v", err)
+		return
+	}
+	c.HTML(http.StatusOK, "github_repos.tmpl", gin.H{"Repos": nil})
+}
+*/
 
 // why this validation is needed: https://roadie.io/blog/avoid-leaking-github-org-data/
 // validation based on https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app , step 3
