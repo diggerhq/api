@@ -282,7 +282,7 @@ func SetJobStatusForProject(c *gin.Context) {
 	case "started":
 		job.Status = models.DiggerJobStarted
 	case "succeeded":
-		job.Status = models.DiggerJobTriggered
+		job.Status = models.DiggerJobSucceeded
 		go func() {
 			ghClientProvider := &utils.DiggerGithubRealClientProvider{}
 			installationLink, err := models.DB.GetGithubInstallationLinkForOrg(orgId)

@@ -10,13 +10,39 @@ import (
 func DiggerJobCompleted(client *github.Client, parentJob *models.DiggerJob, repoOwner string, repoName string, workflowFileName string) error {
 	log.Printf("DiggerJobCompleted parentJobId: %v", parentJob.DiggerJobId)
 
-	jobs, err := models.DB.GetDiggerJobsByParentIdAndStatus(&parentJob.DiggerJobId, models.DiggerJobCreated)
+	jobLinksForParent, err := models.DB.GetDiggerJobParentLinksByParentId(&parentJob.DiggerJobId)
 	if err != nil {
 		return err
 	}
 
-	for _, job := range jobs {
-		TriggerJob(client, repoOwner, repoName, &job, workflowFileName)
+	for _, jobLink := range jobLinksForParent {
+		jobLinksForChild, err := models.DB.GetDiggerJobParentLinksChildId(&jobLink.DiggerJobId)
+		if err != nil {
+			return err
+		}
+		allParentJobsAreComplete := true
+
+		for _, jobLinkForChild := range jobLinksForChild {
+			parentJob, err := models.DB.GetDiggerJob(jobLinkForChild.ParentDiggerJobId)
+			if err != nil {
+				return err
+			}
+
+			if parentJob.Status != models.DiggerJobSucceeded {
+				allParentJobsAreComplete = false
+				break
+			}
+
+		}
+
+		if allParentJobsAreComplete {
+			job, err := models.DB.GetDiggerJob(jobLink.DiggerJobId)
+			if err != nil {
+				return err
+			}
+			TriggerJob(client, repoOwner, repoName, job, workflowFileName)
+		}
+
 	}
 	return nil
 }
