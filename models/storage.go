@@ -555,25 +555,32 @@ func (db *Database) UpdateDiggerJob(job *DiggerJob) error {
 
 func (db *Database) GetPendingParentDiggerJobs() ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
-	parentLinks := make([]DiggerJobParentLink, 0)
 
-	result := db.GormDB.Where("digger_job_id = ?").Find(&parentLinks)
-
+	result := db.GormDB.Where("status = ?", DiggerJobCreated).Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
 
-	if len(parentLinks) == 0 {
-		result := db.GormDB.Where("status = ?", DiggerJobCreated).Find(&jobs)
+	filteredJobsWithNoParents := make([]DiggerJob, 0)
+
+	for _, job := range jobs {
+		parentLinks := make([]DiggerJobParentLink, 0)
+
+		result := db.GormDB.Where("digger_job_id = ?", job.DiggerJobId).Find(&parentLinks)
+
 		if result.Error != nil {
 			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil, result.Error
 			}
 		}
+		if len(parentLinks) == 0 {
+			filteredJobsWithNoParents = append(filteredJobsWithNoParents, job)
+		}
 	}
-	return jobs, nil
+
+	return filteredJobsWithNoParents, nil
 }
 
 func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
