@@ -54,7 +54,6 @@ func (web *WebController) ProjectsPage(c *gin.Context) {
 	maps.Copy(pageContext, gin.H{
 		"Projects": projects,
 	})
-
 	c.HTML(http.StatusOK, "projects.tmpl", pageContext)
 }
 
