@@ -937,6 +937,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/miekg/dns v1.0.8/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/migueleliasweb/go-github-mock v0.0.19 h1:z/88f6wPqZVFnE7s9DbwXMhCtmV/0FofNxc4M7FuSdU=
 github.com/migueleliasweb/go-github-mock v0.0.19/go.mod h1:dBoCB3W9NjzyABhoGkfI0iSlFpzulAXhI7M+9A4ONYI=
+github.com/migueleliasweb/go-github-mock v0.0.20 h1:lD0+ezomm5yjfQjQwQCUYfS0IvnkGm2Whx1NtRtnFEQ=
+github.com/migueleliasweb/go-github-mock v0.0.20/go.mod h1:tZKca2WcxfTR+gclTMCssA4bUNM+F3hW9aW/fkmPeZU=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
 github.com/mitchellh/cli v1.1.2/go.mod h1:6iaV0fGdElS6dPBx0EApTxHrcWvmJphyh2n8YBLPPZ4=
 github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db/go.mod h1:l0dey0ia/Uv7NcFFVbCLtqEBQbrT4OCwCSKTEv6enCw=
