@@ -7,7 +7,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
 	github.com/dchest/uniuri v1.2.0
 	github.com/diggerhq/lib-digger-config v0.0.6
-	github.com/diggerhq/lib-orchestrator v0.0.7-0.20230921154653-642fcd951b37
+	github.com/diggerhq/lib-orchestrator v0.0.7
 	github.com/diggerhq/webhooks v0.0.0-20230913112958-043f5fd95185
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.1
