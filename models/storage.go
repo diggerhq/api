@@ -442,7 +442,7 @@ func (db *Database) CreateGithubInstallationLink(org *Organisation, installation
 	}
 	for _, item := range list {
 		item.Status = GithubAppInstallationLinkInactive
-		db.GormDB.Save(item)
+		db.GormDB.Save(&item)
 	}
 
 	link := GithubAppInstallationLink{Organisation: org, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
