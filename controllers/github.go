@@ -461,7 +461,7 @@ func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo strin
 	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, workflowFilePath, opts)
 	if err != nil {
 		if !strings.Contains(err.Error(), "Not Found") {
-			log.Printf("Branch %v already exist, do nothing\n", branchRef)
+			log.Printf("failed to get contents of the file %v", err)
 			return fmt.Errorf("failed to get contents of the file %v", workflowFilePath)
 		}
 	}
