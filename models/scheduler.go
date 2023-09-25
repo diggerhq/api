@@ -13,17 +13,23 @@ const (
 	DiggerJobTriggered DiggerJobStatus = 2
 	DiggerJobFailed    DiggerJobStatus = 3
 	DiggerJobStarted   DiggerJobStatus = 4
+	DiggerJobSucceeded DiggerJobStatus = 5
 )
+
+type DiggerJobParentLink struct {
+	gorm.Model
+	DiggerJobId       string `gorm:"size:50,index:idx_digger_job_id"`
+	ParentDiggerJobId string `gorm:"size:50,index:idx_parent_digger_job_id"`
+}
 
 type DiggerJob struct {
 	gorm.Model
-	DiggerJobId       string  `gorm:"size:50,index:idx_digger_job_id"`
-	ParentDiggerJobId *string `gorm:"size:50,index:idx_parent_digger_job_id"`
-	Status            DiggerJobStatus
-	BatchId           uuid.UUID
-	SerializedJob     []byte
-	BranchName        string
-	StatusUpdatedAt   time.Time
+	DiggerJobId     string `gorm:"size:50,index:idx_digger_job_id"`
+	Status          DiggerJobStatus
+	BatchId         uuid.UUID
+	SerializedJob   []byte
+	BranchName      string
+	StatusUpdatedAt time.Time
 }
 
 type DiggerJobLinkStatus int8
