@@ -544,13 +544,24 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 	return nil
 }
 
+// CreateDiggerWorkflowWithPullRequest for specified repo it will create a new branch 'digger/configure' and a pull request to default branch
+// in the pull request it will try to add .github/workflows/workflow.yml file with workflow for digger
 func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo string) error {
 	ctx := context.Background()
-	repoOwner := strings.Split(githubRepo, "/")[0]
-	repoName := strings.Split(githubRepo, "/")[1]
-	// create branch 'digger/configure'
-	// Create remote branch from master
+	if strings.Index(githubRepo, "/") == -1 {
+		return fmt.Errorf("githubRepo is in a wrong format: %v", githubRepo)
+	}
+	githubRepoSplit := strings.Split(githubRepo, "/")
+	if len(githubRepoSplit) != 2 {
+		return fmt.Errorf("githubRepo is in a wrong format: %v", githubRepo)
+	}
+	repoOwner := githubRepoSplit[0]
+	repoName := githubRepoSplit[1]
 
+	// check if workflow file exist already in default branch, if it does, do nothing
+	// else try to create a branch and PR
+
+	workflowFilePath := ".github/workflows/workflow.yml"
 	repo, _, _ := client.Repositories.Get(ctx, repoOwner, repoName)
 	defaultBranch := *repo.DefaultBranch
 
@@ -563,18 +574,30 @@ func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo strin
 			SHA: defaultBranchRef.Object.SHA,
 		},
 	}
-	// trying to create a new branch
-	_, _, err := client.Git.CreateRef(ctx, repoOwner, repoName, branchRef)
+
+	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
+	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, workflowFilePath, opts)
 	if err != nil {
-		// if branch already exist, do nothing
-		if strings.Contains(err.Error(), "Reference already exists") {
+		if !strings.Contains(err.Error(), "Not Found") {
 			log.Printf("Branch %v already exist, do nothing\n", branchRef)
-			return nil
+			return fmt.Errorf("failed to get contents of the file %v", workflowFilePath)
 		}
-		return fmt.Errorf("failed to create a branch, %w", err)
 	}
 
-	workflowFileContents := `on:
+	// workflow file doesn't already exist, we can create it
+	if contents == nil {
+		// trying to create a new branch
+		_, _, err := client.Git.CreateRef(ctx, repoOwner, repoName, branchRef)
+		if err != nil {
+			// if branch already exist, do nothing
+			if strings.Contains(err.Error(), "Reference already exists") {
+				log.Printf("Branch %v already exist, do nothing\n", branchRef)
+				return nil
+			}
+			return fmt.Errorf("failed to create a branch, %w", err)
+		}
+
+		workflowFileContents := `on:
   workflow_dispatch:
     inputs:
       id:
@@ -600,26 +623,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 `
 
-	// Push file
-	msg := "add Digger GitHub workflow file"
-	var req github.RepositoryContentFileOptions
-	req.Content = []byte(workflowFileContents)
-	req.Message = &msg
-	req.Branch = &branch
-	filePath := ".github/workflows/workflow.yml"
+		msg := "Configure Digger workflow"
+		var req github.RepositoryContentFileOptions
+		req.Content = []byte(workflowFileContents)
+		req.Message = &msg
+		req.Branch = &branch
 
-	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
-	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, filePath, opts)
-	if err != nil {
-		if !strings.Contains(err.Error(), "Not Found") {
-			log.Printf("Branch %v already exist, do nothing\n", branchRef)
-			return fmt.Errorf("Failed to get contents of the file %v", filePath)
-		}
-	}
-
-	// workflow file doesn't already exist, we can create it
-	if contents == nil {
-		_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, filePath, &req)
+		_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, workflowFilePath, &req)
 		if err != nil {
 			return fmt.Errorf("failed to create digger workflow file, %w", err)
 		}
