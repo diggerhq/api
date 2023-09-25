@@ -88,13 +88,6 @@ func GithubAppWebHook(c *gin.Context) {
 			return
 		}
 	}
-	//payload, err := github.ParsePayload(c.Request, webhooks.InstallationEvent, webhooks.PullRequestEvent, webhooks.IssueCommentEvent,
-	//	webhooks.InstallationRepositoriesEvent, webhooks.WorkflowJobEvent, webhooks.WorkflowRunEvent)
-	if err != nil {
-		log.Printf("Failed to parse Github Event. :%v\n", err)
-		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
-		return
-	}
 
 	c.JSON(200, "ok")
 }
