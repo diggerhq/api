@@ -303,6 +303,11 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 		return nil, nil, nil, nil, fmt.Errorf("error getting branch name")
 	}
 
+	if link == nil {
+		log.Printf("Failed to find GithubAppInstallationLink for installationId: %v", installationId)
+		return nil, nil, nil, nil, fmt.Errorf("error getting github app installation link")
+	}
+
 	diggerRepoName := repoOwner + "-" + repoName
 	repo, err := models.DB.GetRepo(link.Organisation.ID, diggerRepoName)
 	if err != nil {
