@@ -553,10 +553,19 @@ func (db *Database) UpdateDiggerJob(job *DiggerJob) error {
 	return nil
 }
 
-func (db *Database) GetPendingParentDiggerJobs() ([]DiggerJob, error) {
+func (db *Database) GetPendingParentDiggerJobs(batchId *uuid.UUID) ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
 
-	result := db.GormDB.Joins("LEFT JOIN digger_job_parent_links ON digger_jobs.digger_job_id = digger_job_parent_links.digger_job_id").Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL", DiggerJobCreated).Find(&jobs)
+	joins := db.GormDB.Joins("LEFT JOIN digger_job_parent_links ON digger_jobs.digger_job_id = digger_job_parent_links.digger_job_id")
+
+	var where *gorm.DB
+	if batchId != nil {
+		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL AND digger_jobs.batch_id = ?", DiggerJobCreated, batchId)
+	} else {
+		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL", DiggerJobCreated)
+	}
+
+	result := where.Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -607,22 +616,6 @@ func (db *Database) GetDiggerJobParentLinksChildId(childId *string) ([]DiggerJob
 		}
 	}
 	return jobParentLinks, nil
-}
-
-func (db *Database) GetPendingDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
-	jobs, err := db.GetPendingParentDiggerJobs()
-
-	if err != nil {
-		return nil, err
-	}
-	//filter jobs with batch id
-	filteredJobs := make([]DiggerJob, 0)
-	for _, job := range jobs {
-		if job.BatchId == batchId {
-			filteredJobs = append(filteredJobs, job)
-		}
-	}
-	return filteredJobs, nil
 }
 
 func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
