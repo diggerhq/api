@@ -895,14 +895,14 @@ func TestGithubInstallationRepoAddedDiggerWorkflowDoesntExistEvent(t *testing.T)
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
-	var payload webhooks.InstallationRepositoriesPayload
+	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
 	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1
-	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
 }
@@ -945,14 +945,14 @@ func TestGithubInstallationRepoAddedDiggerWorkflowExistEvent(t *testing.T) {
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
-	var payload webhooks.InstallationRepositoriesPayload
+	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
 	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1
-	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
 }
