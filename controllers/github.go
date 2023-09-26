@@ -61,7 +61,7 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 	case *github.InstallationRepositoriesEvent:
 		if event.Action == github.String("added") {
-			err := handleInstallationRepositoriesAddedEvent(event)
+			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
@@ -118,7 +118,7 @@ generate_projects:
 	return nil
 }
 
-func handleInstallationRepositoriesAddedEventghClientProvider utils.GithubClientProvider, (payload *github.InstallationRepositoriesEvent) error {
+func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClientProvider, payload *github.InstallationRepositoriesEvent) error {
 	installationId := *payload.Installation.ID
 	login := *payload.Installation.Account.Login
 	accountId := *payload.Installation.Account.ID
@@ -144,7 +144,7 @@ func handleInstallationRepositoriesAddedEventghClientProvider utils.GithubClient
 			return err
 		}
 
-		err = CreateDiggerWorkflowWithPullRequest(client, repo.FullName)
+		err = CreateDiggerWorkflowWithPullRequest(client, repoFullName)
 		if err != nil {
 			log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
 			return err
