@@ -42,9 +42,9 @@ func GithubAppWebHook(c *gin.Context) {
 	}
 
 	switch event := event.(type) {
-	case *github.InstallationEvent:
+	case github.InstallationEvent:
 		if event.Action == github.String("created") {
-			err := handleInstallationCreatedEvent(event)
+			err := handleInstallationCreatedEvent(&event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
@@ -52,40 +52,40 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 
 		if event.Action == github.String("deleted") {
-			err := handleInstallationDeletedEvent(event)
+			err := handleInstallationDeletedEvent(&event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 
 		}
-	case *github.InstallationRepositoriesEvent:
+	case github.InstallationRepositoriesEvent:
 		if event.Action == github.String("added") {
-			err := handleInstallationRepositoriesAddedEvent(gh, event)
+			err := handleInstallationRepositoriesAddedEvent(gh, &event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
 		if event.Action == github.String("removed") {
-			err := handleInstallationRepositoriesDeletedEvent(event)
+			err := handleInstallationRepositoriesDeletedEvent(&event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
-	case *github.IssueCommentEvent:
+	case github.IssueCommentEvent:
 		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
 			c.String(http.StatusOK, "OK")
 			return
 		}
-		err := handleIssueCommentEvent(gh, event)
+		err := handleIssueCommentEvent(gh, &event)
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-	case *github.PullRequestEvent:
+	case github.PullRequestEvent:
 		log.Printf("Got pull request event for %v", event.PullRequest.ID)
-		err := handlePullRequestEvent(gh, event)
+		err := handlePullRequestEvent(gh, &event)
 		if err != nil {
 			log.Printf("handlePullRequestEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
