@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -92,7 +93,7 @@ func GithubAppWebHook(c *gin.Context) {
 			return
 		}
 	default:
-		log.Printf("Unhandled event, event type %v", event)
+		log.Printf("Unhandled event, event type %v", reflect.TypeOf(event))
 	}
 
 	c.JSON(200, "ok")
