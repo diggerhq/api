@@ -91,6 +91,8 @@ func GithubAppWebHook(c *gin.Context) {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
+	default:
+		log.Printf("Unhandled event, event type %v", event)
 	}
 
 	c.JSON(200, "ok")
