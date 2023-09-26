@@ -26,7 +26,7 @@ type DiggerJob struct {
 	gorm.Model
 	DiggerJobId     string `gorm:"size:50,index:idx_digger_job_id"`
 	Status          DiggerJobStatus
-	BatchId         uuid.UUID
+	BatchId         uuid.UUID `gorm:"index:idx_batch_id"`
 	SerializedJob   []byte
 	BranchName      string
 	StatusUpdatedAt time.Time
@@ -42,9 +42,9 @@ const (
 // GithubDiggerJobLink links GitHub Workflow Job id to Digger's Job Id
 type GithubDiggerJobLink struct {
 	gorm.Model
-	DiggerJobId         string `gorm:"size:50"`
+	DiggerJobId         string `gorm:"size:50,index:idx_digger_job_id"`
 	RepoFullName        string
-	GithubJobId         int64
+	GithubJobId         int64 `gorm:"index:idx_github_job_id"`
 	GithubWorkflowRunId int64
 	Status              DiggerJobLinkStatus
 }

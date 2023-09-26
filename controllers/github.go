@@ -73,6 +73,10 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 	case *github.IssueCommentEvent:
+		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
+			c.String(http.StatusOK, "OK")
+			return
+		}
 		err := handleIssueCommentEvent(gh, event)
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
@@ -358,12 +362,8 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	}
 
 	impactedProjectsJobMap := make(map[string]orchestrator.Job)
-	for _, p := range impactedProjects {
-		for _, j := range jobs {
-			if j.ProjectName == p.Name {
-				impactedProjectsJobMap[p.Name] = j
-			}
-		}
+	for _, j := range jobs {
+		impactedProjectsJobMap[j.ProjectName] = j
 	}
 
 	batchId, _, err := utils.ConvertJobsToDiggerJobs(impactedProjectsJobMap, impactedProjectsMap, projectsGraph, *branch, repoFullName)
@@ -381,7 +381,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 }
 
 func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId uuid.UUID) error {
-	diggerJobs, err := models.DB.GetPendingDiggerJobsWithoutParentForBatch(batchId)
+	diggerJobs, err := models.DB.GetPendingParentDiggerJobs(&batchId)
 
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 

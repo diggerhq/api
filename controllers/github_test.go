@@ -611,7 +611,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	err = handleIssueCommentEvent(gh, &payload)
 	assert.NoError(t, err)
 
-	jobs, err := models.DB.GetPendingParentDiggerJobs()
+	jobs, err := models.DB.GetPendingParentDiggerJobs(nil)
 	assert.Equal(t, 0, len(jobs))
 }
 
