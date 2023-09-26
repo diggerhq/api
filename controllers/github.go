@@ -92,17 +92,17 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
-func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
+func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) (*models.Repo, *models.Organisation, error) {
 	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
 		log.Printf("Error fetching installation link: %v", err)
-		return err
+		return nil, nil, err
 	}
 	orgId := link.OrganisationId
 	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation by id: %v, error: %v\n", orgId, err)
-		return err
+		return nil, nil, err
 	}
 
 	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
@@ -112,10 +112,10 @@ generate_projects:
 `)
 	if err != nil {
 		log.Printf("Error creating digger repo: %v", err)
-		return err
+		return nil, nil, err
 	}
 	log.Printf("Created digger repo: %v", repo)
-	return nil
+	return repo, org, nil
 }
 
 func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClientProvider, payload *github.InstallationRepositoriesEvent) error {
@@ -132,7 +132,7 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 			return err
 		}
 
-		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, org, err := createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			log.Printf("createDiggerRepoForGithubRepo failed, error: %v\n", err)
 			return err
@@ -144,7 +144,7 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 			return err
 		}
 
-		err = CreateDiggerWorkflowWithPullRequest(client, repoFullName)
+		err = CreateDiggerWorkflowWithPullRequest(org, client, repoFullName)
 		if err != nil {
 			log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
 			return err
@@ -181,7 +181,7 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 		if err != nil {
 			return err
 		}
-		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, _, err = createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			return err
 		}
@@ -413,7 +413,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 
 // CreateDiggerWorkflowWithPullRequest for specified repo it will create a new branch 'digger/configure' and a pull request to default branch
 // in the pull request it will try to add .github/workflows/workflow.yml file with workflow for digger
-func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo string) error {
+func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *github.Client, githubRepo string) error {
 	ctx := context.Background()
 	if strings.Index(githubRepo, "/") == -1 {
 		return fmt.Errorf("githubRepo is in a wrong format: %v", githubRepo)
@@ -464,36 +464,40 @@ func CreateDiggerWorkflowWithPullRequest(client *github.Client, githubRepo strin
 			return fmt.Errorf("failed to create a branch, %w", err)
 		}
 
-		workflowFileContents := `on:
+		// TODO: move to a separate config
+		jobName := "Digger Workflow"
+		setupAws := false
+		disableLocking := false
+		diggerHostname := "https://cloud.uselemon.cloud"
+		diggerOrg := org.Name
+
+		workflowFileContents := fmt.Sprintf(`on:
   workflow_dispatch:
     inputs:
-      id:
-        description: 'run identifier'
-        required: false
       job:
         required: true
 jobs:
   build:
-    name: Workflow ID Provider
+    name: %v
     runs-on: ubuntu-latest
     steps:
       - name: digger run
         uses: diggerhq/digger@develop
         with:
-          setup-aws: false
-          disable-locking: true
+          setup-aws: %v
+          disable-locking: %v
           digger-token: ${{ secrets.DIGGER_TOKEN }}
-          digger-hostname: 'https://cloud.uselemon.cloud'
-          digger-organisation: 'digger'
+          digger-hostname: '%v'
+          digger-organisation: '%v'
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-`
+`, jobName, setupAws, disableLocking, diggerHostname, diggerOrg)
 
-		msg := "Configure Digger workflow"
+		commitMessage := "Configure Digger workflow"
 		var req github.RepositoryContentFileOptions
 		req.Content = []byte(workflowFileContents)
-		req.Message = &msg
+		req.Message = &commitMessage
 		req.Branch = &branch
 
 		_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, workflowFilePath, &req)
