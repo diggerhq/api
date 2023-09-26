@@ -36,8 +36,8 @@ const (
 // GithubAppInstallationLink links GitHub App installation Id to Digger's organisation Id
 type GithubAppInstallationLink struct {
 	gorm.Model
-	GithubInstallationId int64 `gorm:"index:idx_github_installation_org,unique"`
-	OrganisationId       uint  `gorm:"index:idx_github_installation_org,unique"`
+	GithubInstallationId int64 `gorm:"index:idx_github_installation_org"`
+	OrganisationId       uint  `gorm:"index:idx_github_installation_org"`
 	Organisation         *Organisation
 	Status               GithubAppInstallationLinkStatus
 }
