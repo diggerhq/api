@@ -475,7 +475,7 @@ func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *githu
 		jobName := "Digger Workflow"
 		setupAws := false
 		disableLocking := false
-		diggerHostname := "https://cloud.uselemon.cloud"
+		diggerHostname := os.Getenv("DIGGER_CLOUD_HOSTNAME")
 		diggerOrg := org.Name
 
 		workflowFileContents := fmt.Sprintf(`on:
