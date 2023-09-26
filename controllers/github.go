@@ -6,12 +6,10 @@ import (
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/utils"
 	"encoding/json"
-	"errors"
 	"fmt"
 	dg_configuration "github.com/diggerhq/lib-digger-config"
 	orchestrator "github.com/diggerhq/lib-orchestrator"
 	dg_github "github.com/diggerhq/lib-orchestrator/github"
-	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v55/github"
@@ -28,75 +26,62 @@ func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	gh := &utils.DiggerGithubRealClientProvider{}
 
-	// TODO return validation back
-	/*
-		_, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
-		if err != nil {
-			log.Printf("Error validating github app webhook's payload: %v", err)
-			c.String(http.StatusBadRequest, "Error validating github app webhook's payload")
-			return
-		}
-	*/
-
-	hook, _ := webhooks.New()
-
-	payload, err := hook.Parse(c.Request, webhooks.InstallationEvent, webhooks.PullRequestEvent, webhooks.IssueCommentEvent,
-		webhooks.InstallationRepositoriesEvent, webhooks.WorkflowJobEvent, webhooks.WorkflowRunEvent)
+	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 	if err != nil {
-		if errors.Is(err, webhooks.ErrEventNotFound) {
-			// ok event wasn't one of the ones asked to be parsed
-			log.Println("Github event  wasn't found.")
-		}
+		log.Printf("Error validating github app webhook's payload: %v", err)
+		c.String(http.StatusBadRequest, "Error validating github app webhook's payload")
+		return
+	}
+
+	webhookType := github.WebHookType(c.Request)
+	event, err := github.ParseWebHook(webhookType, payload)
+	if err != nil {
 		log.Printf("Failed to parse Github Event. :%v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to parse Github Event")
 		return
 	}
-	switch payload.(type) {
 
-	case webhooks.InstallationPayload:
-		payload := payload.(webhooks.InstallationPayload)
-		if payload.Action == "created" {
-			err := handleInstallationCreatedEvent(&payload)
+	switch event := event.(type) {
+	case *github.InstallationEvent:
+		if event.Action == github.String("created") {
+			err := handleInstallationCreatedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 		}
 
-		if payload.Action == "deleted" {
-			err := handleInstallationDeletedEvent(&payload)
+		if event.Action == github.String("deleted") {
+			err := handleInstallationDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
 
 		}
-	case webhooks.InstallationRepositoriesPayload:
-		payload := payload.(webhooks.InstallationRepositoriesPayload)
-		if payload.Action == "added" {
-			err := handleInstallationRepositoriesAddedEvent(gh, &payload)
+	case *github.InstallationRepositoriesEvent:
+		if event.Action == github.String("added") {
+			err := handleInstallationRepositoriesAddedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
-		if payload.Action == "removed" {
-			err := handleInstallationRepositoriesDeletedEvent(&payload)
+		if event.Action == github.String("removed") {
+			err := handleInstallationRepositoriesDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
-	case webhooks.IssueCommentPayload:
-		payload := payload.(webhooks.IssueCommentPayload)
-		err := handleIssueCommentEvent(gh, &payload)
+	case *github.IssueCommentEvent:
+		err := handleIssueCommentEvent(gh, event)
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-	case webhooks.PullRequestPayload:
-		payload := payload.(webhooks.PullRequestPayload)
-		log.Printf("Got pull request event for %v", payload.PullRequest.ID)
-		err := handlePullRequestEvent(gh, &payload)
+	case *github.PullRequestEvent:
+		log.Printf("Got pull request event for %v", event.PullRequest.ID)
+		err := handlePullRequestEvent(gh, event)
 		if err != nil {
 			log.Printf("handlePullRequestEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
@@ -133,19 +118,21 @@ generate_projects:
 	return nil
 }
 
-func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClientProvider, payload *webhooks.InstallationRepositoriesPayload) error {
-	installationId := payload.Installation.ID
-	login := payload.Installation.Account.Login
-	accountId := payload.Installation.Account.ID
-	appId := payload.Installation.AppID
+func handleInstallationRepositoriesAddedEventghClientProvider utils.GithubClientProvider, (payload *github.InstallationRepositoriesEvent) error {
+	installationId := *payload.Installation.ID
+	login := *payload.Installation.Account.Login
+	accountId := *payload.Installation.Account.ID
+	appId := int(*payload.Installation.AppID)
+
 	for _, repo := range payload.RepositoriesAdded {
-		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		repoFullName := *repo.FullName
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
 		if err != nil {
 			log.Printf("GithubRepoAdded failed, error: %v\n", err)
 			return err
 		}
 
-		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
+		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			log.Printf("createDiggerRepoForGithubRepo failed, error: %v\n", err)
 			return err
@@ -166,11 +153,12 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 	return nil
 }
 
-func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRepositoriesPayload) error {
-	installationId := payload.Installation.ID
-	appId := payload.Installation.AppID
+func handleInstallationRepositoriesDeletedEvent(payload *github.InstallationRepositoriesEvent) error {
+	installationId := *payload.Installation.ID
+	appId := int(*payload.Installation.AppID)
 	for _, repo := range payload.RepositoriesRemoved {
-		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
+		repoFullName := *repo.FullName
+		err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -180,19 +168,20 @@ func handleInstallationRepositoriesDeletedEvent(payload *webhooks.InstallationRe
 	return nil
 }
 
-func handleInstallationCreatedEvent(installation *webhooks.InstallationPayload) error {
-	installationId := installation.Installation.ID
-	login := installation.Installation.Account.Login
-	accountId := installation.Installation.Account.ID
-	appId := installation.Installation.AppID
+func handleInstallationCreatedEvent(installation *github.InstallationEvent) error {
+	installationId := *installation.Installation.ID
+	login := *installation.Installation.Account.Login
+	accountId := *installation.Installation.Account.ID
+	appId := int(*installation.Installation.AppID)
 
 	for _, repo := range installation.Repositories {
-		log.Printf("Adding a new installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repo.FullName)
+		repoFullName := *repo.FullName
+		log.Printf("Adding a new installation %d for repo: %s", installationId, repoFullName)
+		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
 		if err != nil {
 			return err
 		}
-		err = createDiggerRepoForGithubRepo(repo.FullName, installationId)
+		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			return err
 		}
@@ -200,12 +189,13 @@ func handleInstallationCreatedEvent(installation *webhooks.InstallationPayload) 
 	return nil
 }
 
-func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) error {
-	installationId := installation.Installation.ID
-	appId := installation.Installation.AppID
+func handleInstallationDeletedEvent(installation *github.InstallationEvent) error {
+	installationId := *installation.Installation.ID
+	appId := int(*installation.Installation.AppID)
 	for _, repo := range installation.Repositories {
-		log.Printf("Removing an installation %d for repo: %s", installationId, repo.FullName)
-		err := models.DB.GithubRepoRemoved(installationId, appId, repo.FullName)
+		repoFullName := *repo.FullName
+		log.Printf("Removing an installation %d for repo: %s", installationId, repoFullName)
+		err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -213,20 +203,15 @@ func handleInstallationDeletedEvent(installation *webhooks.InstallationPayload) 
 	return nil
 }
 
-func handlePullRequestEvent(gh utils.GithubClientProvider, payload *webhooks.PullRequestPayload) error {
-	var installationId int64
-	var repoName string
-	var repoOwner string
-	var repoFullName string
-	var cloneURL string
+func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullRequestEvent) error {
+	installationId := *payload.Installation.ID
+	repoName := *payload.Repo.Name
+	repoOwner := *payload.Repo.Owner.Login
+	repoFullName := *payload.Repo.FullName
+	cloneURL := *payload.Repo.CloneURL
+	prNumber := *payload.PullRequest.Number
 
-	installationId = payload.Installation.ID
-	repoName = payload.Repository.Name
-	repoOwner = payload.Repository.Owner.Login
-	repoFullName = payload.Repository.FullName
-	cloneURL = payload.Repository.CloneURL
-
-	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.PullRequest.Number))
+	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, prNumber)
 
 	impactedProjects, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, projectsGraph, ghService)
 	if err != nil {
@@ -343,20 +328,15 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 	return &ghService, config, dependencyGraph, &prBranch, nil
 }
 
-func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *webhooks.IssueCommentPayload) error {
-	var installationId int64
-	var repoName string
-	var repoOwner string
-	var repoFullName string
-	var cloneURL string
+func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.IssueCommentEvent) error {
+	installationId := *payload.Installation.ID
+	repoName := *payload.Repo.Name
+	repoOwner := *payload.Repo.Owner.Login
+	repoFullName := *payload.Repo.FullName
+	cloneURL := *payload.Repo.CloneURL
+	issueNumber := *payload.Issue.Number
 
-	installationId = payload.Installation.ID
-	repoName = payload.Repository.Name
-	repoOwner = payload.Repository.Owner.Login
-	repoFullName = payload.Repository.FullName
-	cloneURL = payload.Repository.CloneURL
-
-	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, int(payload.Issue.Number))
+	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, issueNumber)
 
 	impactedProjects, requestedProject, _, err := dg_github.ProcessGitHubIssueCommentEvent(payload, config, projectsGraph, ghService)
 	if err != nil {

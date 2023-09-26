@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	configuration "github.com/diggerhq/lib-digger-config"
 	orchestrator "github.com/diggerhq/lib-orchestrator"
-	webhooks "github.com/diggerhq/webhooks/github"
 	"github.com/google/go-github/v55/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/assert"
@@ -528,12 +527,12 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	}
 
 	// create installation for issueComment payload
-	var payload webhooks.IssueCommentPayload
+	var payload github.IssueCommentEvent
 	err = json.Unmarshal([]byte(issueCommentPayload), &payload)
 	if err != nil {
 		log.Fatal(err)
 	}
-	installationId := payload.Installation.ID
+	installationId := *payload.Installation.ID
 
 	_, err = database.CreateGithubInstallationLink(org, installationId)
 	if err != nil {
@@ -606,7 +605,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
-	var payload webhooks.IssueCommentPayload
+	var payload github.IssueCommentEvent
 	err := json.Unmarshal([]byte(issueCommentPayload), &payload)
 	assert.NoError(t, err)
 	err = handleIssueCommentEvent(gh, &payload)
@@ -807,14 +806,14 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
-	var payload webhooks.InstallationRepositoriesPayload
+	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
 	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1
-	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
 }
@@ -838,14 +837,14 @@ func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
 
-	var payload webhooks.InstallationRepositoriesPayload
+	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesDeletedPayload), &payload)
 	assert.NoError(t, err)
 	err = handleInstallationRepositoriesDeletedEvent(&payload)
 	assert.NoError(t, err)
 
 	orgId := 1
-	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, payload.RepositoriesRemoved[0].FullName, models.GithubAppInstallDeleted)
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesRemoved[0].FullName, models.GithubAppInstallDeleted)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
 }
