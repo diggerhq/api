@@ -61,7 +61,7 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 	case *github.InstallationRepositoriesEvent:
 		if event.Action == github.String("added") {
-			err := handleInstallationRepositoriesAddedEvent(event)
+			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
@@ -92,17 +92,17 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
-func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) error {
+func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) (*models.Repo, *models.Organisation, error) {
 	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
 		log.Printf("Error fetching installation link: %v", err)
-		return err
+		return nil, nil, err
 	}
 	orgId := link.OrganisationId
 	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil {
 		log.Printf("Error fetching organisation by id: %v, error: %v\n", orgId, err)
-		return err
+		return nil, nil, err
 	}
 
 	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
@@ -112,13 +112,13 @@ generate_projects:
 `)
 	if err != nil {
 		log.Printf("Error creating digger repo: %v", err)
-		return err
+		return nil, nil, err
 	}
 	log.Printf("Created digger repo: %v", repo)
-	return nil
+	return repo, org, nil
 }
 
-func handleInstallationRepositoriesAddedEvent(payload *github.InstallationRepositoriesEvent) error {
+func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClientProvider, payload *github.InstallationRepositoriesEvent) error {
 	installationId := *payload.Installation.ID
 	login := *payload.Installation.Account.Login
 	accountId := *payload.Installation.Account.ID
@@ -128,11 +128,25 @@ func handleInstallationRepositoriesAddedEvent(payload *github.InstallationReposi
 		repoFullName := *repo.FullName
 		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
 		if err != nil {
+			log.Printf("GithubRepoAdded failed, error: %v\n", err)
 			return err
 		}
 
-		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, org, err := createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
+			log.Printf("createDiggerRepoForGithubRepo failed, error: %v\n", err)
+			return err
+		}
+
+		client, _, err := ghClientProvider.Get(int64(appId), installationId)
+		if err != nil {
+			log.Printf("GetGithubClient failed, error: %v\n", err)
+			return err
+		}
+
+		err = CreateDiggerWorkflowWithPullRequest(org, client, repoFullName)
+		if err != nil {
+			log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
 			return err
 		}
 	}
@@ -167,7 +181,7 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 		if err != nil {
 			return err
 		}
-		err = createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, _, err = createDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			return err
 		}
@@ -272,6 +286,11 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 	if err != nil {
 		log.Printf("Error getting branch name: %v", err)
 		return nil, nil, nil, nil, fmt.Errorf("error getting branch name")
+	}
+
+	if link == nil {
+		log.Printf("Failed to find GithubAppInstallationLink for installationId: %v", installationId)
+		return nil, nil, nil, nil, fmt.Errorf("error getting github app installation link")
 	}
 
 	diggerRepoName := repoOwner + "-" + repoName
@@ -392,13 +411,24 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 	return nil
 }
 
-func CreateDiggerWorkflow(client *github.Client, githubRepo string) error {
+// CreateDiggerWorkflowWithPullRequest for specified repo it will create a new branch 'digger/configure' and a pull request to default branch
+// in the pull request it will try to add .github/workflows/workflow.yml file with workflow for digger
+func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *github.Client, githubRepo string) error {
 	ctx := context.Background()
-	repoOwner := strings.Split(githubRepo, "/")[0]
-	repoName := strings.Split(githubRepo, "/")[1]
-	// create branch 'digger/configure'
-	// Create remote branch from master
+	if strings.Index(githubRepo, "/") == -1 {
+		return fmt.Errorf("githubRepo is in a wrong format: %v", githubRepo)
+	}
+	githubRepoSplit := strings.Split(githubRepo, "/")
+	if len(githubRepoSplit) != 2 {
+		return fmt.Errorf("githubRepo is in a wrong format: %v", githubRepo)
+	}
+	repoOwner := githubRepoSplit[0]
+	repoName := githubRepoSplit[1]
 
+	// check if workflow file exist already in default branch, if it does, do nothing
+	// else try to create a branch and PR
+
+	workflowFilePath := ".github/workflows/workflow.yml"
 	repo, _, _ := client.Repositories.Get(ctx, repoOwner, repoName)
 	defaultBranch := *repo.DefaultBranch
 
@@ -411,77 +441,78 @@ func CreateDiggerWorkflow(client *github.Client, githubRepo string) error {
 			SHA: defaultBranchRef.Object.SHA,
 		},
 	}
-	// trying to create a new branch
-	_, _, err := client.Git.CreateRef(ctx, repoOwner, repoName, branchRef)
+
+	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
+	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, workflowFilePath, opts)
 	if err != nil {
-		// if branch already exist, do nothing
-		if strings.Contains(err.Error(), "Reference already exists") {
-			return nil
+		if !strings.Contains(err.Error(), "Not Found") {
+			log.Printf("failed to get contents of the file %v", err)
+			return fmt.Errorf("failed to get contents of the file %v", workflowFilePath)
 		}
-		return fmt.Errorf("failed to create a branch, %w", err)
 	}
 
-	workflowFileContents := `on:
+	// workflow file doesn't already exist, we can create it
+	if contents == nil {
+		// trying to create a new branch
+		_, _, err := client.Git.CreateRef(ctx, repoOwner, repoName, branchRef)
+		if err != nil {
+			// if branch already exist, do nothing
+			if strings.Contains(err.Error(), "Reference already exists") {
+				log.Printf("Branch %v already exist, do nothing\n", branchRef)
+				return nil
+			}
+			return fmt.Errorf("failed to create a branch, %w", err)
+		}
+
+		// TODO: move to a separate config
+		jobName := "Digger Workflow"
+		setupAws := false
+		disableLocking := false
+		diggerHostname := "https://cloud.uselemon.cloud"
+		diggerOrg := org.Name
+
+		workflowFileContents := fmt.Sprintf(`on:
   workflow_dispatch:
     inputs:
-      id:
-        description: 'run identifier'
-        required: false
       job:
         required: true
 jobs:
   build:
-    name: Workflow ID Provider
+    name: %v
     runs-on: ubuntu-latest
     steps:
       - name: digger run
         uses: diggerhq/digger@develop
         with:
-          setup-aws: false
-          disable-locking: true
+          setup-aws: %v
+          disable-locking: %v
           digger-token: ${{ secrets.DIGGER_TOKEN }}
-          digger-hostname: 'https://cloud.uselemon.cloud'
-          digger-organisation: 'digger'
+          digger-hostname: '%v'
+          digger-organisation: '%v'
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-`
+`, jobName, setupAws, disableLocking, diggerHostname, diggerOrg)
 
-	// Push file
-	msg := "add Digger GitHub workflow file"
-	var req github.RepositoryContentFileOptions
-	req.Content = []byte(workflowFileContents)
-	req.Message = &msg
-	req.Branch = &branch
-	filePath := ".github/workflows/workflow.yml"
+		commitMessage := "Configure Digger workflow"
+		var req github.RepositoryContentFileOptions
+		req.Content = []byte(workflowFileContents)
+		req.Message = &commitMessage
+		req.Branch = &branch
 
-	opts := &github.RepositoryContentGetOptions{Ref: *defaultBranchRef.Ref}
-	contents, _, _, err := client.Repositories.GetContents(ctx, repoOwner, repoName, filePath, opts)
-	if err != nil {
-		return err
+		_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, workflowFilePath, &req)
+		if err != nil {
+			return fmt.Errorf("failed to create digger workflow file, %w", err)
+		}
+
+		prTitle := "Configure Digger"
+		pullRequest := &github.NewPullRequest{Title: &prTitle,
+			Head: &branch, Base: &defaultBranch}
+		_, _, err = client.PullRequests.Create(ctx, repoOwner, repoName, pullRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create a pull request for digger/configure, %w", err)
+		}
 	}
-	// workflow file already exist, do nothing
-	if err == nil {
-		return nil
-	}
-
-	if *contents.Content != workflowFileContents {
-		log.Printf("workflow file has been modified")
-	}
-
-	_, _, err = client.Repositories.CreateFile(ctx, repoOwner, repoName, filePath, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create digger workflow file, %w", err)
-	}
-
-	prTitle := "Configure Digger"
-	pullRequest := &github.NewPullRequest{Title: &prTitle,
-		Head: &branch, Base: &defaultBranch}
-	_, _, err = client.PullRequests.Create(ctx, repoOwner, repoName, pullRequest)
-	if err != nil {
-		return fmt.Errorf("failed to create a pull request for digger/configure, %w", err)
-	}
-
 	return nil
 }
 
@@ -558,7 +589,7 @@ func GithubReposPage(c *gin.Context) {
 	gh := &utils.DiggerGithubRealClientProvider{}
 	client, _, err := gh.Get(installations[0].GithubAppId, installations[0].GithubInstallationId)
 	if err != nil {
-		log.Printf("GetGithubAppInstallations error: %v\n", err)
+		log.Printf("failed to create github client, %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating GitHub client"})
 		return
 	}

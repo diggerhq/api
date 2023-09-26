@@ -782,7 +782,26 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	mockedHTTPClient := mock.NewMockedHTTPClient()
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			github.RepositoryContent{},
+		),
+	)
 
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
@@ -790,7 +809,7 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
-	err = handleInstallationRepositoriesAddedEvent(&payload)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1
@@ -826,6 +845,114 @@ func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
 
 	orgId := 1
 	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesRemoved[0].FullName, models.GithubAppInstallDeleted)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
+}
+
+func TestGithubInstallationRepoAddedDiggerWorkflowDoesntExistEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			nil,
+		),
+		mock.WithRequestMatch(
+			mock.PutReposContentsByOwnerByRepoByPath,
+			nil,
+		),
+		mock.WithRequestMatch(
+			mock.PostReposPullsByOwnerByRepo,
+			nil,
+		),
+	)
+
+	gh := &utils.DiggerGithubClientMockProvider{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload github.InstallationRepositoriesEvent
+	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
+}
+
+func TestGithubInstallationRepoAddedDiggerWorkflowExistEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			github.RepositoryContent{Content: github.String("workflow file")},
+		),
+	)
+
+	gh := &utils.DiggerGithubClientMockProvider{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload github.InstallationRepositoriesEvent
+	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
 }
