@@ -291,21 +291,23 @@ func (db *Database) GetRepoById(orgIdKey any, repoId any) (*Repo, error) {
 	return &repo, nil
 }
 
-func (db *Database) GithubRepoAdded(installationId int64, appId int, login string, accountId int64, repoFullName string) error {
+// GithubRepoAdded handles github notification that github repo has been added to the app installation
+func (db *Database) GithubRepoAdded(installationId int64, appId int64, login string, accountId int64, repoFullName string) (*GithubAppInstallation, error) {
 
 	// check if item exist already
-	item := GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(&item)
+	item := &GithubAppInstallation{}
+	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("failed to find github installation in database. %v", result.Error)
+			return nil, fmt.Errorf("failed to find github installation in database. %v", result.Error)
 		}
 	}
 
 	if result.RowsAffected == 0 {
-		_, err := db.CreateGithubAppInstallation(installationId, int64(appId), login, int(accountId), repoFullName)
+		var err error
+		item, err = db.CreateGithubAppInstallation(installationId, appId, login, int(accountId), repoFullName)
 		if err != nil {
-			return fmt.Errorf("failed to save github installation item to database. %v", err)
+			return nil, fmt.Errorf("failed to save github installation item to database. %v", err)
 		}
 	} else {
 		log.Printf("Record for installation_id: %d, repo: %s, with status=active exist already.", installationId, repoFullName)
@@ -313,29 +315,29 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int, login strin
 		item.UpdatedAt = time.Now()
 		err := db.GormDB.Save(item).Error
 		if err != nil {
-			return fmt.Errorf("failed to update github installation in the database. %v", err)
+			return nil, fmt.Errorf("failed to update github installation in the database. %v", err)
 		}
 	}
-	return nil
+	return item, nil
 }
 
-func (db *Database) GithubRepoRemoved(installationId int64, appId int, repoFullName string) error {
-	item := GithubAppInstallation{}
-	err := db.GormDB.Where("github_installation_id = ? AND status=? AND github_app_id=? AND repo=?", installationId, GithubAppInstallActive, appId, repoFullName).First(&item).Error
+func (db *Database) GithubRepoRemoved(installationId int64, appId int64, repoFullName string) (*GithubAppInstallation, error) {
+	item := &GithubAppInstallation{}
+	err := db.GormDB.Where("github_installation_id = ? AND status=? AND github_app_id=? AND repo=?", installationId, GithubAppInstallActive, appId, repoFullName).First(item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Printf("Record not found for installationId: %d, status=active, githubAppId: %d and repo: %s", installationId, appId, repoFullName)
-			return nil
+			return nil, nil
 		}
-		return fmt.Errorf("failed to find github installation in database. %v", err)
+		return nil, fmt.Errorf("failed to find github installation in database. %v", err)
 	}
 	item.Status = GithubAppInstallDeleted
 	item.UpdatedAt = time.Now()
 	err = db.GormDB.Save(item).Error
 	if err != nil {
-		return fmt.Errorf("failed to update github installation in the database. %v", err)
+		return nil, fmt.Errorf("failed to update github installation in the database. %v", err)
 	}
-	return nil
+	return item, nil
 }
 
 func (db *Database) GetGithubAppInstallationByOrgAndRepo(orgId any, repo string, status GithubAppInstallStatus) (*GithubAppInstallation, error) {
@@ -428,6 +430,7 @@ func (db *Database) CreateGithubInstallationLink(org *Organisation, installation
 		if l.OrganisationId != org.ID {
 			return nil, fmt.Errorf("GitHub app installation %v already linked to another org ", installationId)
 		}
+		log.Printf("installation %v has been linked to the org %v already.", installationId, org.Name)
 		// record already exist, do nothing
 		return &l, nil
 	}

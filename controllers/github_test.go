@@ -568,7 +568,10 @@ func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	// Return a function to teardown the test
 	return func(tb testing.TB) {
 		log.Println("teardown suite")
-		os.Remove(dbName)
+		err = os.Remove(dbName)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}, database
 }
 
