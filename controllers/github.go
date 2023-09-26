@@ -42,9 +42,9 @@ func GithubAppWebHook(c *gin.Context) {
 	}
 
 	switch event := event.(type) {
-	case github.InstallationEvent:
+	case *github.InstallationEvent:
 		if event.Action == github.String("created") {
-			err := handleInstallationCreatedEvent(&event)
+			err := handleInstallationCreatedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
@@ -52,7 +52,7 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 
 		if event.Action == github.String("deleted") {
-			err := handleInstallationDeletedEvent(&event)
+			err := handleInstallationDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
@@ -290,8 +290,8 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 
 	link, err := models.DB.GetGithubAppInstallationLink(installationId)
 	if err != nil {
-		log.Printf("Error getting branch name: %v", err)
-		return nil, nil, nil, nil, fmt.Errorf("error getting branch name")
+		log.Printf("Error getting GetGithubAppInstallationLink: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting github app link")
 	}
 
 	if link == nil {
