@@ -73,12 +73,12 @@ func GithubAppWebHook(c *gin.Context) {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
-	case github.IssueCommentEvent:
+	case *github.IssueCommentEvent:
 		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
 			c.String(http.StatusOK, "OK")
 			return
 		}
-		err := handleIssueCommentEvent(gh, &event)
+		err := handleIssueCommentEvent(gh, event)
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
