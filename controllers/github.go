@@ -73,6 +73,10 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 	case *github.IssueCommentEvent:
+		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
+			c.String(http.StatusOK, "OK")
+			return
+		}
 		err := handleIssueCommentEvent(gh, event)
 		if err != nil {
 			log.Printf("handleIssueCommentEvent error: %v", err)
