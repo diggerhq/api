@@ -339,12 +339,8 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	}
 
 	impactedProjectsJobMap := make(map[string]orchestrator.Job)
-	for _, p := range impactedProjects {
-		for _, j := range jobs {
-			if j.ProjectName == p.Name {
-				impactedProjectsJobMap[p.Name] = j
-			}
-		}
+	for _, j := range jobs {
+		impactedProjectsJobMap[j.ProjectName] = j
 	}
 
 	batchId, _, err := utils.ConvertJobsToDiggerJobs(impactedProjectsJobMap, impactedProjectsMap, projectsGraph, *branch, repoFullName)
