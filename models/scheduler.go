@@ -44,7 +44,7 @@ type GithubDiggerJobLink struct {
 	gorm.Model
 	DiggerJobId         string `gorm:"size:50,index:idx_digger_job_id"`
 	RepoFullName        string
-	GithubJobId         int64 `gorm:"index:idx_batch_id"`
+	GithubJobId         int64 `gorm:"index:idx_github_job_id"`
 	GithubWorkflowRunId int64
 	Status              DiggerJobLinkStatus
 }
