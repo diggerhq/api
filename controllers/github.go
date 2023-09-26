@@ -60,15 +60,15 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 
 		}
-	case github.InstallationRepositoriesEvent:
+	case *github.InstallationRepositoriesEvent:
 		if event.Action == github.String("added") {
-			err := handleInstallationRepositoriesAddedEvent(gh, &event)
+			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
 		if event.Action == github.String("removed") {
-			err := handleInstallationRepositoriesDeletedEvent(&event)
+			err := handleInstallationRepositoriesDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
@@ -84,9 +84,9 @@ func GithubAppWebHook(c *gin.Context) {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-	case github.PullRequestEvent:
+	case *github.PullRequestEvent:
 		log.Printf("Got pull request event for %v", event.PullRequest.ID)
-		err := handlePullRequestEvent(gh, &event)
+		err := handlePullRequestEvent(gh, event)
 		if err != nil {
 			log.Printf("handlePullRequestEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
