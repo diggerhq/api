@@ -147,11 +147,11 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 	installationId := *payload.Installation.ID
 	login := *payload.Installation.Account.Login
 	accountId := *payload.Installation.Account.ID
-	appId := int(*payload.Installation.AppID)
+	appId := *payload.Installation.AppID
 
 	for _, repo := range payload.RepositoriesAdded {
 		repoFullName := *repo.FullName
-		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+		_, err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
 		if err != nil {
 			log.Printf("GithubRepoAdded failed, error: %v\n", err)
 			return err
@@ -180,10 +180,10 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 
 func handleInstallationRepositoriesDeletedEvent(payload *github.InstallationRepositoriesEvent) error {
 	installationId := *payload.Installation.ID
-	appId := int(*payload.Installation.AppID)
+	appId := *payload.Installation.AppID
 	for _, repo := range payload.RepositoriesRemoved {
 		repoFullName := *repo.FullName
-		err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
+		_, err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -197,11 +197,12 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 	installationId := *installation.Installation.ID
 	login := *installation.Installation.Account.Login
 	accountId := *installation.Installation.Account.ID
-	appId := int(*installation.Installation.AppID)
+	appId := *installation.Installation.AppID
+
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Adding a new installation %d for repo: %s", installationId, repoFullName)
-		err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+		_, err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
 		if err != nil {
 			return err
 		}
@@ -215,7 +216,7 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 
 func handleInstallationDeletedEvent(installation *github.InstallationEvent) error {
 	installationId := *installation.Installation.ID
-	appId := int(*installation.Installation.AppID)
+	appId := *installation.Installation.AppID
 
 	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
@@ -229,7 +230,7 @@ func handleInstallationDeletedEvent(installation *github.InstallationEvent) erro
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Removing an installation %d for repo: %s", installationId, repoFullName)
-		err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
+		_, err := models.DB.GithubRepoRemoved(installationId, appId, repoFullName)
 		if err != nil {
 			return err
 		}
