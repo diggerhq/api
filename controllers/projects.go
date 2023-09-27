@@ -297,7 +297,6 @@ func SetJobStatusForProject(c *gin.Context) {
 			}
 
 			installations, err := models.DB.GetGithubAppInstallations(installationLink.GithubInstallationId)
-
 			if err != nil {
 				log.Printf("Error fetching installation: %v", err)
 				return

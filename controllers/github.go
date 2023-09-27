@@ -26,6 +26,7 @@ import (
 func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	gh := &utils.DiggerGithubRealClientProvider{}
+	log.Printf("GithubAppWebHook")
 
 	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 	if err != nil {
@@ -42,9 +43,12 @@ func GithubAppWebHook(c *gin.Context) {
 		return
 	}
 
+	log.Printf("github event type: %v\n", reflect.TypeOf(event))
+
 	switch event := event.(type) {
 	case *github.InstallationEvent:
-		if event.Action == github.String("created") {
+		log.Printf("InstallationEvent, action: %v\n", *event.Action)
+		if *event.Action == "created" {
 			err := handleInstallationCreatedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
@@ -52,28 +56,29 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 
-		if event.Action == github.String("deleted") {
+		if *event.Action == "deleted" {
 			err := handleInstallationDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
-
 		}
 	case *github.InstallationRepositoriesEvent:
-		if event.Action == github.String("added") {
+		log.Printf("InstallationRepositoriesEvent, action: %v\n", *event.Action)
+		if *event.Action == "added" {
 			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
-		if event.Action == github.String("removed") {
+		if *event.Action == "removed" {
 			err := handleInstallationRepositoriesDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
 			}
 		}
 	case *github.IssueCommentEvent:
+		log.Printf("IssueCommentEvent, action: %v\n", *event.Action)
 		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
 			c.String(http.StatusOK, "OK")
 			return
@@ -193,7 +198,6 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 	login := *installation.Installation.Account.Login
 	accountId := *installation.Installation.Account.ID
 	appId := int(*installation.Installation.AppID)
-
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Adding a new installation %d for repo: %s", installationId, repoFullName)
@@ -212,6 +216,16 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 func handleInstallationDeletedEvent(installation *github.InstallationEvent) error {
 	installationId := *installation.Installation.ID
 	appId := int(*installation.Installation.AppID)
+
+	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
+	if err != nil {
+		return err
+	}
+	_, err = models.DB.MakeGithubAppInstallationLinkInactive(link)
+	if err != nil {
+		return err
+	}
+
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Removing an installation %d for repo: %s", installationId, repoFullName)
