@@ -99,7 +99,7 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
-func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) (*models.Repo, *models.Organisation, error) {
+func createOrGetDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) (*models.Repo, *models.Organisation, error) {
 	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
 		log.Printf("Error fetching installation link: %v", err)
@@ -113,7 +113,20 @@ func createDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) 
 	}
 
 	diggerRepoName := strings.ReplaceAll(ghRepoFullName, "/", "-")
-	repo, err := models.DB.CreateRepo(diggerRepoName, org, `
+
+	repo, err := models.DB.GetRepo(orgId, diggerRepoName)
+
+	if err != nil {
+		log.Printf("Error fetching repo: %v", err)
+		return nil, nil, err
+	}
+
+	if repo != nil {
+		log.Printf("Digger repo already exists: %v", repo)
+		return repo, org, nil
+	}
+
+	repo, err = models.DB.CreateRepo(diggerRepoName, org, `
 generate_projects:
  include: "."
 `)
@@ -139,9 +152,9 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 			return err
 		}
 
-		_, org, err := createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, org, err := createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
-			log.Printf("createDiggerRepoForGithubRepo failed, error: %v\n", err)
+			log.Printf("createOrGetDiggerRepoForGithubRepo failed, error: %v\n", err)
 			return err
 		}
 
@@ -188,7 +201,7 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 		if err != nil {
 			return err
 		}
-		_, _, err = createDiggerRepoForGithubRepo(repoFullName, installationId)
+		_, _, err = createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			return err
 		}
