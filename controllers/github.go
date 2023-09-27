@@ -248,6 +248,11 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 
 	ghService, config, projectsGraph, branch, err := getDiggerConfig(gh, installationId, repoFullName, repoOwner, repoName, cloneURL, prNumber)
 
+	if err != nil {
+		log.Printf("getDiggerConfig error: %v", err)
+		return fmt.Errorf("error getting digger config")
+	}
+
 	impactedProjects, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, projectsGraph, ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
