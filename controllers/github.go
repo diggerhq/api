@@ -48,7 +48,7 @@ func GithubAppWebHook(c *gin.Context) {
 	switch event := event.(type) {
 	case *github.InstallationEvent:
 		log.Printf("InstallationEvent, action: %v\n", *event.Action)
-		if event.Action == github.String("created") {
+		if *event.Action == "created" {
 			err := handleInstallationCreatedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
@@ -56,7 +56,7 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 
-		if event.Action == github.String("deleted") {
+		if *event.Action == "deleted" {
 			err := handleInstallationDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
@@ -65,13 +65,13 @@ func GithubAppWebHook(c *gin.Context) {
 		}
 	case *github.InstallationRepositoriesEvent:
 		log.Printf("InstallationRepositoriesEvent, action: %v\n", *event.Action)
-		if event.Action == github.String("added") {
+		if *event.Action == "added" {
 			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo added event.")
 			}
 		}
-		if event.Action == github.String("removed") {
+		if *event.Action == "removed" {
 			err := handleInstallationRepositoriesDeletedEvent(event)
 			if err != nil {
 				c.String(http.StatusInternalServerError, "Failed to handle installation repo deleted event.")
