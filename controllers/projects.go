@@ -284,6 +284,11 @@ func SetJobStatusForProject(c *gin.Context) {
 	case "succeeded":
 		job.Status = models.DiggerJobSucceeded
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered from panic while executing goroutine dispatching digger jobs: %v ", r)
+				}
+			}()
 			ghClientProvider := &utils.DiggerGithubRealClientProvider{}
 			installationLink, err := models.DB.GetGithubInstallationLinkForOrg(orgId)
 			if err != nil {
@@ -298,6 +303,11 @@ func SetJobStatusForProject(c *gin.Context) {
 				return
 			}
 
+			if len(installations) == 0 {
+				log.Printf("No installations found for installation id %v", installationLink.GithubInstallationId)
+				return
+			}
+
 			jobLink, err := models.DB.GetDiggerJobLink(jobId)
 
 			if err != nil {
@@ -306,6 +316,12 @@ func SetJobStatusForProject(c *gin.Context) {
 			}
 
 			workflowFileName := "workflow.yml"
+
+			if !strings.Contains(jobLink.RepoFullName, "/") {
+				log.Printf("Repo full name %v does not contain a slash", jobLink.RepoFullName)
+				return
+			}
+
 			repoFullNameSplit := strings.Split(jobLink.RepoFullName, "/")
 			client, _, err := ghClientProvider.Get(installations[0].GithubAppId, installationLink.GithubInstallationId)
 			err = services.DiggerJobCompleted(client, job, repoFullNameSplit[0], repoFullNameSplit[1], workflowFileName)
