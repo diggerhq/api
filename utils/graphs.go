@@ -26,6 +26,8 @@ func ConvertJobsToDiggerJobs(jobsMap map[string]orchestrator.Job, projectMap map
 		marshalledJobsMap[job.ProjectName] = marshalled
 	}
 
+	log.Printf("marshalledJobsMap: %v\n", marshalledJobsMap)
+
 	batchId, _ := uuid.NewUUID()
 
 	graphWithImpactedProjectsOnly, err := ImpactedProjectsOnlyGraph(projectsGraph, projectMap)
