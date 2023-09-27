@@ -47,7 +47,7 @@ func GithubAppWebHook(c *gin.Context) {
 
 	switch event := event.(type) {
 	case *github.InstallationEvent:
-		log.Printf("InstallationEvent, action: %v\n", event.Action)
+		log.Printf("InstallationEvent, action: %v\n", *event.Action)
 		if event.Action == github.String("created") {
 			err := handleInstallationCreatedEvent(event)
 			if err != nil {
@@ -64,7 +64,7 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 	case *github.InstallationRepositoriesEvent:
-		log.Printf("InstallationRepositoriesEvent, action: %v\n", event.Action)
+		log.Printf("InstallationRepositoriesEvent, action: %v\n", *event.Action)
 		if event.Action == github.String("added") {
 			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
@@ -78,7 +78,7 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 	case *github.IssueCommentEvent:
-		log.Printf("IssueCommentEvent, action: %v\n", event.Action)
+		log.Printf("IssueCommentEvent, action: %v\n", *event.Action)
 		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
 			c.String(http.StatusOK, "OK")
 			return
