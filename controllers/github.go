@@ -185,8 +185,6 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 	login := *installation.Installation.Account.Login
 	accountId := *installation.Installation.Account.ID
 	appId := int(*installation.Installation.AppID)
-	log.Printf("handleInstallationCreatedEvent, installationId: %v", installationId)
-	log.Printf("handleInstallationCreatedEvent, installation.Repositories len: %v", len(installation.Repositories))
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Adding a new installation %d for repo: %s", installationId, repoFullName)
@@ -205,8 +203,16 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 func handleInstallationDeletedEvent(installation *github.InstallationEvent) error {
 	installationId := *installation.Installation.ID
 	appId := int(*installation.Installation.AppID)
-	log.Printf("handleInstallationDeletedEvent, installationId: %v", installationId)
-	log.Printf("handleInstallationDeletedEvent, installation.Repositories len: %v", len(installation.Repositories))
+
+	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
+	if err != nil {
+		return err
+	}
+	_, err = models.DB.MakeGithubAppInstallationLinkInactive(link)
+	if err != nil {
+		return err
+	}
+
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
 		log.Printf("Removing an installation %d for repo: %s", installationId, repoFullName)

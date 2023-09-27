@@ -475,6 +475,16 @@ func (db *Database) GetGithubInstallationLinkForInstallationId(installationId an
 	return &l, nil
 }
 
+func (db *Database) MakeGithubAppInstallationLinkInactive(link *GithubAppInstallationLink) (*GithubAppInstallationLink, error) {
+	link.Status = GithubAppInstallationLinkInactive
+	result := db.GormDB.Save(link)
+	if result.Error != nil {
+		log.Printf("Failed to update GithubAppInstallationLink, id: %v, error: %v", link.ID, result.Error)
+		return nil, result.Error
+	}
+	return link, nil
+}
+
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
 	link := GithubDiggerJobLink{Status: DiggerJobLinkCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
 	result := db.GormDB.Save(&link)
