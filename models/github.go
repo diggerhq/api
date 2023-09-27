@@ -26,11 +26,9 @@ type GithubAppInstallation struct {
 	Status               GithubAppInstallStatus
 }
 
-type GithubAppInstallationLinkStatus int8
-
 const (
-	GithubAppInstallationLinkActive   GithubAppInstallationLinkStatus = 1
-	GithubAppInstallationLinkInactive GithubAppInstallationLinkStatus = 2
+	GithubAppInstallationLinkActive   string = "active"
+	GithubAppInstallationLinkInactive string = "inactive"
 )
 
 // GithubAppInstallationLink links GitHub App installation Id to Digger's organisation Id
@@ -39,5 +37,5 @@ type GithubAppInstallationLink struct {
 	GithubInstallationId int64 `gorm:"index:idx_github_installation_org,unique"`
 	OrganisationId       uint  `gorm:"index:idx_github_installation_org,unique"`
 	Organisation         *Organisation
-	Status               GithubAppInstallationLinkStatus
+	Status               string
 }
