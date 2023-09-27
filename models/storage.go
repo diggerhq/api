@@ -270,6 +270,9 @@ func (db *Database) GetRepo(orgIdKey any, repoName string) (*Repo, error) {
 		Where("organisations.id = ? AND repos.name=?", orgIdKey, repoName).First(&repo).Error
 
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		log.Printf("Failed to find digger repo for orgId: %v, and repoName: %v, error: %v\n", orgIdKey, repoName, err)
 		return nil, err
 	}
@@ -445,7 +448,7 @@ func (db *Database) CreateGithubInstallationLink(org *Organisation, installation
 	}
 	for _, item := range list {
 		item.Status = GithubAppInstallationLinkInactive
-		db.GormDB.Save(item)
+		db.GormDB.Save(&item)
 	}
 
 	link := GithubAppInstallationLink{Organisation: org, GithubInstallationId: installationId, Status: GithubAppInstallationLinkActive}
@@ -476,6 +479,16 @@ func (db *Database) GetGithubInstallationLinkForInstallationId(installationId an
 		return nil, result.Error
 	}
 	return &l, nil
+}
+
+func (db *Database) MakeGithubAppInstallationLinkInactive(link *GithubAppInstallationLink) (*GithubAppInstallationLink, error) {
+	link.Status = GithubAppInstallationLinkInactive
+	result := db.GormDB.Save(link)
+	if result.Error != nil {
+		log.Printf("Failed to update GithubAppInstallationLink, id: %v, error: %v", link.ID, result.Error)
+		return nil, result.Error
+	}
+	return link, nil
 }
 
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
@@ -535,6 +548,9 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 }
 
 func (db *Database) CreateDiggerJob(batch uuid.UUID, serializedJob []byte, branchName string) (*DiggerJob, error) {
+	if serializedJob == nil || len(serializedJob) == 0 {
+		return nil, fmt.Errorf("serializedJob can't be empty")
+	}
 	jobId := uniuri.New()
 	job := &DiggerJob{DiggerJobId: jobId, Status: DiggerJobCreated,
 		BatchId: batch, SerializedJob: serializedJob, BranchName: branchName}
@@ -556,34 +572,25 @@ func (db *Database) UpdateDiggerJob(job *DiggerJob) error {
 	return nil
 }
 
-func (db *Database) GetPendingParentDiggerJobs() ([]DiggerJob, error) {
+func (db *Database) GetPendingParentDiggerJobs(batchId *uuid.UUID) ([]DiggerJob, error) {
 	jobs := make([]DiggerJob, 0)
 
-	result := db.GormDB.Where("status = ?", DiggerJobCreated).Find(&jobs)
+	joins := db.GormDB.Joins("LEFT JOIN digger_job_parent_links ON digger_jobs.digger_job_id = digger_job_parent_links.digger_job_id")
+
+	var where *gorm.DB
+	if batchId != nil {
+		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL AND digger_jobs.batch_id = ?", DiggerJobCreated, batchId)
+	} else {
+		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL", DiggerJobCreated)
+	}
+
+	result := where.Find(&jobs)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
 		}
 	}
-
-	filteredJobsWithNoParents := make([]DiggerJob, 0)
-
-	for _, job := range jobs {
-		parentLinks := make([]DiggerJobParentLink, 0)
-
-		result := db.GormDB.Where("digger_job_id = ?", job.DiggerJobId).Find(&parentLinks)
-
-		if result.Error != nil {
-			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return nil, result.Error
-			}
-		}
-		if len(parentLinks) == 0 {
-			filteredJobsWithNoParents = append(filteredJobsWithNoParents, job)
-		}
-	}
-
-	return filteredJobsWithNoParents, nil
+	return jobs, nil
 }
 
 func (db *Database) GetDiggerJob(jobId string) (*DiggerJob, error) {
@@ -630,22 +637,6 @@ func (db *Database) GetDiggerJobParentLinksChildId(childId *string) ([]DiggerJob
 	return jobParentLinks, nil
 }
 
-func (db *Database) GetPendingDiggerJobsWithoutParentForBatch(batchId uuid.UUID) ([]DiggerJob, error) {
-	jobs, err := db.GetPendingParentDiggerJobs()
-
-	if err != nil {
-		return nil, err
-	}
-	//filter jobs with batch id
-	filteredJobs := make([]DiggerJob, 0)
-	for _, job := range jobs {
-		if job.BatchId == batchId {
-			filteredJobs = append(filteredJobs, job)
-		}
-	}
-	return filteredJobs, nil
-}
-
 func (db *Database) GetOrganisation(tenantId any) (*Organisation, error) {
 	org := &Organisation{}
 	result := db.GormDB.Take(org, "external_id = ?", tenantId)
@@ -682,14 +673,26 @@ func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*
 }
 
 func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig string) (*Repo, error) {
-	repo := &Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
-	result := db.GormDB.Save(repo)
+	var repo Repo
+	// check if repo exist already, do nothing in this case
+	result := db.GormDB.Where("name = ? AND organisation_id=?", name, org.ID).Find(&repo)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	if result.RowsAffected > 0 {
+		// record already exist, do nothing
+		return &repo, nil
+	}
+	repo = Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
+	result = db.GormDB.Save(&repo)
 	if result.Error != nil {
 		log.Printf("Failed to create repo: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
 	log.Printf("Repo %s, (id: %v) has been created successfully\n", name, repo.ID)
-	return repo, nil
+	return &repo, nil
 }
 
 func (db *Database) GetToken(tenantId any) (*Token, error) {

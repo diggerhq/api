@@ -472,6 +472,100 @@ var installationRepositoriesDeletedPayload = `{
   }
 }`
 
+var installationCreatedEvent = `
+{
+  "action": "created",
+  "installation": {
+    "id": 41584295,
+    "account": {
+      "login": "diggerhq",
+      "id": 71334590,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjcxMzM0NTkw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/71334590?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/diggerhq",
+      "html_url": "https://github.com/diggerhq",
+      "followers_url": "https://api.github.com/users/diggerhq/followers",
+      "following_url": "https://api.github.com/users/diggerhq/following{/other_user}",
+      "gists_url": "https://api.github.com/users/diggerhq/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/diggerhq/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/diggerhq/subscriptions",
+      "organizations_url": "https://api.github.com/users/diggerhq/orgs",
+      "repos_url": "https://api.github.com/users/diggerhq/repos",
+      "events_url": "https://api.github.com/users/diggerhq/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/diggerhq/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/41584295/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/organizations/diggerhq/settings/installations/41584295",
+    "app_id": 392316,
+    "app_slug": "digger-cloud",
+    "target_id": 71334590,
+    "target_type": "Organization",
+    "permissions": {
+      "issues": "write",
+      "actions": "write",
+      "secrets": "read",
+      "metadata": "read",
+      "statuses": "read",
+      "workflows": "write",
+      "pull_requests": "write",
+      "actions_variables": "read"
+    },
+    "events": [
+      "issues",
+      "issue_comment",
+      "pull_request",
+      "pull_request_review",
+      "pull_request_review_comment",
+      "pull_request_review_thread",
+      "status"
+    ],
+    "created_at": "2023-09-26T14:49:27.000+01:00",
+    "updated_at": "2023-09-26T14:49:28.000+01:00",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [
+
+    ],
+    "suspended_by": null,
+    "suspended_at": null
+  },
+  "repositories": [
+    {
+      "id": 696378594,
+      "node_id": "R_kgDOKYHk4g",
+      "name": "parallel_jobs_demo",
+      "full_name": "diggerhq/parallel_jobs_demo",
+      "private": false
+    }
+  ],
+  "requester": null,
+  "sender": {
+    "login": "motatoes",
+    "id": 1627972,
+    "node_id": "MDQ6VXNlcjE2Mjc5NzI=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/1627972?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/motatoes",
+    "html_url": "https://github.com/motatoes",
+    "followers_url": "https://api.github.com/users/motatoes/followers",
+    "following_url": "https://api.github.com/users/motatoes/following{/other_user}",
+    "gists_url": "https://api.github.com/users/motatoes/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/motatoes/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/motatoes/subscriptions",
+    "organizations_url": "https://api.github.com/users/motatoes/orgs",
+    "repos_url": "https://api.github.com/users/motatoes/repos",
+    "events_url": "https://api.github.com/users/motatoes/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/motatoes/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}`
+
 func setupSuite(tb testing.TB) (func(tb testing.TB), *models.Database) {
 	log.Println("setup suite")
 
@@ -614,7 +708,7 @@ func TestGithubHandleIssueCommentEvent(t *testing.T) {
 	err = handleIssueCommentEvent(gh, &payload)
 	assert.NoError(t, err)
 
-	jobs, err := models.DB.GetPendingParentDiggerJobs()
+	jobs, err := models.DB.GetPendingParentDiggerJobs(nil)
 	assert.Equal(t, 0, len(jobs))
 }
 
@@ -785,7 +879,26 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	mockedHTTPClient := mock.NewMockedHTTPClient()
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			github.RepositoryContent{},
+		),
+	)
 
 	gh := &utils.DiggerGithubClientMockProvider{}
 	gh.MockedHTTPClient = mockedHTTPClient
@@ -793,7 +906,7 @@ func TestGithubInstallationRepoAddedEvent(t *testing.T) {
 	var payload github.InstallationRepositoriesEvent
 	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
 	assert.NoError(t, err)
-	err = handleInstallationRepositoriesAddedEvent(&payload)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
 	assert.NoError(t, err)
 
 	orgId := 1
@@ -831,4 +944,123 @@ func TestGithubInstallationRepoDeletedEvent(t *testing.T) {
 	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesRemoved[0].FullName, models.GithubAppInstallDeleted)
 	assert.NoError(t, err)
 	assert.NotNil(t, appInstall)
+}
+
+func TestGithubInstallationRepoAddedDiggerWorkflowDoesntExistEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			nil,
+		),
+		mock.WithRequestMatch(
+			mock.PutReposContentsByOwnerByRepoByPath,
+			nil,
+		),
+		mock.WithRequestMatch(
+			mock.PostReposPullsByOwnerByRepo,
+			nil,
+		),
+	)
+
+	gh := &utils.DiggerGithubClientMockProvider{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload github.InstallationRepositoriesEvent
+	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
+}
+
+func TestGithubInstallationRepoAddedDiggerWorkflowExistEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	githubAppId := int64(360162)
+	login := "test"
+	accountId := 1
+	installationId := int64(41584295)
+	repoFullName := "diggerhq/test-github-action"
+	_, err := models.DB.CreateGithubAppInstallation(installationId, githubAppId, login, accountId, repoFullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetReposByOwnerByRepo,
+			github.Repository{
+				Name:          github.String("testRepo"),
+				DefaultBranch: github.String("main"),
+			}),
+		mock.WithRequestMatch(
+			mock.GetReposGitRefByOwnerByRepoByRef,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}, Ref: github.String("test_ref")},
+		),
+		mock.WithRequestMatch(
+			mock.PostReposGitRefsByOwnerByRepo,
+			github.Reference{Object: &github.GitObject{SHA: github.String("test")}},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposContentsByOwnerByRepoByPath,
+			github.RepositoryContent{Content: github.String("workflow file")},
+		),
+	)
+
+	gh := &utils.DiggerGithubClientMockProvider{}
+	gh.MockedHTTPClient = mockedHTTPClient
+
+	var payload github.InstallationRepositoriesEvent
+	err = json.Unmarshal([]byte(installationRepositoriesAddedPayload), &payload)
+	assert.NoError(t, err)
+	err = handleInstallationRepositoriesAddedEvent(gh, &payload)
+	assert.NoError(t, err)
+
+	orgId := 1
+	appInstall, err := models.DB.GetGithubAppInstallationByOrgAndRepo(orgId, *payload.RepositoriesAdded[0].FullName, models.GithubAppInstallActive)
+	assert.NoError(t, err)
+	assert.NotNil(t, appInstall)
+}
+
+func TestGithubHandleInstallationCreatedEvent(t *testing.T) {
+	teardownSuite, _ := setupSuite(t)
+	defer teardownSuite(t)
+
+	var event github.InstallationEvent
+	err := json.Unmarshal([]byte(installationCreatedEvent), &event)
+	assert.NoError(t, err)
+	err = handleInstallationCreatedEvent(&event)
+	assert.NoError(t, err)
 }
