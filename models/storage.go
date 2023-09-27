@@ -664,9 +664,9 @@ func (db *Database) CreateProject(name string, org *Organisation, repo *Repo) (*
 }
 
 func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig string) (*Repo, error) {
-	var repo *Repo
+	var repo Repo
 	// check if repo exist already, do nothing in this case
-	result := db.GormDB.Where("name = ? AND organisation_id=?", name, org.ID).Find(repo)
+	result := db.GormDB.Where("name = ? AND organisation_id=?", name, org.ID).Find(&repo)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error
@@ -674,16 +674,16 @@ func (db *Database) CreateRepo(name string, org *Organisation, diggerConfig stri
 	}
 	if result.RowsAffected > 0 {
 		// record already exist, do nothing
-		return repo, nil
+		return &repo, nil
 	}
-	repo = &Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
-	result = db.GormDB.Save(repo)
+	repo = Repo{Name: name, Organisation: org, DiggerConfig: diggerConfig}
+	result = db.GormDB.Save(&repo)
 	if result.Error != nil {
 		log.Printf("Failed to create repo: %v, error: %v\n", name, result.Error)
 		return nil, result.Error
 	}
 	log.Printf("Repo %s, (id: %v) has been created successfully\n", name, repo.ID)
-	return repo, nil
+	return &repo, nil
 }
 
 func (db *Database) GetToken(tenantId any) (*Token, error) {
