@@ -545,6 +545,9 @@ func (db *Database) GetOrganisationById(orgId any) (*Organisation, error) {
 }
 
 func (db *Database) CreateDiggerJob(batch uuid.UUID, serializedJob []byte, branchName string) (*DiggerJob, error) {
+	if serializedJob == nil || len(serializedJob) == 0 {
+		return nil, fmt.Errorf("serializedJob can't be empty")
+	}
 	jobId := uniuri.New()
 	job := &DiggerJob{DiggerJobId: jobId, Status: DiggerJobCreated,
 		BatchId: batch, SerializedJob: serializedJob, BranchName: branchName}
