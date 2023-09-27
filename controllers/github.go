@@ -26,6 +26,7 @@ import (
 func GithubAppWebHook(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	gh := &utils.DiggerGithubRealClientProvider{}
+	log.Printf("GithubAppWebHook")
 
 	payload, err := github.ValidatePayload(c.Request, []byte(os.Getenv("GITHUB_WEBHOOK_SECRET")))
 	if err != nil {
@@ -42,8 +43,11 @@ func GithubAppWebHook(c *gin.Context) {
 		return
 	}
 
+	log.Printf("github event type: %v\n", reflect.TypeOf(event))
+
 	switch event := event.(type) {
 	case *github.InstallationEvent:
+		log.Printf("InstallationEvent, action: %v\n", event.Action)
 		if event.Action == github.String("created") {
 			err := handleInstallationCreatedEvent(event)
 			if err != nil {
@@ -58,9 +62,9 @@ func GithubAppWebHook(c *gin.Context) {
 				c.String(http.StatusInternalServerError, "Failed to handle webhook event.")
 				return
 			}
-
 		}
 	case *github.InstallationRepositoriesEvent:
+		log.Printf("InstallationRepositoriesEvent, action: %v\n", event.Action)
 		if event.Action == github.String("added") {
 			err := handleInstallationRepositoriesAddedEvent(gh, event)
 			if err != nil {
@@ -74,6 +78,7 @@ func GithubAppWebHook(c *gin.Context) {
 			}
 		}
 	case *github.IssueCommentEvent:
+		log.Printf("IssueCommentEvent, action: %v\n", event.Action)
 		if event.Sender.Type != nil && *event.Sender.Type == "Bot" {
 			c.String(http.StatusOK, "OK")
 			return
