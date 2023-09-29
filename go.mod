@@ -1,6 +1,6 @@
 module digger.dev/cloud
 
-go 1.20
+go 1.21
 
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
