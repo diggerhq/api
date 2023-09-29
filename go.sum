@@ -387,6 +387,8 @@ github.com/diggerhq/lib-digger-config v0.0.6 h1:uxfYvhDSkNSUDGKwn/q+B2rYIxJrIHmw
 github.com/diggerhq/lib-digger-config v0.0.6/go.mod h1:C0Pc3I2H9jSyhEfDeDxUImghQ1iOJqYVfnCLyQpmy7I=
 github.com/diggerhq/lib-digger-config v0.0.7 h1:mU2833nn95l5UWdZtwkD9dGXWhj7R3fARYGjUp3UDoQ=
 github.com/diggerhq/lib-digger-config v0.0.7/go.mod h1:ZmzfsiKcgo+HoDTI4W5KT5Y9vrA2A+BfAWk3KSH5V7A=
+github.com/diggerhq/lib-digger-config v0.0.8 h1:Y/heLwhMyZ/bWntSBpOkzFlmKTX/PrYxPLDoDlV7az4=
+github.com/diggerhq/lib-digger-config v0.0.8/go.mod h1:ZmzfsiKcgo+HoDTI4W5KT5Y9vrA2A+BfAWk3KSH5V7A=
 github.com/diggerhq/lib-orchestrator v0.0.9 h1:tF1XmcPY9/lYLYsQvjDGH+7zaxgpjIwTd/KbT9YyN+c=
 github.com/diggerhq/lib-orchestrator v0.0.9/go.mod h1:QYIKZG7q2b02eL8hp3PLYg5L2EqzPtgVzm8pxCAFuYs=
 github.com/diggerhq/lib-orchestrator v0.0.11 h1:5kyiXws3+Ql3UHxDuruRIcm0KEYpO+lo/z1qyb+Auu4=
