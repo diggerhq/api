@@ -517,6 +517,9 @@ func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *githu
     inputs:
       job:
         required: true
+      id:
+        description: 'run identifier'
+        required: false
 jobs:
   build:
     name: %v
