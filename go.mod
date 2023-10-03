@@ -6,7 +6,7 @@ require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
 	github.com/dchest/uniuri v1.2.0
-	github.com/diggerhq/lib-digger-config v0.0.7
+	github.com/diggerhq/lib-digger-config v0.1.12
 	github.com/diggerhq/lib-orchestrator v0.0.11
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.24.1
@@ -99,7 +99,7 @@ require (
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408 // indirect
 	github.com/gruntwork-io/go-commons v0.17.1 // indirect
 	github.com/gruntwork-io/gruntwork-cli v0.7.0 // indirect
-	github.com/gruntwork-io/terragrunt v0.50.14 // indirect
+	github.com/gruntwork-io/terragrunt v0.51.7 // indirect
 	github.com/gruntwork-io/terratest v0.41.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -183,7 +183,7 @@ require (
 	github.com/terraform-linters/tflint-ruleset-terraform v0.4.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/ulikunitz/xz v0.5.10 // indirect
+	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/urfave/cli/v2 v2.25.5 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
