@@ -579,7 +579,7 @@ func (db *Database) GetPendingParentDiggerJobs(batchId *uuid.UUID) ([]DiggerJob,
 
 	var where *gorm.DB
 	if batchId != nil {
-		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL AND digger_jobs.batch_id = ?", DiggerJobCreated, batchId)
+		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL AND digger_jobs.batch_id = ?", DiggerJobCreated, *batchId)
 	} else {
 		where = joins.Where("digger_jobs.status = ? AND digger_job_parent_links.id IS NULL", DiggerJobCreated)
 	}

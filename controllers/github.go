@@ -90,7 +90,7 @@ func GithubAppWebHook(c *gin.Context) {
 			return
 		}
 	case *github.PullRequestEvent:
-		log.Printf("Got pull request event for %v", event.PullRequest.ID)
+		log.Printf("Got pull request event for %d", *event.PullRequest.ID)
 		err := handlePullRequestEvent(gh, event)
 		if err != nil {
 			log.Printf("handlePullRequestEvent error: %v", err)
@@ -281,7 +281,7 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, *batchId)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -413,7 +413,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, *batchId)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -421,8 +421,13 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	return nil
 }
 
-func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId uuid.UUID) error {
-	diggerJobs, err := models.DB.GetPendingParentDiggerJobs(&batchId)
+func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId *uuid.UUID) error {
+	diggerJobs, err := models.DB.GetPendingParentDiggerJobs(batchId)
+
+	if err != nil {
+		log.Printf("failed to get pending digger jobs, %v\n", err)
+		return fmt.Errorf("failed to get pending digger jobs, %v\n", err)
+	}
 
 	log.Printf("number of diggerJobs:%v\n", len(diggerJobs))
 
