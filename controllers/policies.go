@@ -211,7 +211,7 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 	repo := c.Param("repo")
 	projectName := c.Param("projectName")
 	repoModel := models.Repo{}
-	repoResult := models.DB.GormDB.Where("name = ?", repo).Take(&repoModel)
+	repoResult := models.DB.GormDB.Where("organisation_id = ? AND name = ?", orgID, repo).Take(&repoModel)
 	if repoResult.RowsAffected == 0 {
 		repoModel = models.Repo{
 			OrganisationID: orgID.(uint),
@@ -226,7 +226,7 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 	}
 
 	projectModel := models.Project{}
-	projectResult := models.DB.GormDB.Where("name = ?", projectName).Take(&projectModel)
+	projectResult := models.DB.GormDB.Where("name = ? AND repo_id = ?", projectName, repoModel.ID).Take(&projectModel)
 	if projectResult.RowsAffected == 0 {
 		projectModel = models.Project{
 			OrganisationID: orgID.(uint),
@@ -243,7 +243,7 @@ func upsertPolicyForRepoAndProject(c *gin.Context, policyType string) {
 
 	var policy models.Policy
 
-	policyResult := models.DB.GormDB.Where("organisation_id = ? AND repo_id = ? AND project_id = ? AND type = ?", orgID, repoModel.ID, projectModel.ID, policyType).Take(&policy)
+	policyResult := models.DB.GormDB.Where("repo_id = ? AND project_id = ? AND type = ?", repoModel.ID, projectModel.ID, policyType).Take(&policy)
 
 	if policyResult.RowsAffected == 0 {
 		err := models.DB.GormDB.Create(&models.Policy{

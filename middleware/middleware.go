@@ -106,6 +106,7 @@ func WebAuth(auth services.Auth) gin.HandlerFunc {
 
 		publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
 		if err != nil {
+			println(jwtPublicKey)
 			log.Printf("Error while parsing public key: %v", err.Error())
 			c.String(http.StatusInternalServerError, "Error occurred while parsing public key")
 			c.Abort()
