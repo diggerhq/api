@@ -83,6 +83,7 @@ func main() {
 	r.POST("/github-app-webhook", controllers.GithubAppWebHook)
 
 	tenantActionsGroup := r.Group("/tenants")
+	tenantActionsGroup.Use(middleware.CORSMiddleware())
 	tenantActionsGroup.POST("/associateTenantIdToDiggerOrg", controllers.AssociateTenantIdToDiggerOrg)
 
 	githubGroup := r.Group("/github")
