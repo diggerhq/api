@@ -82,6 +82,9 @@ func main() {
 
 	r.POST("/github-app-webhook", controllers.GithubAppWebHook)
 
+	tenantActionsGroup := r.Group("/tenants")
+	r.POST("/associateTenantIdToDiggerOrg", controllers.AssociateTenantIdToDiggerOrg)
+
 	githubGroup := r.Group("/github")
 	githubGroup.Use(middleware.WebAuth(auth))
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
