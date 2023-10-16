@@ -84,7 +84,7 @@ func main() {
 
 	tenantActionsGroup := r.Group("/tenants")
 	tenantActionsGroup.Use(middleware.CORSMiddleware())
-	tenantActionsGroup.POST("/associateTenantIdToDiggerOrg", controllers.AssociateTenantIdToDiggerOrg)
+	tenantActionsGroup.Any("/associateTenantIdToDiggerOrg", controllers.AssociateTenantIdToDiggerOrg)
 
 	githubGroup := r.Group("/github")
 	githubGroup.Use(middleware.WebAuth(auth))

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type TenantCreatedEvent struct {
@@ -33,17 +34,16 @@ func CreateFronteggOrgFromWebhook(c *gin.Context) {
 }
 
 func AssociateTenantIdToDiggerOrg(c *gin.Context) {
-	var tokenString string
-	tokenString, err := c.Cookie("token")
-	if err != nil {
-		log.Printf("can't get a cookie token, %v\n", err)
-		c.AbortWithStatus(http.StatusForbidden)
+	authHeader := c.Request.Header.Get("Authorization")
+	if authHeader == "" {
+		c.String(http.StatusForbidden, "No Authorization header provided")
+		c.Abort()
 		return
 	}
-
-	if tokenString == "" {
-		log.Println("auth token is empty")
-		c.AbortWithStatus(http.StatusForbidden)
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		c.String(http.StatusForbidden, "Could not find bearer token in Authorization header")
+		c.Abort()
 		return
 	}
 
@@ -117,6 +117,7 @@ func AssociateTenantIdToDiggerOrg(c *gin.Context) {
 				models.DB.CreateOrganisation(nameStr, "", tenantIdStr)
 			}
 
+			c.AbortWithStatus(http.StatusOK)
 		} else if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
 				log.Println("That's not even a token")
