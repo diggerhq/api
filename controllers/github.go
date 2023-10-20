@@ -149,13 +149,14 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 	accountId := *payload.Installation.Account.ID
 	appId := *payload.Installation.AppID
 
+	_, err := models.DB.GithubInstallationCreated(installationId, appId, login, accountId)
+	if err != nil {
+		log.Printf("GithubInstallationCreated failed, error: %v\n", err)
+		return err
+	}
+
 	for _, repo := range payload.RepositoriesAdded {
 		repoFullName := *repo.FullName
-		_, err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
-		if err != nil {
-			log.Printf("GithubRepoAdded failed, error: %v\n", err)
-			return err
-		}
 
 		_, org, err := createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
@@ -199,13 +200,15 @@ func handleInstallationCreatedEvent(installation *github.InstallationEvent) erro
 	accountId := *installation.Installation.Account.ID
 	appId := *installation.Installation.AppID
 
+	log.Printf("Adding a new installation %d", installationId)
+	_, err := models.DB.GithubInstallationCreated(installationId, appId, login, accountId)
+	if err != nil {
+		return err
+	}
+
 	for _, repo := range installation.Repositories {
 		repoFullName := *repo.FullName
-		log.Printf("Adding a new installation %d for repo: %s", installationId, repoFullName)
-		_, err := models.DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
-		if err != nil {
-			return err
-		}
+		log.Printf("Adding a new repo: %s", repoFullName)
 		_, _, err = createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
 		if err != nil {
 			return err

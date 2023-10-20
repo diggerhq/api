@@ -22,7 +22,6 @@ type GithubAppInstallation struct {
 	GithubAppId          int64
 	AccountId            int
 	Login                string
-	Repo                 string
 	Status               GithubAppInstallStatus
 }
 
