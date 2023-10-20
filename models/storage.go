@@ -299,7 +299,7 @@ func (db *Database) GithubInstallationCreated(installationId int64, appId int64,
 
 	// check if item exist already
 	item := &GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, appId).First(item)
+	result := db.GormDB.Where("github_installation_id = ? AND github_app_id=?", installationId, appId).First(item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("failed to find github installation in database. %v", result.Error)
