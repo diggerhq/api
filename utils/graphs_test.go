@@ -1,7 +1,7 @@
 package utils
 
 import (
-	configuration "github.com/diggerhq/lib-digger-config"
+	configuration "github.com/diggerhq/digger/libs/digger_config"
 	"testing"
 )
 

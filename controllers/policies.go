@@ -5,7 +5,7 @@ import (
 	"digger.dev/cloud/models"
 	"errors"
 	"fmt"
-	dg_configuration "github.com/diggerhq/lib-digger-config"
+	dg_configuration "github.com/diggerhq/digger/libs/digger_config"
 	"github.com/dominikbraun/graph"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
