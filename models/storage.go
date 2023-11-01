@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dchest/uniuri"
-	configuration "github.com/diggerhq/lib-digger-config"
+	configuration "github.com/diggerhq/digger/libs/digger_config"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
