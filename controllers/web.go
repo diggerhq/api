@@ -1,21 +1,22 @@
 package controllers
 
 import (
-	"digger.dev/cloud/config"
-	"digger.dev/cloud/middleware"
-	"digger.dev/cloud/models"
-	"digger.dev/cloud/services"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/robert-nix/ansihtml"
-	"golang.org/x/exp/maps"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	"digger.dev/cloud/config"
+	"digger.dev/cloud/middleware"
+	"digger.dev/cloud/models"
+	"digger.dev/cloud/services"
+	"github.com/gin-gonic/gin"
+	"github.com/robert-nix/ansihtml"
+	"golang.org/x/exp/maps"
 )
 
 type WebController struct {
@@ -115,7 +116,7 @@ func (web *WebController) AddPolicyPage(c *gin.Context) {
 
 		policyTypes := make([]string, 0)
 		policyTypes = append(policyTypes, "drift")
-		policyTypes = append(policyTypes, "terraform")
+		policyTypes = append(policyTypes, "plan")
 		policyTypes = append(policyTypes, "access")
 
 		log.Printf("projects: %v\n", projects)
