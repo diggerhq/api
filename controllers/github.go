@@ -438,7 +438,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 		jobString := string(job.SerializedJob)
 		log.Printf("jobString: %v \n", jobString)
 		// TODO: make workflow file name configurable
-		_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "workflow.yml", github.CreateWorkflowDispatchEventRequest{
+		_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "digger.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
 			Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 		})
@@ -458,7 +458,7 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 }
 
 // CreateDiggerWorkflowWithPullRequest for specified repo it will create a new branch 'digger/configure' and a pull request to default branch
-// in the pull request it will try to add .github/workflows/workflow.yml file with workflow for digger
+// in the pull request it will try to add .github/workflows/digger.yml file with workflow for digger
 func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *github.Client, githubRepo string) error {
 	ctx := context.Background()
 	if strings.Index(githubRepo, "/") == -1 {
