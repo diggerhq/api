@@ -314,7 +314,7 @@ func SetJobStatusForProject(c *gin.Context) {
 				return
 			}
 
-			workflowFileName := "workflow.yml"
+			workflowFileName := "digger.yml"
 
 			if !strings.Contains(jobLink.RepoFullName, "/") {
 				log.Printf("Repo full name %v does not contain a slash", jobLink.RepoFullName)

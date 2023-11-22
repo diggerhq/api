@@ -474,7 +474,7 @@ func CreateDiggerWorkflowWithPullRequest(org *models.Organisation, client *githu
 	// check if workflow file exist already in default branch, if it does, do nothing
 	// else try to create a branch and PR
 
-	workflowFilePath := ".github/workflows/workflow.yml"
+	workflowFilePath := ".github/workflows/digger.yml"
 	repo, _, _ := client.Repositories.Get(ctx, repoOwner, repoName)
 	defaultBranch := *repo.DefaultBranch
 
