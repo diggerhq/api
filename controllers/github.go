@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -94,6 +95,14 @@ func GithubAppWebHook(c *gin.Context) {
 		err := handlePullRequestEvent(gh, event)
 		if err != nil {
 			log.Printf("handlePullRequestEvent error: %v", err)
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+	case *github.PushEvent:
+		log.Printf("Got push event for %d", *event.PushID)
+		err := handlePushEvent(gh, event)
+		if err != nil {
+			log.Printf("handlePushEvent error: %v", err)
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -238,6 +247,45 @@ func handleInstallationDeletedEvent(installation *github.InstallationEvent) erro
 	return nil
 }
 
+func handlePushEvent(gh utils.GithubClientProvider, payload *github.PushEvent) error {
+	installationId := *payload.Installation.ID
+	repoName := *payload.Repo.Name
+	repoFullName := *payload.Repo.FullName
+	repoOwner := *payload.Repo.Owner.Login
+	cloneURL := *payload.Repo.CloneURL
+	ref := *payload.Ref
+	defaultBranch := *payload.Repo.DefaultBranch
+
+	if strings.HasSuffix(ref, defaultBranch) {
+		link, err := models.DB.GetGithubAppInstallationLink(installationId)
+		if err != nil {
+			log.Printf("Error getting GetGithubAppInstallationLink: %v", err)
+			return fmt.Errorf("error getting github app link")
+		}
+
+		repo, err := models.DB.GetRepo(link.OrganisationId, repoName)
+		if err != nil {
+			log.Printf("Error getting GetGithubAppInstallationLink: %v", err)
+			return fmt.Errorf("error getting github app link")
+		}
+
+		_, token, err := getGithubService(gh, installationId, repoFullName, repoOwner, repoName)
+		if err != nil {
+			log.Printf("Error getting github service: %v", err)
+			return fmt.Errorf("error getting github service")
+		}
+		utils.CloneGitRepoAndDoAction(cloneURL, defaultBranch, *token, func(dir string) {
+			dat, err := os.ReadFile(path.Join(dir, "digger.yml"))
+			if err != nil {
+				log.Printf("ERROR fetching digger.yml file: %v")
+			}
+			models.DB.UpdateRepoDiggerConfig(link.OrganisationId, string(dat), repo)
+		})
+	}
+
+	return nil
+}
+
 func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullRequestEvent) error {
 	installationId := *payload.Installation.ID
 	repoName := *payload.Repo.Name
@@ -290,23 +338,23 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 	return nil
 }
 
-func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, dg_configuration.Project], *string, error) {
+func getGithubService(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string) (*dg_github.GithubService, *string, error) {
 	installation, err := models.DB.GetGithubAppInstallationByIdAndRepo(installationId, repoFullName)
 	if err != nil {
 		log.Printf("Error getting installation: %v", err)
-		return nil, nil, nil, nil, fmt.Errorf("error getting installation")
+		return nil, nil, fmt.Errorf("Error getting installation: %v", err)
 	}
 
 	_, err = models.DB.GetGithubApp(installation.GithubAppId)
 	if err != nil {
 		log.Printf("Error getting app: %v", err)
-		return nil, nil, nil, nil, fmt.Errorf("error getting app")
+		return nil, nil, fmt.Errorf("Error getting app: %v", err)
 	}
 
 	ghClient, token, err := gh.Get(installation.GithubAppId, installation.GithubInstallationId)
 	if err != nil {
 		log.Printf("Error creating github app client: %v", err)
-		return nil, nil, nil, nil, fmt.Errorf("error creating github app client")
+		return nil, nil, fmt.Errorf("Error creating github app client: %v", err)
 	}
 
 	ghService := dg_github.GithubService{
@@ -315,6 +363,14 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 		Owner:    repoOwner,
 	}
 
+	return &ghService, token, nil
+}
+func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFullName string, repoOwner string, repoName string, cloneUrl string, prNumber int) (*dg_github.GithubService, *dg_configuration.DiggerConfig, graph.Graph[string, dg_configuration.Project], *string, error) {
+	ghService, token, err := getGithubService(gh, installationId, repoFullName, repoOwner, repoName)
+	if err != nil {
+		log.Printf("Error getting github service: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("error getting github service")
+	}
 	var prBranch string
 	prBranch, err = ghService.GetBranchName(prNumber)
 	if err != nil {
@@ -365,7 +421,7 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 		return nil, nil, nil, nil, fmt.Errorf("error loading digger config")
 	}
 	log.Printf("Digger config parsed successfully\n")
-	return &ghService, config, dependencyGraph, &prBranch, nil
+	return ghService, config, dependencyGraph, &prBranch, nil
 }
 
 func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.IssueCommentEvent) error {
