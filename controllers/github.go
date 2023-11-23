@@ -7,10 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
-	"path"
 
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
@@ -264,10 +264,16 @@ func handlePushEvent(gh utils.GithubClientProvider, payload *github.PushEvent) e
 			return fmt.Errorf("error getting github app link")
 		}
 
-		repo, err := models.DB.GetRepo(link.OrganisationId, repoName)
+		orgId := link.OrganisationId
+		diggerRepoName := strings.ReplaceAll(repoFullName, "/", "-")
+		repo, err := models.DB.GetRepo(orgId, diggerRepoName)
 		if err != nil {
-			log.Printf("Error getting GetGithubAppInstallationLink: %v", err)
+			log.Printf("Error getting Repo: %v", err)
 			return fmt.Errorf("error getting github app link")
+		}
+		if repo == nil {
+			log.Printf("Repo not found: Org: %v | repo: %v", orgId, diggerRepoName)
+			return fmt.Errorf("Repo not found: Org: %v | repo: %v", orgId, diggerRepoName)
 		}
 
 		_, token, err := getGithubService(gh, installationId, repoFullName, repoOwner, repoName)
