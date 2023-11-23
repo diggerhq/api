@@ -2,11 +2,19 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"reflect"
+	"strconv"
+	"strings"
+	"path"
+
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/utils"
-	"encoding/json"
-	"fmt"
 	dg_configuration "github.com/diggerhq/digger/libs/digger_config"
 	orchestrator "github.com/diggerhq/digger/libs/orchestrator"
 	dg_github "github.com/diggerhq/digger/libs/orchestrator/github"
@@ -15,13 +23,6 @@ import (
 	"github.com/google/go-github/v55/github"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
-	"log"
-	"net/http"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 func GithubAppWebHook(c *gin.Context) {
@@ -661,7 +662,9 @@ func GithubAppCallbackPage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating GitHub installation"})
 		return
 	}
-	c.Redirect(http.StatusFound, "/repos")
+	//TODO move to config; same for all other os.Getenv() calls in this file
+	callbackSuccessRedirectURL := os.Getenv("CALLBACK_SUCCESS_REDIRECT_URL")
+	c.Redirect(http.StatusFound, callbackSuccessRedirectURL)
 }
 
 func GithubReposPage(c *gin.Context) {
