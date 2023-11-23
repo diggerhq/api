@@ -99,7 +99,7 @@ func GithubAppWebHook(c *gin.Context) {
 			return
 		}
 	case *github.PushEvent:
-		log.Printf("Got push event for %d", *event.PushID)
+		log.Printf("Got push event for %d", event.Repo.URL)
 		err := handlePushEvent(gh, event)
 		if err != nil {
 			log.Printf("handlePushEvent error: %v", err)
