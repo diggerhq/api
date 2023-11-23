@@ -283,8 +283,9 @@ func handlePushEvent(gh utils.GithubClientProvider, payload *github.PushEvent) e
 		}
 		utils.CloneGitRepoAndDoAction(cloneURL, defaultBranch, *token, func(dir string) {
 			dat, err := os.ReadFile(path.Join(dir, "digger.yml"))
+			//TODO: fail here and return failure to main fn (need to refactor CloneGitRepoAndDoAction for that
 			if err != nil {
-				log.Printf("ERROR fetching digger.yml file: %v")
+				log.Printf("ERROR fetching digger.yml file: %v", err)
 			}
 			models.DB.UpdateRepoDiggerConfig(link.OrganisationId, string(dat), repo)
 		})
