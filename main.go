@@ -1,22 +1,23 @@
 package main
 
 import (
+	"fmt"
+	"html/template"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
-	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/sessions"
 	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
-	"html/template"
-	"log"
-	"net/http"
-	"os"
-	"time"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -147,6 +148,8 @@ func main() {
 	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
+
+	//authorized.GET("/checkout", controllers.Checkout) TODO un-comment when dependency is updated
 
 	admin.PUT("/repos/:repo/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForRepoAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
