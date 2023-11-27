@@ -121,6 +121,10 @@ func main() {
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
+	checkoutGroup := r.Group("/")
+	checkoutGroup.Use(middleware.WebAuth(auth))
+	checkoutGroup.GET("/checkout", web.Checkout)
+
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
@@ -148,8 +152,6 @@ func main() {
 	authorized.POST("/repos/:repo/report-projects", controllers.ReportProjectsForRepo)
 
 	authorized.GET("/orgs/:organisation/projects", controllers.FindProjectsForOrg)
-
-	//authorized.GET("/checkout", controllers.Checkout) TODO un-comment when dependency is updated
 
 	admin.PUT("/repos/:repo/projects/:projectName/access-policy", controllers.UpsertAccessPolicyForRepoAndProject)
 	admin.PUT("/orgs/:organisation/access-policy", controllers.UpsertAccessPolicyForOrg)
