@@ -309,11 +309,6 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error getting digger config")
 	}
 
-	prService, _, err := getGithubService(gh, installationId, repoFullName, repoOwner, repoName)
-	if err != nil {
-		log.Printf("getGithubService error: %v", err)
-		return fmt.Errorf("error getting github prservice")
-	}
 	impactedProjects, _, err := dg_github.ProcessGitHubPullRequestEvent(payload, config, projectsGraph, ghService)
 	if err != nil {
 		log.Printf("Error processing event: %v", err)
@@ -342,7 +337,7 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, prNumber, prService)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, prNumber, ghService)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -459,7 +454,6 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	}
 	log.Printf("GitHub IssueComment event processed successfully\n")
 
-	prService, _, err := getGithubService(gh, installationId, repoFullName, repoOwner, repoName)
 	if err != nil {
 		log.Printf("getGithubService error: %v", err)
 		return fmt.Errorf("error getting github prservice")
@@ -488,7 +482,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, issueNumber, prService)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, issueNumber, ghService)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
