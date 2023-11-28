@@ -16,6 +16,8 @@ import (
 	"digger.dev/cloud/services"
 	"github.com/gin-gonic/gin"
 	"github.com/robert-nix/ansihtml"
+	"github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v76/checkout/session"
 	"golang.org/x/exp/maps"
 )
 
@@ -367,4 +369,32 @@ func (web *WebController) UpdateRepoPage(c *gin.Context) {
 		}
 		c.Redirect(http.StatusFound, "/repos")
 	}
+}
+
+func (web *WebController) Checkout(c *gin.Context) {
+	stripe.Key = os.Getenv("STRIPE_KEY")
+
+	params := &stripe.CheckoutSessionParams{
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			&stripe.CheckoutSessionLineItemParams{
+				Price:    stripe.String(os.Getenv("STRIPE_PRICE_ID")),
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			TrialPeriodDays: stripe.Int64(14),
+		},
+		Mode:       stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		SuccessURL: stripe.String("https://" + c.Request.Host + "/projects"),
+		CancelURL:  stripe.String("https://login.digger.dev"), //TODO use different login pages in different envs
+	}
+
+	s, err := session.New(params)
+
+	if err != nil {
+		log.Printf("session.New: %v", err)
+	}
+
+	c.Redirect(http.StatusSeeOther, s.URL)
+
 }

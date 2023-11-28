@@ -1,22 +1,23 @@
 package main
 
 import (
+	"fmt"
+	"html/template"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
 	"digger.dev/cloud/services"
-	"fmt"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/sessions"
 	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
-	"html/template"
-	"log"
-	"net/http"
-	"os"
-	"time"
 )
 
 // based on https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
@@ -119,6 +120,10 @@ func main() {
 	policiesGroup.POST("/add", web.AddPolicyPage)
 	policiesGroup.GET("/:policyid/details", web.PolicyDetailsPage)
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
+
+	checkoutGroup := r.Group("/")
+	checkoutGroup.Use(middleware.WebAuth(auth))
+	checkoutGroup.GET("/checkout", web.Checkout)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
