@@ -381,6 +381,9 @@ func (web *WebController) Checkout(c *gin.Context) {
 				Quantity: stripe.Int64(1),
 			},
 		},
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			TrialPeriodDays: stripe.Int64(14),
+		},
 		Mode:       stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		SuccessURL: stripe.String("https://" + c.Request.Host + "/projects"),
 		CancelURL:  stripe.String("https://login.digger.dev"), //TODO use different login pages in different envs
