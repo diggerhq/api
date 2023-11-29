@@ -50,7 +50,8 @@ func Track(userId string, action string) {
 	}
 	log.Printf("Debug: Tracking client for %v", userId)
 	client.Enqueue(analytics.Track{
-		Event:  action,
-		UserId: userId,
+		Event:      action,
+		UserId:     userId,
+		Properties: analytics.NewProperties(),
 	})
 }
