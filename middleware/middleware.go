@@ -51,6 +51,7 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 		c.Set(ORGANISATION_ID_KEY, org.ID)
 
 		log.Printf("set org id %v\n", org.ID)
+		sendAnalyticsFromJwtClaims(c, claims, org)
 
 		tokenType := claims["type"].(string)
 
@@ -84,7 +85,6 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 				return nil
 			}
 		}
-		sendAnalyticsFromJwtClaims(c, claims, org)
 	} else {
 		log.Printf("Token's claim is invalid")
 		return fmt.Errorf("token is invalid")
