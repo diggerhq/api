@@ -31,6 +31,7 @@ func IdentifyClient(userId string, userFullName string, username string, email s
 	if client == nil {
 		return
 	}
+	log.Printf("Debug: Identifying client for %v", userId)
 	client.Enqueue(analytics.Identify{
 		UserId: userId,
 		Traits: analytics.NewTraits().
@@ -47,6 +48,7 @@ func Track(userId string, action string) {
 	if client == nil {
 		return
 	}
+	log.Printf("Debug: Tracking client for %v", userId)
 	client.Enqueue(analytics.Track{
 		Event:  action,
 		UserId: userId,
