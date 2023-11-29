@@ -15,6 +15,7 @@ import (
 
 func sendAnalyticsFromJwtClaims(c *gin.Context, claims jwt.MapClaims, org *models.Organisation) {
 	userId := claims["type"].(string)
+	log.Printf("sending analytics for user: %v", userId, c.FullPath())
 	username := claims["name"].(string)
 	email := claims["email"].(string)
 	tenantId := org.ExternalId
