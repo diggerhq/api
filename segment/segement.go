@@ -37,7 +37,8 @@ func IdentifyClient(userId string, userFullName string, username string, email s
 			SetName(userFullName).
 			SetUsername(username).
 			SetEmail(email).
-			Set("organisation", organisation).
+			Set("organisationName", organisationName).
+			Set("organisationId", organisationId).
 			Set("plan", userPlan),
 	})
 }
