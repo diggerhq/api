@@ -14,15 +14,14 @@ import (
 )
 
 func sendAnalyticsFromJwtClaims(c *gin.Context, claims jwt.MapClaims, org *models.Organisation) {
-	userId := claims["type"].(string)
-	log.Printf("sending analytics for user: %v, %v", userId, c.FullPath())
 	username := claims["name"].(string)
+	log.Printf("sending analytics for user: %v, %v", username, c.FullPath())
 	email := claims["email"].(string)
 	tenantId := org.ExternalId
 	orgName := org.Name
-	segment.IdentifyClient(userId, "", username, email, orgName, tenantId, "community")
+	segment.IdentifyClient(username, "", username, email, orgName, tenantId, "community")
 	path := c.FullPath()
-	segment.Track(userId, path)
+	segment.Track(username, path)
 }
 func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) error {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
