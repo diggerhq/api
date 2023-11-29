@@ -321,6 +321,12 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error converting event to jobsForImpactedProjects")
 	}
 
+	err = setPRStatusForJobs(ghService, prNumber, jobsForImpactedProjects)
+	if err != nil {
+		log.Printf("error setting status for PR: %v", err)
+		fmt.Errorf("error setting status for PR: %v", err)
+	}
+
 	impactedProjectsMap := make(map[string]dg_configuration.Project)
 	for _, p := range impactedProjects {
 		impactedProjectsMap[p.Name] = p
@@ -432,6 +438,24 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 	return ghService, config, dependencyGraph, &prBranch, nil
 }
 
+func setPRStatusForJobs(prService *dg_github.GithubService, prNumber int, jobs []orchestrator.Job) error {
+	for _, job := range jobs {
+		for _, command := range job.Commands {
+			var err error
+			switch command {
+			case "digger plan":
+				err = prService.SetStatus(prNumber, "pending", job.ProjectName+"/plan")
+			case "digger apply":
+				err = prService.SetStatus(prNumber, "pending", job.ProjectName+"/apply")
+			}
+			if err != nil {
+				log.Printf("Erorr setting status: %v", err)
+				return fmt.Errorf("Error setting pr status: %v", err)
+			}
+		}
+	}
+	return nil
+}
 func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.IssueCommentEvent) error {
 	installationId := *payload.Installation.ID
 	repoName := *payload.Repo.Name
@@ -465,6 +489,12 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		return fmt.Errorf("error converting event to jobs")
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
+
+	err = setPRStatusForJobs(ghService, issueNumber, jobs)
+	if err != nil {
+		log.Printf("error setting status for PR: %v", err)
+		fmt.Errorf("error setting status for PR: %v", err)
+	}
 
 	impactedProjectsMap := make(map[string]dg_configuration.Project)
 	for _, p := range impactedProjects {
@@ -517,8 +547,6 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 			log.Printf("failed to trigger github workflow, %v\n", err)
 			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
 		} else {
-
-			err = prService.SetStatus(prNumber, "pending", "digger"+"/plan")
 			if err != nil {
 				log.Printf("failed to set pr status, %v\n", err)
 				return fmt.Errorf("failed to set pr status, %v\n", err)
