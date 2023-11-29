@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"digger.dev/cloud/models"
+	"digger.dev/cloud/segment"
 	"digger.dev/cloud/services"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,16 @@ import (
 	"strings"
 )
 
+func sendAnalyticsFromJwtClaims(c *gin.Context, claims jwt.MapClaims, org *models.Organisation) {
+	userId := claims["type"].(string)
+	username := claims["name"].(string)
+	email := claims["email"].(string)
+	tenantId := org.ExternalId
+	orgName := org.Name
+	segment.IdentifyClient(userId, "", username, email, orgName, tenantId, "community")
+	path := c.FullPath()
+	segment.Track(userId, path)
+}
 func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) error {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		if claims.Valid() != nil {
@@ -72,10 +83,12 @@ func SetContextParameters(c *gin.Context, auth services.Auth, token *jwt.Token) 
 				return nil
 			}
 		}
+		sendAnalyticsFromJwtClaims(c, claims, org)
 	} else {
 		log.Printf("Token's claim is invalid")
 		return fmt.Errorf("token is invalid")
 	}
+
 	return nil
 }
 

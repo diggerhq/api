@@ -1,6 +1,7 @@
 package main
 
 import (
+	"digger.dev/cloud/segment"
 	"fmt"
 	"html/template"
 	"log"
@@ -24,6 +25,10 @@ import (
 var Version = "dev"
 
 func main() {
+
+	//segment analytics
+	segment.InitClient()
+	defer segment.CloseClient()
 
 	initLogging()
 	cfg := config.New()
