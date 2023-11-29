@@ -321,6 +321,12 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error converting event to jobsForImpactedProjects")
 	}
 
+	err = setPRStatusForJobs(ghService, prNumber, jobsForImpactedProjects)
+	if err != nil {
+		log.Printf("error setting status for PR: %v", err)
+		fmt.Errorf("error setting status for PR: %v", err)
+	}
+
 	impactedProjectsMap := make(map[string]dg_configuration.Project)
 	for _, p := range impactedProjects {
 		impactedProjectsMap[p.Name] = p
@@ -337,7 +343,7 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, prNumber, ghService)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -432,6 +438,24 @@ func getDiggerConfig(gh utils.GithubClientProvider, installationId int64, repoFu
 	return ghService, config, dependencyGraph, &prBranch, nil
 }
 
+func setPRStatusForJobs(prService *dg_github.GithubService, prNumber int, jobs []orchestrator.Job) error {
+	for _, job := range jobs {
+		for _, command := range job.Commands {
+			var err error
+			switch command {
+			case "digger plan":
+				err = prService.SetStatus(prNumber, "pending", job.ProjectName+"/plan")
+			case "digger apply":
+				err = prService.SetStatus(prNumber, "pending", job.ProjectName+"/apply")
+			}
+			if err != nil {
+				log.Printf("Erorr setting status: %v", err)
+				return fmt.Errorf("Error setting pr status: %v", err)
+			}
+		}
+	}
+	return nil
+}
 func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.IssueCommentEvent) error {
 	installationId := *payload.Installation.ID
 	repoName := *payload.Repo.Name
@@ -454,12 +478,23 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	}
 	log.Printf("GitHub IssueComment event processed successfully\n")
 
+	if err != nil {
+		log.Printf("getGithubService error: %v", err)
+		return fmt.Errorf("error getting github prservice")
+	}
+
 	jobs, _, err := dg_github.ConvertGithubIssueCommentEventToJobs(payload, impactedProjects, requestedProject, config.Workflows)
 	if err != nil {
 		log.Printf("Error converting event to jobs: %v", err)
 		return fmt.Errorf("error converting event to jobs")
 	}
 	log.Printf("GitHub IssueComment event converted to Jobs successfully\n")
+
+	err = setPRStatusForJobs(ghService, issueNumber, jobs)
+	if err != nil {
+		log.Printf("error setting status for PR: %v", err)
+		fmt.Errorf("error setting status for PR: %v", err)
+	}
 
 	impactedProjectsMap := make(map[string]dg_configuration.Project)
 	for _, p := range impactedProjects {
@@ -477,7 +512,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		return fmt.Errorf("error convertingjobs")
 	}
 
-	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId)
+	err = TriggerDiggerJobs(ghService.Client, repoOwner, repoName, batchId, issueNumber, ghService)
 	if err != nil {
 		log.Printf("TriggerDiggerJobs error: %v", err)
 		return fmt.Errorf("error triggerring GitHub Actions for Digger Jobs")
@@ -485,7 +520,7 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	return nil
 }
 
-func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId *uuid.UUID) error {
+func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string, batchId *uuid.UUID, prNumber int, prService *dg_github.GithubService) error {
 	diggerJobs, err := models.DB.GetPendingParentDiggerJobs(batchId)
 
 	if err != nil {
@@ -501,15 +536,22 @@ func TriggerDiggerJobs(client *github.Client, repoOwner string, repoName string,
 		}
 		jobString := string(job.SerializedJob)
 		log.Printf("jobString: %v \n", jobString)
+
 		// TODO: make workflow file name configurable
 		_, err = client.Actions.CreateWorkflowDispatchEventByFileName(context.Background(), repoOwner, repoName, "digger_workflow.yml", github.CreateWorkflowDispatchEventRequest{
 			Ref:    job.BranchName,
 			Inputs: map[string]interface{}{"job": jobString, "id": job.DiggerJobId},
 		})
+
 		if err != nil {
 			log.Printf("failed to trigger github workflow, %v\n", err)
 			return fmt.Errorf("failed to trigger github workflow, %v\n", err)
 		} else {
+			if err != nil {
+				log.Printf("failed to set pr status, %v\n", err)
+				return fmt.Errorf("failed to set pr status, %v\n", err)
+			}
+
 			job.Status = models.DiggerJobTriggered
 			err := models.DB.UpdateDiggerJob(&job)
 			if err != nil {
