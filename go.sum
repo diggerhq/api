@@ -1215,6 +1215,8 @@ github.com/stripe/stripe-go/v76 v76.6.0 h1:jG5VTzxZdwF1PFP2FAH6ThMFQRWJ/EVjY+17/
 github.com/stripe/stripe-go/v76 v76.6.0/go.mod h1:rw1MxjlAKKcZ+3FOXgTHgwiOa2ya6CPq6ykpJ0Q6Po4=
 github.com/stripe/stripe-go/v76 v76.7.0 h1:7A5I8/feM5Gy2xtUmIkDMcZeX6wSvItLXLwU4oBF7wI=
 github.com/stripe/stripe-go/v76 v76.7.0/go.mod h1:rw1MxjlAKKcZ+3FOXgTHgwiOa2ya6CPq6ykpJ0Q6Po4=
+github.com/stripe/stripe-go/v76 v76.8.0 h1:Q+tUMG3nUIlLmrL8PKnxrbxQmi6VTIXU1cxr9GL/OmY=
+github.com/stripe/stripe-go/v76 v76.8.0/go.mod h1:rw1MxjlAKKcZ+3FOXgTHgwiOa2ya6CPq6ykpJ0Q6Po4=
 github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8=
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
