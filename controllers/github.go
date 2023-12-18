@@ -214,7 +214,7 @@ func GithubSetupExchangeCode(c *gin.Context) {
 		c.Error(fmt.Errorf("Failed to exchange code for github app: %s", err))
 		return
 	}
-	log.Printf("Found credentials for GitHub app %q with id %d", cfg.Name, cfg.GetID())
+	log.Printf("Found credentials for GitHub app %v with id %d", *cfg.Name, cfg.GetID())
 
 	_, err = models.DB.CreateGithubApp(cfg.GetName(), cfg.GetID(), cfg.GetHTMLURL())
 	if err != nil {
