@@ -5,12 +5,15 @@ import (
 	_ "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"log"
 	"os"
 )
 
 type Database struct {
 	GormDB *gorm.DB
 }
+
+var DEFAULT_ORG_NAME = "digger"
 
 // var DB *gorm.DB
 var DB *Database
@@ -31,7 +34,6 @@ func ConnectDatabase() {
 	}
 
 	err = database.AutoMigrate(&Organisation{})
-
 	if err != nil {
 		panic("Failed to perform migration for `Organisations`!")
 	}
@@ -103,4 +105,12 @@ func ConnectDatabase() {
 	}
 
 	DB = &Database{GormDB: database}
+
+	// data and fixtures added
+	orgNumberOne, err := DB.GetOrganisation(DEFAULT_ORG_NAME)
+	if orgNumberOne == nil {
+		log.Print("No default found, creating default organisation")
+		DB.CreateOrganisation("digger", "", DEFAULT_ORG_NAME)
+	}
+
 }

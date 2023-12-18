@@ -303,6 +303,10 @@ func (web *WebController) RedirectToLoginSubdomain(context *gin.Context) {
 	context.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s", host))
 }
 
+func (web *WebController) RedirectToProjectsPage(context *gin.Context) {
+	context.Redirect(http.StatusMovedPermanently, "/projects")
+}
+
 func (web *WebController) UpdateRepoPage(c *gin.Context) {
 	repoId := c.Param("repoid")
 	if repoId == "" {
