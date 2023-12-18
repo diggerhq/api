@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"reflect"
@@ -114,6 +116,124 @@ func GithubAppWebHook(c *gin.Context) {
 	c.JSON(200, "ok")
 }
 
+func GithubAppSetup(c *gin.Context) {
+
+	type githubWebhook struct {
+		URL    string `json:"url"`
+		Active bool   `json:"active"`
+	}
+
+	type githubAppRequest struct {
+		Description           string            `json:"description"`
+		Events                []string          `json:"default_events"`
+		Name                  string            `json:"name"`
+		Permissions           map[string]string `json:"default_permissions"`
+		Public                bool              `json:"public"`
+		RedirectURL           string            `json:"redirect_url"`
+		CallbackUrls          []string          `json:"callback_urls"`
+		RequestOauthOnInstall bool              `json:"request_oauth_on_install"`
+		SetupOnUpdate         bool              `json:"setup_on_update"'`
+		URL                   string            `json:"url"`
+		Webhook               *githubWebhook    `json:"hook_attributes"`
+	}
+
+	host := os.Getenv("HOSTNAME")
+	manifest := &githubAppRequest{
+		Name:        fmt.Sprintf("Digger app %v", rand.Int31()),
+		Description: fmt.Sprintf("Digger hosted at %s", host),
+		URL:         host,
+		RedirectURL: fmt.Sprintf("%s/github/exchange-code", host),
+		Public:      false,
+		Webhook: &githubWebhook{
+			Active: true,
+			URL:    fmt.Sprintf("%s/github-app-webhook", host),
+		},
+		CallbackUrls:          []string{fmt.Sprintf("%s/github/callback", host)},
+		SetupOnUpdate:         true,
+		RequestOauthOnInstall: true,
+		Events: []string{
+			"check_run",
+			"create",
+			"delete",
+			"issue_comment",
+			"issues",
+			"status",
+			"pull_request_review_thread",
+			"pull_request_review_comment",
+			"pull_request_review",
+			"pull_request",
+			"push",
+		},
+		Permissions: map[string]string{
+			"actions":          "write",
+			"contents":         "write",
+			"issues":           "write",
+			"pull_requests":    "write",
+			"repository_hooks": "write",
+			"statuses":         "write",
+			"administration":   "read",
+			"checks":           "write",
+			"members":          "read",
+			"workflows":        "write",
+		},
+	}
+
+	url := &url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   "/settings/apps/new",
+	}
+
+	// https://developer.github.com/apps/building-github-apps/creating-github-apps-using-url-parameters/#about-github-app-url-parameters
+	githubOrg := os.Getenv("GITHUB_ORG")
+	if githubOrg != "" {
+		url.Path = fmt.Sprintf("organizations/%s%s", githubOrg, url.Path)
+	}
+
+	jsonManifest, err := json.MarshalIndent(manifest, "", " ")
+	if err != nil {
+		c.Error(fmt.Errorf("failed to serialize manifest %s", err))
+		return
+	}
+
+	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{"Target": url.String(), "Manifest": string(jsonManifest)})
+}
+
+// GithubSetupExchangeCode handles the user coming back from creating their app
+// A code query parameter is exchanged for this app's ID, key, and webhook_secret
+// Implements https://developer.github.com/apps/building-github-apps/creating-github-apps-from-a-manifest/#implementing-the-github-app-manifest-flow
+func GithubSetupExchangeCode(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.Error(fmt.Errorf("Ignoring callback, missing code query parameter"))
+	}
+
+	client := github.NewClient(nil)
+	cfg, _, err := client.Apps.CompleteAppManifest(context.Background(), code)
+	if err != nil {
+		c.Error(fmt.Errorf("Failed to exchange code for github app: %s", err))
+		return
+	}
+	log.Printf("Found credentials for GitHub app %q with id %d", cfg.Name, cfg.GetID())
+
+	_, err = models.DB.CreateGithubApp(cfg.GetName(), cfg.GetID(), cfg.GetHTMLURL())
+	if err != nil {
+		c.Error(fmt.Errorf("Failed to create github app record on callback"))
+	}
+
+	c.HTML(http.StatusOK, "github_setup.tmpl", gin.H{
+		"Target":        "",
+		"Manifest":      "",
+		"ID":            cfg.GetID(),
+		"ClientID":      cfg.GetClientID(),
+		"ClientSecret":  cfg.GetClientSecret(),
+		"Key":           cfg.GetPEM(),
+		"WebhookSecret": cfg.GetWebhookSecret(),
+		"URL":           cfg.GetHTMLURL(),
+	})
+
+}
+
 func createOrGetDiggerRepoForGithubRepo(ghRepoFullName string, installationId int64) (*models.Repo, *models.Organisation, error) {
 	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
 	if err != nil {
@@ -167,23 +287,23 @@ func handleInstallationRepositoriesAddedEvent(ghClientProvider utils.GithubClien
 			return err
 		}
 
-		_, org, err := createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
-		if err != nil {
-			log.Printf("createOrGetDiggerRepoForGithubRepo failed, error: %v\n", err)
-			return err
-		}
+		//_, org, err := createOrGetDiggerRepoForGithubRepo(repoFullName, installationId)
+		//if err != nil {
+		//	log.Printf("createOrGetDiggerRepoForGithubRepo failed, error: %v\n", err)
+		//	return err
+		//}
 
-		client, _, err := ghClientProvider.Get(int64(appId), installationId)
-		if err != nil {
-			log.Printf("GetGithubClient failed, error: %v\n", err)
-			return err
-		}
-
-		err = CreateDiggerWorkflowWithPullRequest(org, client, repoFullName)
-		if err != nil {
-			log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
-			return err
-		}
+		//client, _, err := ghClientProvider.Get(int64(appId), installationId)
+		//if err != nil {
+		//	log.Printf("GetGithubClient failed, error: %v\n", err)
+		//	return err
+		//}
+		//
+		//err = CreateDiggerWorkflowWithPullRequest(org, client, repoFullName)
+		//if err != nil {
+		//	log.Printf("CreateDiggerWorkflowWithPullRequest failed, error: %v\n", err)
+		//	return err
+		//}
 	}
 	return nil
 }
@@ -713,6 +833,9 @@ func GithubAppCallbackPage(c *gin.Context) {
 	}
 	//TODO move to config; same for all other os.Getenv() calls in this file
 	callbackSuccessRedirectURL := os.Getenv("CALLBACK_SUCCESS_REDIRECT_URL")
+	if callbackSuccessRedirectURL == "" {
+		callbackSuccessRedirectURL = "/repos"
+	}
 	c.Redirect(http.StatusFound, callbackSuccessRedirectURL)
 }
 

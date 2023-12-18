@@ -11,7 +11,6 @@ import (
 	"digger.dev/cloud/controllers"
 	"digger.dev/cloud/middleware"
 	"digger.dev/cloud/models"
-	"digger.dev/cloud/services"
 	"github.com/alextanhongpin/go-gin-starter/config"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -72,14 +71,7 @@ func main() {
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
-	r.GET("/", web.RedirectToLoginSubdomain)
-
-	auth := services.Auth{
-		HttpClient: http.Client{},
-		Host:       os.Getenv("AUTH_HOST"),
-		Secret:     os.Getenv("AUTH_SECRET"),
-		ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
-	}
+	r.GET("/", web.RedirectToProjectsPage)
 
 	r.POST("/github-app-webhook", controllers.GithubAppWebHook)
 
@@ -88,33 +80,35 @@ func main() {
 	tenantActionsGroup.Any("/associateTenantIdToDiggerOrg", controllers.AssociateTenantIdToDiggerOrg)
 
 	githubGroup := r.Group("/github")
-	githubGroup.Use(middleware.WebAuth(auth))
+	githubGroup.Use(middleware.GetWebMiddleware())
 	githubGroup.GET("/callback", controllers.GithubAppCallbackPage)
 	githubGroup.GET("/repos", controllers.GithubReposPage)
+	githubGroup.GET("/setup", controllers.GithubAppSetup)
+	githubGroup.GET("/exchange-code", controllers.GithubSetupExchangeCode)
 
 	projectsGroup := r.Group("/projects")
-	projectsGroup.Use(middleware.WebAuth(auth))
+	projectsGroup.Use(middleware.GetWebMiddleware())
 	projectsGroup.GET("/", web.ProjectsPage)
 	projectsGroup.GET("/:projectid/details", web.ProjectDetailsPage)
 	projectsGroup.POST("/:projectid/details", web.ProjectDetailsUpdatePage)
 
 	runsGroup := r.Group("/runs")
-	runsGroup.Use(middleware.WebAuth(auth))
+	runsGroup.Use(middleware.GetWebMiddleware())
 	runsGroup.GET("/", web.RunsPage)
 	runsGroup.GET("/:runid/details", web.RunDetailsPage)
 
 	reposGroup := r.Group("/repos")
-	reposGroup.Use(middleware.WebAuth(auth))
+	reposGroup.Use(middleware.GetWebMiddleware())
 	reposGroup.GET("/", web.ReposPage)
 
 	repoGroup := r.Group("/repo")
-	repoGroup.Use(middleware.WebAuth(auth))
+	repoGroup.Use(middleware.GetWebMiddleware())
 	repoGroup.GET("/", web.ReposPage)
 	repoGroup.GET("/:repoid/", web.UpdateRepoPage)
 	repoGroup.POST("/:repoid/", web.UpdateRepoPage)
 
 	policiesGroup := r.Group("/policies")
-	policiesGroup.Use(middleware.WebAuth(auth))
+	policiesGroup.Use(middleware.GetWebMiddleware())
 	policiesGroup.GET("/", web.PoliciesPage)
 	policiesGroup.GET("/add", web.AddPolicyPage)
 	policiesGroup.POST("/add", web.AddPolicyPage)
@@ -122,14 +116,14 @@ func main() {
 	policiesGroup.POST("/:policyid/details", web.PolicyDetailsUpdatePage)
 
 	checkoutGroup := r.Group("/")
-	checkoutGroup.Use(middleware.WebAuth(auth))
+	checkoutGroup.Use(middleware.GetApiMiddleware())
 	checkoutGroup.GET("/checkout", web.Checkout)
 
 	authorized := r.Group("/")
-	authorized.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
+	authorized.Use(middleware.GetApiMiddleware(), middleware.AccessLevel(models.AccessPolicyType, models.AdminPolicyType))
 
 	admin := r.Group("/")
-	admin.Use(middleware.BearerTokenAuth(auth), middleware.AccessLevel(models.AdminPolicyType))
+	admin.Use(middleware.GetApiMiddleware(), middleware.AccessLevel(models.AdminPolicyType))
 
 	fronteggWebhookProcessor := r.Group("/")
 	fronteggWebhookProcessor.Use(middleware.SecretCodeAuth())

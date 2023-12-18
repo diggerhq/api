@@ -409,6 +409,16 @@ func (db *Database) GetGithubAppInstallationLink(installationId int64) (*GithubA
 	return &link, nil
 }
 
+func (db *Database) CreateGithubApp(name string, githubId int64, url string) (*GithubApp, error) {
+	app := GithubApp{Name: name, GithubId: githubId, GithubAppUrl: url}
+	result := db.GormDB.Save(&app)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	log.Printf("CreateGithubApp (name: %v, url: %v) has been created successfully\n", app.Name, app.GithubAppUrl)
+	return &app, nil
+}
+
 // GetGithubApp return GithubApp by Id
 func (db *Database) GetGithubApp(gitHubAppId any) (*GithubApp, error) {
 	app := GithubApp{}
