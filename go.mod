@@ -1,12 +1,13 @@
 module digger.dev/cloud
 
-go 1.21
+go 1.21.5
 
 require (
 	github.com/alextanhongpin/go-gin-starter v0.0.0-20180719045109-df82f33e8aa1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.8.0
 	github.com/dchest/uniuri v1.2.0
-	github.com/diggerhq/digger v0.3.1
+	github.com/diggerhq/digger v0.3.7
+	github.com/diggerhq/digger/libs v0.0.0-20231220175256-c83db17cbb52
 	github.com/dominikbraun/graph v0.23.0
 	github.com/getsentry/sentry-go v0.25.0
 	github.com/gin-contrib/sessions v0.0.5
@@ -123,7 +124,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.19.1 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform v0.15.3 // indirect
-	github.com/hashicorp/terraform-config-inspect v0.0.0-20230925220900-5a6f8d18746d // indirect
+	github.com/hashicorp/terraform-config-inspect v0.0.0-20231204233900-a34142ec2a72 // indirect
 	github.com/hashicorp/terraform-registry-address v0.2.0 // indirect
 	github.com/hashicorp/terraform-svchost v0.0.1 // indirect
 	github.com/hashicorp/vault/api v1.5.0 // indirect
