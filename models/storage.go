@@ -294,12 +294,12 @@ func (db *Database) GetRepoById(orgIdKey any, repoId any) (*Repo, error) {
 	return &repo, nil
 }
 
-// GithubRepoAdded handles github notification that github repo has been added to the app installation
-func (db *Database) GithubRepoAdded(installationId int64, appId int64, login string, accountId int64, repoFullName string) (*GithubAppInstallation, error) {
+// GithubInstallationCreated handles github notification that github repo has been added to the app installation
+func (db *Database) GithubInstallationCreated(installationId int64, appId int64, login string, accountId int64) (*GithubAppInstallation, error) {
 
 	// check if item exist already
 	item := &GithubAppInstallation{}
-	result := db.GormDB.Where("github_installation_id = ? AND repo=? AND github_app_id=?", installationId, repoFullName, appId).First(item)
+	result := db.GormDB.Where("github_installation_id = ? AND github_app_id=?", installationId, appId).First(item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("failed to find github installation in database. %v", result.Error)
@@ -308,12 +308,12 @@ func (db *Database) GithubRepoAdded(installationId int64, appId int64, login str
 
 	if result.RowsAffected == 0 {
 		var err error
-		item, err = db.CreateGithubAppInstallation(installationId, appId, login, int(accountId), repoFullName)
+		item, err = db.CreateGithubAppInstallation(installationId, appId, login, int(accountId))
 		if err != nil {
 			return nil, fmt.Errorf("failed to save github installation item to database. %v", err)
 		}
 	} else {
-		log.Printf("Record for installation_id: %d, repo: %s, with status=active exist already.", installationId, repoFullName)
+		log.Printf("Record for installation_id: %d, with status=active exist already.", installationId)
 		item.Status = GithubAppInstallActive
 		item.UpdatedAt = time.Now()
 		err := db.GormDB.Save(item).Error
@@ -718,13 +718,12 @@ func (db *Database) GetToken(tenantId any) (*Token, error) {
 	return token, nil
 }
 
-func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppId int64, login string, accountId int, repoFullName string) (*GithubAppInstallation, error) {
+func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppId int64, login string, accountId int) (*GithubAppInstallation, error) {
 	installation := &GithubAppInstallation{
 		GithubInstallationId: installationId,
 		GithubAppId:          githubAppId,
 		Login:                login,
 		AccountId:            accountId,
-		Repo:                 repoFullName,
 		Status:               GithubAppInstallActive,
 	}
 	result := db.GormDB.Save(installation)
@@ -732,7 +731,7 @@ func (db *Database) CreateGithubAppInstallation(installationId int64, githubAppI
 		log.Printf("Failed to create GithubAppInstallation: %v, error: %v\n", installationId, result.Error)
 		return nil, result.Error
 	}
-	log.Printf("GithubAppInstallation (installationId: %v, githubAppId: %v, login: %v, accountId: %v, repoFullName: %v) has been created successfully\n", installationId, githubAppId, login, accountId, repoFullName)
+	log.Printf("GithubAppInstallation (installationId: %v, githubAppId: %v, login: %v, accountId: %v) has been created successfully\n", installationId, githubAppId, login, accountId)
 	return installation, nil
 }
 
