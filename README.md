@@ -1,3 +1,5 @@
+NOTE: this repo has now merged with the main `diggerhq/digger` repo, all active development will happen there
+
 The repository for digger official API.
 
 # Self-hosting as a Docker container (eg on ECS, Fly.io or similar)
