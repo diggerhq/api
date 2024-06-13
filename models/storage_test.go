@@ -92,11 +92,11 @@ func TestGithubRepoAdded(t *testing.T) {
 	login := "test"
 	repoFullName := "test/test"
 
-	i, err := DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+	i, err := DB.GithubInstallationCreated(installationId, appId, login, accountId, repoFullName)
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 
-	i2, err := DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+	i2, err := DB.GithubInstallationCreated(installationId, appId, login, accountId, repoFullName)
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 	assert.Equal(t, i.ID, i2.ID)
@@ -113,7 +113,7 @@ func TestGithubRepoRemoved(t *testing.T) {
 	login := "test"
 	repoFullName := "test/test"
 
-	i, err := DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+	i, err := DB.GithubInstallationCreated(installationId, appId, login, accountId, repoFullName)
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 
@@ -122,7 +122,7 @@ func TestGithubRepoRemoved(t *testing.T) {
 	assert.NotNil(t, i)
 	assert.Equal(t, GithubAppInstallDeleted, i.Status)
 
-	i2, err := DB.GithubRepoAdded(installationId, appId, login, accountId, repoFullName)
+	i2, err := DB.GithubInstallationCreated(installationId, appId, login, accountId, repoFullName)
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 	assert.Equal(t, i.ID, i2.ID)
